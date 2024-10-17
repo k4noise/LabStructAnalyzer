@@ -1,0 +1,19 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# VS Code
+.vscode/
+
+# Файлы и директории фронтенда
+/frontend/node_modules/
+/frontend/dist/
+/frontend/build/
+
+# Файлы и директории бэкенда
+/backend/.venv/
+/backend/*.pyc
+/backend/__pycache__/
+/backend/migrations/*
+!backend/migrations/__init__.py
