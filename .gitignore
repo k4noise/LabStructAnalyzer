@@ -14,6 +14,6 @@ out/
 # Файлы и директории бэкенда
 /backend/.venv/
 /backend/*.pyc
-/backend/__pycache__/
+/backend/**/__pycache__/
 /backend/migrations/*
 !backend/migrations/__init__.py
