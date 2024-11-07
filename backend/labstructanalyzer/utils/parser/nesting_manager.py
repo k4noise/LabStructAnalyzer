@@ -1,6 +1,6 @@
 from typing import Optional
-from labstructanalyzer.services.parser.base_definitions import IParserElement
-from labstructanalyzer.services.parser.common_elements import TextElement
+from labstructanalyzer.utils.parser.base_definitions import IParserElement
+from labstructanalyzer.utils.parser.common_elements import TextElement
 
 
 class NestingManager:

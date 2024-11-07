@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from base_definitions import IParserElement, ParserElementType
+from labstructanalyzer.utils.parser.base_definitions import IParserElement, ParserElementType
 
 
 @dataclass

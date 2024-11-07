@@ -3,14 +3,14 @@ import os, zipfile
 from lxml import etree
 from typing import Generator, List, Optional
 from zipfile import ZipFile
-from common_elements import (
+from labstructanalyzer.utils.parser.common_elements import (
     ImageElement,
     TextElement,
     TableElement,
     CellElement,
 )
 
-from base_definitions import IParserElement
+from labstructanalyzer.utils.parser.base_definitions import IParserElement
 
 from labstructanalyzer.utils.parser.numbering_manager import (
     NumberingManager,
@@ -20,6 +20,7 @@ from labstructanalyzer.utils.parser.numbering_manager import (
 
 from labstructanalyzer.utils.parser.nesting_manager import NestingManager
 from labstructanalyzer.utils.file_saver import FileSaver
+from labstructanalyzer.utils.parser.structure.structure_manager import StructureManager
 
 
 class DocxXmlManager:
@@ -92,12 +93,14 @@ class DocxXmlManager:
             print(f"Файл '{file_path}' не найден.")
             return None
 
+
 class DocxParser:
     """Парсер содержимого документа docx.
     Конвертирует содержимое документа в массив структурных компонент согласно структуре
 
       Attributes:
         images_dir: Путь до папки для сохранения изображений
+        structure_manager: Инстанс класса StructureManager с методами для применения структуры к элементам документа
         xml_manager: Инстанс класса DocxXmlManager с изображениями и lxml деревьями основного содержимого, стилей, нумерации, связей документа
         image_parser: Инстанс класса ImageParser с методом для парсинга изображений
         table_parser: Инстанс класса TableParser с методом для парсинга таблиц
@@ -107,13 +110,15 @@ class DocxParser:
         style_id_to_numberings_data: Словарь взаимоотношений идентификатора стиля к данным нумерации - идентификатору и уровню нумерации
     """
 
-    def __init__(self, document: bytes, image_save_subfolder: str) -> None:
+    def __init__(self, document: bytes, structure: dict, image_save_subfolder: str) -> None:
         """Инициализирует объект класса DocxParser
 
         Arguments:
           document: Байты docx документа
+          structure: Словарь с данными структуры
           image_save_subfolder: Подпапка для сохранения картинок
         """
+        self.structure_manager = StructureManager(structure)
         self.images_dir = image_save_subfolder
         self.xml_manager = DocxXmlManager(document)
         self.table_parser = TableParser(self.xml_manager, self.parse)
@@ -129,10 +134,7 @@ class DocxParser:
         Returns:
           Список структурных компонент документа
         """
-        return [
-            element.to_dict()
-            for element in self.parse(self.xml_manager.main_content_root)
-        ]
+        return list(self.structure_manager.apply_structure(self.parse(self.xml_manager.main_content_root)))
 
     def parse(
             self, root_element: etree.Element
