@@ -12,6 +12,7 @@ out/
 /frontend/build/
 
 # Файлы и директории бэкенда
+/backend/.env/
 /backend/.venv/
 /backend/*.pyc
 /backend/**/__pycache__/
