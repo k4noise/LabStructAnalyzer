@@ -1,32 +1,36 @@
+import os
+
 from fastapi import APIRouter, Depends, Request, HTTPException
-from fastapi_jwt_auth import AuthJWT
+from fastapi_another_jwt_auth import AuthJWT
 from lti import ToolProvider
-from oauthlib.oauth1 import RequestValidator
 
-from labstructanalyzer.config import get_config
+from labstructanalyzer.config import Settings
+from labstructanalyzer.utils.lti_validator import LTIRequestValidator
 
-validator = RequestValidator()
+settings = Settings()
+validator = LTIRequestValidator(settings)
 
 router = APIRouter()
 
-@router.post("/lti_login")
+
+@router.post("/lti")
 async def login_with_lti_credential(request: Request, authorize: AuthJWT = Depends()):
     """
-
+    Вход через LTI-провайдера
     """
-    settings = get_config()
+    form = await request.form()
     tool_provider = ToolProvider.from_unpacked_request(
-        settings.lti_consumer_secret,
-        request.json(),
-        settings.lti_endpoint_url,
+        os.getenv("LTI_SECRET_KEY"),
+        form,
+        str(request.url),
         request.headers
     )
 
     if not tool_provider.is_valid_request(validator):
         raise HTTPException(status_code=401, detail="Неверный запрос LTI")
 
-    user_id = tool_provider.get_user_id()
-    user_roles = tool_provider.get_roles()
+    user_id = form.get('user_id')
+    user_roles = form.get('roles')
 
     access_token = authorize.create_access_token(subject=user_id, user_claims={"roles": user_roles})
     refresh_token = authorize.create_refresh_token(subject=user_id)
