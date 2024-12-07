@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi_another_jwt_auth import AuthJWT
 
 from pydantic import BaseModel
-from labstructanalyzer.config import User
+from labstructanalyzer.configs.config import User
 
 router = APIRouter()
 

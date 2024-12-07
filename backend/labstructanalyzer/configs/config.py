@@ -3,6 +3,8 @@ import os
 from fastapi_another_jwt_auth import AuthJWT
 from pydantic import BaseModel
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+LTI_CONFIG_FILE_PATH = os.path.join(CURRENT_DIR, 'lti_config.json')
 
 class Settings(BaseModel):
     """
