@@ -1,0 +1,16 @@
+{
+  "https://lsatest.gnomio.com": [
+    {
+      "default": true,
+      "client_id": "l9BDTAMTJYCvYax",
+      "auth_login_url": "https://lsatest.gnomio.com/mod/lti/auth.php",
+      "auth_token_url": "https://lsatest.gnomio.com/mod/lti/token.php",
+      "key_set_url": "https://lsatest.gnomio.com/mod/lti/certs.php",
+      "private_key_file": "jwtRS256.key",
+      "public_key_file": "jwtRS256.key.pub",
+      "deployment_ids": [
+        "4"
+      ]
+    }
+  ]
+}
