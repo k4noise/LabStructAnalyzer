@@ -3,7 +3,6 @@ import os
 from fastapi import APIRouter, Request
 from fastapi.params import Depends
 from fastapi_another_jwt_auth import AuthJWT
-from fastapi_cache.backends.inmemory import InMemoryBackend
 from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, Response, JSONResponse
@@ -14,9 +13,10 @@ from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.lti.oidc_login import FastAPIOIDCLogin
 from labstructanalyzer.services.lti.request import FastAPIRequest
 from labstructanalyzer.services.lti.roles import LTIRoles
+from labstructanalyzer.utils.ttl_cache import TTLCache
 
 router = APIRouter(prefix="/lti")
-cache = InMemoryBackend()
+cache = TTLCache()
 
 
 @router.get("/login")
@@ -30,7 +30,7 @@ async def login(request: Request):
 
     Returns:
         - Перенаправление на службу аутентификации поставщика, если аутентификация успешна
-        - Ответ с 401, если аутентификация не удалась
+        - Ответ с 403, если аутентификация не удалась
     """
     tool_conf = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
     launch_data_storage = FastAPICacheDataStorage(cache)
@@ -65,13 +65,15 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     await request_obj.parse_request()
     launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
+    message_launch.validate_registration()
+
     roles = LTIRoles(message_launch)
     role = roles.get_role()
     user_id = message_launch.get_launch_data().get('sub')
 
     access_token = authorize.create_access_token(subject=user_id, user_claims={"role": role})
     refresh_token = authorize.create_refresh_token(subject=user_id)
-    response = RedirectResponse(url="http://127.0.0.1:5173/", status_code=302)
+    response = RedirectResponse(url=os.getenv("FRONTEND_URL"), status_code=302)
     response.set_cookie(key="access_token", value=access_token, samesite='none', secure=True)
     response.set_cookie(key="refresh_token", value=refresh_token, samesite='none', secure=True, httponly=True)
     return response
