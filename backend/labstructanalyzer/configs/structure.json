@@ -1,0 +1,109 @@
+{
+  "answer": {
+    "charDelimiter": "_",
+    "minRepeatCount": 5
+  },
+  "base": [
+    {
+      "type": "image",
+      "contentType": "image"
+    },
+    {
+      "type": "table",
+      "contentType": "table"
+    },
+    {
+      "type": "header",
+      "contentType": "text",
+      "hasProperty": "headerLevel"
+    },
+    {
+      "type": "text",
+      "contentType": "text"
+    },
+    {
+      "type": "question",
+      "contentType": "text",
+      "alwaysVisible": true
+    },
+    {
+      "type": "cell",
+      "contentType": "cell"
+    }
+  ],
+  "composite": [
+    {
+      "type": "labPart",
+      "preferVisible": true,
+      "data": [
+        {
+          "type": "header",
+          "contentType": "text",
+          "headerLevel": 3
+        }
+      ]
+    },
+    {
+      "type": "labStep",
+      "preferVisible": true,
+      "data": [
+        {
+          "type": "text",
+          "contentType": "text",
+          "hasStyle": "SubStepAlpha"
+        }
+      ]
+    },
+     {
+      "type": "warning",
+      "data": [
+        {
+          "type": "text",
+          "contentType": "text",
+          "startsWith": "ВНИМАНИЕ!"
+        }
+      ]
+    },
+    {
+      "type": "topology",
+      "alwaysVisible": true,
+      "data": [
+        {
+          "type": "header",
+          "contentType": "text",
+          "startsWith": "Топология"
+        },
+        {
+          "type": "image",
+          "contentType": "image"
+        }
+      ]
+    },
+    {
+      "type": "addressTable",
+      "alwaysVisible": true,
+      "data": [
+        {
+          "type": "header",
+          "contentType": "text",
+          "startsWith": "Таблица адресации"
+        },
+        {
+          "type": "table",
+          "contentType": "table"
+        }
+      ]
+    },
+    {
+      "type": "labName",
+      "alwaysVisible": true,
+      "data": [
+        {
+          "type": "header",
+          "contentType": "text",
+          "headerLevel": 1
+        }
+      ]
+    }
+  ]
+}

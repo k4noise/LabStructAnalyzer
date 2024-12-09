@@ -19,7 +19,7 @@ from labstructanalyzer.utils.parser.numbering_manager import (
 )
 
 from labstructanalyzer.utils.parser.nesting_manager import NestingManager
-from labstructanalyzer.utils.file_saver import FileSaver
+from labstructanalyzer.utils.file_utils import FileUtils
 from labstructanalyzer.utils.parser.structure.structure_manager import StructureManager
 
 
@@ -398,7 +398,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=FileSaver.save(self.images_dir, image_data, image_extension)
+                data=FileUtils.save(self.images_dir, image_data, image_extension)
             )
 
         return None
