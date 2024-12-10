@@ -1,10 +1,10 @@
 import os
 import uuid
 
-BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+class FileUtils:
+    BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-class FileSaver:
     @staticmethod
     def save(save_dir: str, file_data: bytes, extension: str) -> str:
         """Сохраняет сырые данные файла с уникальным именем в указанную папку
@@ -17,12 +17,12 @@ class FileSaver:
         Returns:
           Относительный путь до сохраненного файла
         """
-        file_name = f"{FileSaver.generate_unique_name()}{extension}"
+        file_name = f"{FileUtils.generate_unique_name()}{extension}"
         try:
-            file_path = os.path.join(BASE_PROJECT_DIR, save_dir, file_name)
+            file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, save_dir, file_name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            # with open(file_path, "wb") as file:
-            #     file.write(file_data)
+            with open(file_path, "wb") as file:
+                file.write(file_data)
             return os.path.join(save_dir, file_name)
         except IOError as error:
             print(f"Произошла ошибка при сохранении файла {file_name}: {error}")
@@ -35,3 +35,22 @@ class FileSaver:
             Уникальное имя файла
         """
         return uuid.uuid4().hex
+
+    @staticmethod
+    def get(folder: str, filename: str):
+        file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
+
+        if os.path.isfile(file_path):
+            with open(file_path, 'rb') as file:
+                return file.read()
+        else:
+            raise IOError("Файл не найден")
+
+    @staticmethod
+    def remove(folder: str, filename: str):
+        file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
+
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+        else:
+            raise IOError("Файл не найден")
