@@ -95,6 +95,12 @@ class StructureManager:
         Returns:
             Словарь, представляющий структурированный элемент
         """
+        if not hasattr(element, "structure_type") or element.structure_type is None:
+            for base in self.base.values():
+                if base.validate(element):
+                    element.structure_type = base.structure_type
+                    break
+
         if element.structure_type == "QnA":
             question_text = self.extract_question_text(element)
             answer_template = self.extract_answer_template(element)
@@ -108,12 +114,6 @@ class StructureManager:
                 return question_element
 
             return self.create_answer_dict(element.nesting_level, answer_template)
-
-        if element.structure_type is None:
-            for base in self.base.values():
-                if base.validate(element):
-                    element.structure_type = base.structure_type
-                    break
 
         element_dict = self.base[element.structure_type].apply_structure(element)
         element_dict["data"] = self.recursive_apply_structure_in_child(element.data)
