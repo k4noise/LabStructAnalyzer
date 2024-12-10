@@ -314,6 +314,9 @@ class DocxParser:
                 namespaces=self.xml_manager.NAMESPACES,
             )
 
+        if not level_element:
+            return None
+
         numbering_format = level_element[0].xpath(
             ".//w:numFmt/@w:val", namespaces=self.xml_manager.NAMESPACES
         )

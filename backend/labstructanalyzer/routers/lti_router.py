@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urljoin, urlencode
 
 from fastapi import APIRouter, Request
 from fastapi.params import Depends
@@ -70,10 +71,17 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     roles = LTIRoles(message_launch)
     role = roles.get_role()
     user_id = message_launch.get_launch_data().get('sub')
+    course_name = (message_launch.get_launch_data()
+                   .get("https://purl.imsglobal.org/spec/lti/claim/context")
+                   .get("title"))
 
     access_token = authorize.create_access_token(subject=user_id, user_claims={"role": role})
     refresh_token = authorize.create_refresh_token(subject=user_id)
-    response = RedirectResponse(url=os.getenv("FRONTEND_URL"), status_code=302)
+
+    params = {'course': course_name}
+    base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
+    full_url = f"{base_url}?{urlencode(params)}"
+    response = RedirectResponse(url=full_url, status_code=302)
     response.set_cookie(key="access_token", value=access_token, samesite='none', secure=True)
     response.set_cookie(key="refresh_token", value=refresh_token, samesite='none', secure=True, httponly=True)
     return response
