@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config({
+   path: path.resolve(__dirname, '.env'),
+});
 
 const keyPath = path.resolve(__dirname, '../key.pem');
 const certPath = path.resolve(__dirname, '../cert.pem');
@@ -21,5 +26,13 @@ export default defineConfig({
     https: httpsConfig,
     strictPort: true,
     port: 3000,
+    proxy: {
+      '/api': {
+        target: process.env.BACKEND_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
+      },
+    },
   },
 });
