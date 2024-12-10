@@ -1,7 +1,25 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import fs from 'fs';
+import path from 'path';
 
-// https://vitejs.dev/config/
+const keyPath = path.resolve(__dirname, '../key.pem');
+const certPath = path.resolve(__dirname, '../cert.pem');
+
+let httpsConfig = undefined;
+
+if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  const key = fs.readFileSync(keyPath);
+  const cert = fs.readFileSync(certPath);
+  httpsConfig = {
+    key,
+    cert,
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
-})
+  server: {
+    https: httpsConfig,
+    strictPort: true,
+    port: 3000,
+  },
+});

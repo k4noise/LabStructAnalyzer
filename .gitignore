@@ -6,6 +6,10 @@ out/
 # VS Code
 .vscode/
 
+# Сертификаты
+cert.pem
+key.pem
+
 # Файлы и директории фронтенда
 /frontend/node_modules/
 /frontend/dist/
