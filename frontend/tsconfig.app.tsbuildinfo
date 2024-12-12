@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/router.tsx","./src/vite-env.d.ts","./src/actions/sendrequest.ts","./src/actions/sendtemplate.ts","./src/components/modal/modal.tsx","./src/components/nav/nav.tsx","./src/pages/template/template.tsx","./src/pages/templates/templates.tsx"],"version":"5.7.2"}

@@ -5,7 +5,9 @@ export const Template = () => {
   let data = [];
 
   try {
-    data = JSON.parse(dataStr) || [];
+    if (dataStr) {
+      data = JSON.parse(dataStr) || [];
+    }
   } catch (e) {
     console.error("Failed to parse pageData", e);
   }
@@ -15,7 +17,7 @@ export const Template = () => {
       <h2 className="text-3xl font-medium text-center mb-10">
         Новая лабораторная работа
       </h2>
-      {data.map((element, index) => (
+      {data.map((element: object, index: number) => (
         <React.Fragment key={index}>{TemplateFactory(element)}</React.Fragment>
       ))}
       <span className="ml-5 ml-10 ml-15 ml-20 ml-25 ml-30 ml-35 ml-40 ml-45"></span>
@@ -63,9 +65,9 @@ const TemplateFactory = (element) => {
     case "table":
       return (
         <table>
-          {element.data.map((row, indexX) => (
+          {element.data.map((row, indexX: number) => (
             <tr key={indexX}>
-              {row.map((cellData, indexY) => {
+              {row.map((cellData, indexY: number) => {
                 const isMerged =
                   cellData.merged &&
                   (cellData.merged.rows > 1 || cellData.merged.cols > 1);
@@ -80,11 +82,13 @@ const TemplateFactory = (element) => {
                     className="border-2 p-2"
                   >
                     {Array.isArray(cellData.data) ? (
-                      cellData.data.map((nestedElement, nestedIndex) => (
-                        <React.Fragment key={nestedIndex}>
-                          {TemplateFactory(nestedElement)}
-                        </React.Fragment>
-                      ))
+                      cellData.data.map(
+                        (nestedElement: object, nestedIndex: number) => (
+                          <React.Fragment key={nestedIndex}>
+                            {TemplateFactory(nestedElement)}
+                          </React.Fragment>
+                        )
+                      )
                     ) : (
                       <React.Fragment key={`${indexX}-${indexY}-cell`}>
                         {TemplateFactory(cellData.data)}
@@ -104,7 +108,7 @@ const TemplateFactory = (element) => {
 
   return (
     <div className={`ml-${nestingLevel} my-5`}>
-      {element.data.map((element, index) => (
+      {element.data.map((element: object, index: number) => (
         <React.Fragment key={index}>{TemplateFactory(element)}</React.Fragment>
       ))}
     </div>

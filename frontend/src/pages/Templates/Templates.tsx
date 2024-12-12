@@ -21,8 +21,9 @@ const Templates = () => {
   const handleUploadTemplate = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
-    if (formData.get("template").name == "") return;
-    const { data, error } = await sendTemplate(formData);
+    const template = formData.get("template");
+    if (template && template["name"] == "") return;
+    const { data } = await sendTemplate(formData);
     if (data) {
       localStorage.setItem("pageData", JSON.stringify(data));
       navigate("/template");
