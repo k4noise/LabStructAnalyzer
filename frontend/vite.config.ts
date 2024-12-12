@@ -1,7 +1,38 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
 
-// https://vitejs.dev/config/
+dotenv.config({
+   path: path.resolve(__dirname, '.env'),
+});
+
+const keyPath = path.resolve(__dirname, '../key.pem');
+const certPath = path.resolve(__dirname, '../cert.pem');
+
+let httpsConfig = undefined;
+
+if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+  const key = fs.readFileSync(keyPath);
+  const cert = fs.readFileSync(certPath);
+  httpsConfig = {
+    key,
+    cert,
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
-})
+  server: {
+    https: httpsConfig,
+    strictPort: true,
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: process.env.BACKEND_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        secure: false,
+      },
+    },
+  },
+});

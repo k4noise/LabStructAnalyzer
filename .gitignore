@@ -6,6 +6,10 @@ out/
 # VS Code
 .vscode/
 
+# Сертификаты
+cert.pem
+key.pem
+
 # Файлы и директории фронтенда
 /frontend/node_modules/
 /frontend/dist/
@@ -20,6 +24,7 @@ out/
 
 # Конфигурационные/секретные файлы бэкенда
 /backend/.env
+/backend/images/*
 /backend/labstructanalyzer/configs/lti_config.json
 /backend/labstructanalyzer/configs/jwtRS256.key
 /backend/labstructanalyzer/configs/jwtRS256.key.pub
