@@ -34,7 +34,7 @@ const TemplateFactory = (element) => {
         <h1 className={`font-medium ml-${nestingLevel}`}>{element.data}</h1>
       );
     case "image":
-      return <img src={"/api/" + element.data} className="text-center"></img>;
+      return <img src={element.data} className="text-center"></img>;
     case "question":
       return (
         <span className={`font-italic my-3 ml-${nestingLevel}`}>
