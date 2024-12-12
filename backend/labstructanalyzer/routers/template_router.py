@@ -8,7 +8,7 @@ from labstructanalyzer.configs.config import CONFIG_DIR
 from labstructanalyzer.services.parser.docx import DocxParser
 from labstructanalyzer.utils.rbac_decorator import roles_required
 
-router = APIRouter(prefix="/template")
+router = APIRouter()
 template_prefix = "images\\temp"
 
 

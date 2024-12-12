@@ -16,7 +16,7 @@ from labstructanalyzer.services.lti.request import FastAPIRequest
 from labstructanalyzer.services.lti.roles import LTIRoles
 from labstructanalyzer.utils.ttl_cache import TTLCache
 
-router = APIRouter(prefix="/lti")
+router = APIRouter()
 cache = TTLCache()
 
 
