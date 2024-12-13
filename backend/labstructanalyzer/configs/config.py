@@ -8,11 +8,11 @@ LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
 
 class Settings(BaseModel):
     """
-    Настройки JWT
+    Переопределение настроек JWT Auth
     """
     authjwt_secret_key: str = os.getenv("JWT_SECRET_KEY")
-    authjwt_denylist_enabled: bool = True
-    authjwt_denylist_token_checks: set = {"access", "refresh"}
+    authjwt_token_location: set = {"cookies"}
+    authjwt_cookie_secure: bool = True
 
 @AuthJWT.load_config
 def get_config():

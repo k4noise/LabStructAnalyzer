@@ -57,6 +57,7 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
 
     Args:
         request: Запрос, содержащий id_token от потребителя
+        authorize: Объект для управления JWT токенами
 
     Returns:
         Перенаправление на фронтенд системы
@@ -82,8 +83,8 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
     full_url = f"{base_url}?{urlencode(params)}"
     response = RedirectResponse(url=full_url, status_code=302)
-    response.set_cookie(key="access_token", value=access_token, samesite='none', secure=True)
-    response.set_cookie(key="refresh_token", value=refresh_token, samesite='none', secure=True, httponly=True)
+    authorize.set_access_cookies(access_token, response=response)
+    authorize.set_refresh_cookies(refresh_token, response=response)
     return response
 
 
