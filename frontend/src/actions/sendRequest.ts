@@ -57,15 +57,17 @@ const sendRequest = async <ResType>(
       },
     };
     if (needAuth) {
-      const accessToken = Cookies.get('accessToken');
+      const accessToken = Cookies.get('csrf_access_token');
       if (accessToken) {
       config.headers = {
         ...(config.headers || {}),
-        Authorization: `Bearer ${accessToken}`,
+        "X-CSRF-Token": accessToken,
       };
       }
       config.withCredentials = true;
     }
+
+    console.log(config)
 
     if (method === 'get') response = await axios[method](url, config);
     else response = await axios[method](url, body, config);
