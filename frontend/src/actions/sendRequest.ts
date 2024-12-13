@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { NavigateFunction } from 'react-router';
+import Cookies from 'js-cookie';
 
 /**
  * An array of HTTP status codes that indicate an error page should be displayed
@@ -56,6 +57,13 @@ const sendRequest = async <ResType>(
       },
     };
     if (needAuth) {
+      const accessToken = Cookies.get('accessToken');
+      if (accessToken) {
+      config.headers = {
+        ...(config.headers || {}),
+        Authorization: `Bearer ${accessToken}`,
+      };
+      }
       config.withCredentials = true;
     }
 
