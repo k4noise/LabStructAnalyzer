@@ -17,7 +17,7 @@ template_prefix = "images\\temp"
 @roles_required(["teacher"])
 async def parse_template(authorize: AuthJWT = Depends(), template: UploadFile = File(...)):
     """
-    Преобразовать шаблон из docx в json, применяя структуру
+    Преобразовать шаблон из docx в json, применяя структуру.
     """
     if not template:
         raise HTTPException(
