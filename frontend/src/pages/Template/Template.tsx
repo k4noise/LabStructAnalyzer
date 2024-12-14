@@ -1,4 +1,14 @@
 import React from "react";
+import {
+  CellElement,
+  CompositeElement,
+  HeaderElement,
+  ImageElement,
+  QuestionElement,
+  TableElement,
+  TemplateElement,
+  TextElement,
+} from "../../actions/dto/template";
 
 export const Template = () => {
   const dataStr = localStorage.getItem("pageData");
@@ -17,100 +27,116 @@ export const Template = () => {
       <h2 className="text-3xl font-medium text-center mb-10">
         Новая лабораторная работа
       </h2>
-      {data.map((element: object, index: number) => (
-        <React.Fragment key={index}>{TemplateFactory(element)}</React.Fragment>
-      ))}
-      <span className="ml-5 ml-10 ml-15 ml-20 ml-25 ml-30 ml-35 ml-40 ml-45"></span>
+      {data.map((element: TemplateElement) => TemplateFactory(element))}
+      <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36"></span>
     </div>
   );
 };
 
-const TemplateFactory = (element) => {
-  const numberingData = element.numberingBulletText ?? "";
-  const nestingLevel = element.nestingLevel ? element.nestingLevel * 5 : 1;
-  switch (element.type ?? element.contentType) {
-    case "labPart":
-      return (
-        <h1 className={`font-medium ml-${nestingLevel}`}>{element.data}</h1>
-      );
-    case "image":
-      return <img src={element.data} className="text-center"></img>;
-    case "question":
-      return (
-        <span className={`font-italic my-3 ml-${nestingLevel}`}>
-          {element.data}
-        </span>
-      );
-    case "answer":
-      return (
-        <>
-          <button className="px-2 py-1 ml-2 mb-2 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
-            Настройка ответа
-          </button>
-          <br />
-        </>
-      );
+const TemplateFactory: React.FC = (element: TemplateElement) => {
+  switch (element?.type) {
     case "text":
-      return (
-        <p className={`ml-${nestingLevel} mb-3`}>
-          {numberingData ? numberingData + " " + element.data : element.data}
-        </p>
-      );
+      return <TextComponent element={element as TextElement} />;
+    case "image":
+      return <ImageComponent element={element as ImageElement} />;
     case "header":
-      return (
-        <h3 className={`font-medium my-3 ml-${nestingLevel}`}>
-          {numberingData ? numberingData + " " + element.data : element.data}
-        </h3>
-      );
+      return <HeaderComponent element={element as HeaderElement} />;
+    case "question":
+      return <QuestionComponent element={element as QuestionElement} />;
+    case "answer":
+      return <AnswerComponent />;
     case "table":
-      return (
-        <table>
-          {element.data.map((row, indexX: number) => (
-            <tr key={indexX}>
-              {row.map((cellData, indexY: number) => {
-                const isMerged =
-                  cellData.merged &&
-                  (cellData.merged.rows > 1 || cellData.merged.cols > 1);
-                const rowSpan = isMerged ? cellData.rows : undefined;
-                const colSpan = isMerged ? cellData.cols : undefined;
-
-                return (
-                  <td
-                    key={`${indexX}-${indexY}`}
-                    rowSpan={rowSpan}
-                    colSpan={colSpan}
-                    className="border-2 p-2"
-                  >
-                    {Array.isArray(cellData.data) ? (
-                      cellData.data.map(
-                        (nestedElement: object, nestedIndex: number) => (
-                          <React.Fragment key={nestedIndex}>
-                            {TemplateFactory(nestedElement)}
-                          </React.Fragment>
-                        )
-                      )
-                    ) : (
-                      <React.Fragment key={`${indexX}-${indexY}-cell`}>
-                        {TemplateFactory(cellData.data)}
-                      </React.Fragment>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </table>
-      );
+      return <TableComponent element={element as TableElement} />;
+    default:
+      if (element && Array.isArray(element.data)) {
+        return <CompositeComponent element={element as CompositeElement} />;
+      }
+      return null;
   }
-  if (!element.data) {
-    return;
-  }
+};
 
+const getMarginLeftStyle = (level: number = 0): string => {
+  const base = level * 4;
+  return `ml-${base}`;
+};
+
+const TextComponent: React.FC<{ element: TextElement }> = ({ element }) => (
+  <p className={getMarginLeftStyle(element.nestingLevel)}>{element.data}</p>
+);
+
+const ImageComponent: React.FC<{ element: ImageElement }> = ({ element }) => (
+  <img src={element.data} alt="" className="mx-auto" />
+);
+
+const HeaderComponent: React.FC<{ element: HeaderElement }> = ({ element }) => {
+  const Tag = `h${element.headerLevel ?? 3}` as keyof JSX.IntrinsicElements;
   return (
-    <div className={`ml-${nestingLevel} my-5`}>
-      {element.data.map((element: object, index: number) => (
-        <React.Fragment key={index}>{TemplateFactory(element)}</React.Fragment>
-      ))}
-    </div>
+    <Tag className={`font-medium ${getMarginLeftStyle(element.nestingLevel)}`}>
+      {element.numberingHeaderText
+        ? `${element.numberingHeaderText} ${element.data}`
+        : element.data}
+    </Tag>
   );
 };
+
+const QuestionComponent: React.FC<{ element: QuestionElement }> = ({
+  element,
+}) => (
+  <span
+    className={`italic inline-block my-3 ${getMarginLeftStyle(
+      element.nestingLevel
+    )}`}
+  >
+    {element.data}
+  </span>
+);
+
+const AnswerComponent: React.FC = () => (
+  <>
+    <button className="px-2 py-1 ml-2 mb-2 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
+      Настройка ответа
+    </button>
+    <br />
+  </>
+);
+
+const TableComponent: React.FC<{ element: TableElement }> = ({ element }) => (
+  <table
+    className={`border-collapse ${getMarginLeftStyle(element.nestingLevel)}`}
+  >
+    <tbody>
+      {element.data.map((row, rowIndex) => (
+        <tr key={rowIndex}>
+          {row.map((cell, cellIndex) => {
+            const isMerged = cell?.merged;
+            const rowSpan = isMerged && cell?.cols;
+            const colSpan = isMerged && cell?.rows;
+
+            return (
+              <td
+                key={`${rowIndex}-${cellIndex}`}
+                rowSpan={rowSpan}
+                colSpan={colSpan}
+                className="border-2 p-2"
+              >
+                {cell.data.map((nestedElement) =>
+                  TemplateFactory(nestedElement)
+                )}
+              </td>
+            );
+          })}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
+const CompositeComponent: React.FC<{ element: CompositeElement }> = ({
+  element,
+}) => (
+  <div className={`my-5 ${getMarginLeftStyle(element.nestingLevel)}`}>
+    {element.data.map((childElement: TemplateElement) =>
+      TemplateFactory(childElement)
+    )}
+  </div>
+);

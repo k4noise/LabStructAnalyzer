@@ -67,8 +67,6 @@ const sendRequest = async <ResType>(
       config.withCredentials = true;
     }
 
-    console.log(config)
-
     if (method === 'get') response = await axios[method](url, config);
     else response = await axios[method](url, body, config);
     data = response.data;
