@@ -23,7 +23,10 @@ const Templates = () => {
     const formData = new FormData(event.target);
     const template = formData.get("template");
     if (template && template["name"] == "") return;
-    const { data } = await sendTemplate(formData);
+    const { data, error, description } = await sendTemplate(formData);
+    if (error) {
+      navigate(`/error?code=${error}&description=${description}`);
+    }
     if (data) {
       localStorage.setItem("pageData", JSON.stringify(data));
       navigate("/template");

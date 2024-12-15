@@ -16,6 +16,7 @@ const ERROR_PAGES = [401, 403, 404];
 interface ResponseData<T> {
   data: T | null;
   error: number | null;
+  description: string | null;
 }
 
 /**
@@ -38,16 +39,17 @@ enum AxiosMethod {
  * @param {AxiosMethod} method HTTP method, look at enum
  * @param {boolean} needAuth flag need use withCredintals or not
  * @param {Object} [body] request payload
- * @returns {Promise<ResponseData<ResType>>}
+ * @returns {Promise<ResponseData<ResponseType>>}
  */
-const sendRequest = async <ResType>(
+const sendRequest = async <ResponseType>(
   url: string,
   method: AxiosMethod,
   needAuth: boolean,
   body?: object
-): Promise<ResponseData<ResType>> => {
-  let data: ResType | null = null;
+): Promise<ResponseData<ResponseType>> => {
+  let data: ResponseType | null = null;
   let error: number | null = null;
+  let description: string | null = null;
 
   try {
     let response;
@@ -75,21 +77,12 @@ const sendRequest = async <ResType>(
       const axiosError: AxiosError = err;
       console.error(axiosError);
       error = Number(axiosError.response?.status ?? 500);
+      const responseData = axiosError.response?.data;
+      description = responseData["detail"] || responseData["message"] || `"${JSON.stringify(responseData)}"`
     }
   }
 
-  return { data, error };
+  return { data, error, description };
 };
 
-/**
- * Handles errors by redirecting to specific error pages.
- * @param {number} error HTTP status code [4xx]
- * @param {NavigateFunction} navigate react callback to redirect
- */
-const handleError = (error: number, navigate: NavigateFunction) => {
-  if (ERROR_PAGES.includes(error)) {
-    navigate(`/${error}`);
-  }
-};
-
-export { sendRequest, handleError, AxiosMethod };
+export { sendRequest, AxiosMethod };
