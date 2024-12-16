@@ -6,12 +6,17 @@ from pydantic import BaseModel
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
 LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
 
+JWT_ACCESS_TOKEN_LIFETIME = 15 * 60     # 15 минут
+
+
 class Settings(BaseModel):
     """
     Переопределение настроек JWT Auth
     """
     authjwt_secret_key: str = os.getenv("JWT_SECRET_KEY")
     authjwt_token_location: set = {"cookies"}
+    authjwt_cookie_csrf_protect: bool = False
+    authjwt_access_token_expires: int = JWT_ACCESS_TOKEN_LIFETIME
     authjwt_cookie_secure: bool = True
 
 @AuthJWT.load_config
