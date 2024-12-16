@@ -38,6 +38,15 @@ class FileUtils:
 
     @staticmethod
     def get(folder: str, filename: str):
+        """
+        Получить файл с указанным именем из указанной папки
+
+        Returns:
+            Прочитанный файл в бинарном режиме
+
+        Raises:
+            IOError Файл не найден
+        """
         file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
 
         if os.path.isfile(file_path):
@@ -48,6 +57,12 @@ class FileUtils:
 
     @staticmethod
     def remove(folder: str, filename: str):
+        """
+        Удалить файл
+
+        Raises:
+            IOError Файл не найден
+        """
         file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
 
         if os.path.isfile(file_path):

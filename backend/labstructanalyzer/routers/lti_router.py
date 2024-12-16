@@ -8,7 +8,7 @@ from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, Response, JSONResponse
 
-from labstructanalyzer.configs.config import LTI_CONFIG_FILE_PATH
+from labstructanalyzer.configs.config import LTI_CONFIG_FILE_PATH, JWT_ACCESS_TOKEN_LIFETIME
 from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.lti.oidc_login import FastAPIOIDCLogin
@@ -16,7 +16,7 @@ from labstructanalyzer.services.lti.request import FastAPIRequest
 from labstructanalyzer.services.lti.roles import LTIRoles
 from labstructanalyzer.utils.ttl_cache import TTLCache
 
-router = APIRouter(prefix="/lti")
+router = APIRouter()
 cache = TTLCache()
 
 
@@ -31,7 +31,7 @@ async def login(request: Request):
 
     Returns:
         - Перенаправление на службу аутентификации поставщика, если аутентификация успешна
-        - Ответ с 403, если аутентификация не удалась
+        - Ответ с 500, если аутентификация не удалась
     """
     tool_conf = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
     launch_data_storage = FastAPICacheDataStorage(cache)
@@ -47,7 +47,7 @@ async def login(request: Request):
             .disable_check_cookies() \
             .redirect(target_link_uri)
     except OIDCException:
-        return Response('Error doing OIDC login', 403)
+        return Response('Вход не успешен, попробуйте еще раз', 500)
 
 
 @router.post("/launch")
@@ -57,6 +57,7 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
 
     Args:
         request: Запрос, содержащий id_token от потребителя
+        authorize: Объект для управления JWT токенами
 
     Returns:
         Перенаправление на фронтенд системы
@@ -76,14 +77,14 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
                    .get("title"))
 
     access_token = authorize.create_access_token(subject=user_id, user_claims={"role": role})
-    refresh_token = authorize.create_refresh_token(subject=user_id)
+    refresh_token = authorize.create_refresh_token(subject=user_id, user_claims={"role": role})
 
     params = {'course': course_name}
     base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
     full_url = f"{base_url}?{urlencode(params)}"
     response = RedirectResponse(url=full_url, status_code=302)
-    response.set_cookie(key="access_token", value=access_token, samesite='none', secure=True)
-    response.set_cookie(key="refresh_token", value=refresh_token, samesite='none', secure=True, httponly=True)
+    authorize.set_access_cookies(access_token, response=response, max_age=0)
+    authorize.set_refresh_cookies(refresh_token, response=response, max_age=JWT_ACCESS_TOKEN_LIFETIME)
     return response
 
 

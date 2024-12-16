@@ -3,26 +3,70 @@ import Modal from "../../components/Modal/Modal";
 import { useState } from "react";
 import { sendTemplate } from "../../actions/sendTemplate";
 
+/**
+ * Компонент для управления шаблонами курса
+ *
+ * @component
+ * @returns {JSX.Element} Страница шаблонов с возможностью загрузки нового шаблона
+ */
 const Templates = () => {
+  /**
+   * Хук навигации для перемещения между страницами
+   * @type {Function}
+   */
   const navigate = useNavigate();
+
+  /**
+   * Параметры поиска из URL
+   * @type {URLSearchParams}
+   */
   const [searchParams] = useSearchParams();
+
+  /**
+   * Название курса, полученное из параметров URL
+   * @type {string|null}
+   */
   const courseName = searchParams.get("course");
 
+  /**
+   * Состояние модального окна (открыто/закрыто)
+   * @type {boolean}
+   */
   const [isOpen, setIsOpen] = useState(false);
 
+  /**
+   * Открывает модальное окно
+   * @function
+   */
   const handleOpen = () => {
     setIsOpen(true);
   };
 
+  /**
+   * Закрывает модальное окно
+   * @function
+   */
   const handleClose = () => {
     setIsOpen(false);
   };
 
+  /**
+   * Обработчик загрузки шаблона.
+   * Перенаправляет на страницу ошибки, если произошла ошибка
+   *
+   * @async
+   * @function
+   * @param {Event} event - Событие отправки формы
+   */
   const handleUploadTemplate = async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
-    if (formData.get("template").name == "") return;
-    const { data, error } = await sendTemplate(formData);
+    const template = formData.get("template");
+    if (template && template["name"] == "") return;
+    const { data, error, description } = await sendTemplate(formData);
+    if (error) {
+      navigate(`/error?code=${error}&description=${description}`);
+    }
     if (data) {
       localStorage.setItem("pageData", JSON.stringify(data));
       navigate("/template");
