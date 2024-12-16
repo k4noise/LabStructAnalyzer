@@ -1,10 +1,12 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 /**
- * Represents the data from successful request
- * @template T data type
- * @property {T | null} data data
- * @property {number | null} error error HTTP status code
+ * Представляет данные успешного или неудачного запроса.
+ *
+ * @template T Тип данных ответа.
+ * @property {T | null} data Данные ответа (если запрос успешен).
+ * @property {number | null} error HTTP-код ошибки (если запрос завершился с ошибкой).
+ * @property {string | null} description Описание ошибки или дополнительные детали.
  */
 interface ResponseData<T> {
   data: T | null;
@@ -13,7 +15,9 @@ interface ResponseData<T> {
 }
 
 /**
- * An enumeration of HTTP methods that can be used with the `sendRequest` function
+ * Перечисление HTTP-методов, которые можно использовать в функции `sendRequest`.
+ *
+ * @enum {string}
  */
 enum AxiosMethod {
   GET = "get",
@@ -26,13 +30,14 @@ enum AxiosMethod {
 }
 
 /**
- * Sends an HTTP request to the specified URL using the specified method and options
- * @template ResType data return type
- * @param {string} url url
- * @param {AxiosMethod} method HTTP method, look at enum
- * @param {boolean} needAuth flag need use withCredentials or not
- * @param {Object} [body] request payload
- * @returns {Promise<ResponseData<ResponseType>>}
+ * Отправляет HTTP-запрос на указанный URL с заданным методом и параметрами.
+ *
+ * @template ResponseType Тип возвращаемых данных.
+ * @param {string} url URL-адрес, на который отправляется запрос.
+ * @param {AxiosMethod} method HTTP-метод запроса (GET, POST и т.д.).
+ * @param {boolean} needAuth Флаг, указывающий, требуется ли авторизация (используется `withCredentials`).
+ * @param {Object} [body] Тело запроса (для методов POST, PUT и т.д.).
+ * @returns {Promise<ResponseData<ResponseType>>} Промис с 3 свойствами - данные, код ошибки и описание ошибки
  */
 const sendRequest = async <ResponseType>(
   url: string,
@@ -73,6 +78,7 @@ const sendRequest = async <ResponseType>(
         responseData["message"] ||
         `"${JSON.stringify(responseData)}"`;
 
+      // Попытка обновления токена при ошибке 401
       if (error === 401 && needAuth) {
         const { error: updateError } = await sendRequest<void>(
           "/api/v1/jwt/refresh",
@@ -80,7 +86,7 @@ const sendRequest = async <ResponseType>(
           true
         );
         if (updateError) {
-          await sendRequest<void>(  
+          await sendRequest<void>(
             "/api/v1/jwt/logout",
             AxiosMethod.DELETE,
             true
@@ -88,6 +94,7 @@ const sendRequest = async <ResponseType>(
           return { data: null, error: 401, description: "Не авторизован" };
         }
 
+        // Повторный запрос после обновления токена
         if (method === "get") {
           const retryResponse = await axios[method](url, config);
           data = retryResponse.data;

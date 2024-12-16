@@ -1,160 +1,74 @@
 import React from "react";
-import {
-  CompositeElement,
-  HeaderElement,
-  ImageElement,
-  QuestionElement,
-  TableElement,
-  TemplateElement,
-  TextElement,
-} from "../../actions/dto/template";
+import { TemplateElement } from "../../actions/dto/template";
+import TextQuestionComponent from "../../components/Template/TextQuestionComponent";
+import ImageComponent from "../../components/Template/ImageComponent";
+import HeaderComponent from "../../components/Template/HeaderComponent";
+import TableComponent from "../../components/Template/TableComponent";
+import { getMarginLeftStyle } from "../../utils/templateStyle";
+import AnswerComponent from "../../components/Template/AnswerComponent";
 
-export const Template = () => {
+/**
+ * Карта соответствий типов элементов и компонентов для рендеринга.
+ *
+ * @constant
+ * @type {Record<string, React.FC<any>>}
+ */
+const componentMap: Record<string, React.FC<{ element: TemplateElement }>> = {
+  text: TextQuestionComponent,
+  image: ImageComponent,
+  header: HeaderComponent,
+  question: TextQuestionComponent,
+  table: TableComponent,
+};
+
+/**
+ * Основной компонент шаблона, отображающий различные элементы.
+ */
+const Template: React.FC = () => {
   const dataStr = localStorage.getItem("pageData");
-  let data = [];
-
-  try {
-    if (dataStr) {
-      data = JSON.parse(dataStr) || [];
-    }
-  } catch (e) {
-    console.error("Failed to parse pageData", e);
-  }
+  const data: TemplateElement[] = dataStr ? JSON.parse(dataStr) : [];
 
   return (
     <div>
       <h2 className="text-3xl font-medium text-center mb-10">
         Новая лабораторная работа
       </h2>
-      {data.map((element: TemplateElement) => TemplateFactory(element))}
-      <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36"></span>
+      {data.map((element, index) => (
+        <React.Fragment key={element.id || index}>
+          {renderElement(element)}
+          {element.type === "question" && <AnswerComponent />}
+        </React.Fragment>
+      ))}
     </div>
   );
 };
 
-const TemplateFactory: React.FC = (element: TemplateElement) => {
-  switch (element?.type) {
-    case "text":
-      return <TextComponent element={element as TextElement} />;
-    case "image":
-      return <ImageComponent element={element as ImageElement} />;
-    case "header":
-      return <HeaderComponent element={element as HeaderElement} />;
-    case "question":
-      return <QuestionComponent element={element as QuestionElement} />;
-    case "answer":
-      return <AnswerComponent />;
-    case "table":
-      return <TableComponent element={element as TableElement} />;
-    default:
-      if (element && Array.isArray(element.data)) {
-        return <CompositeComponent element={element as CompositeElement} />;
-      }
-      return null;
+/**
+ * Рендерит элемент шаблона на основе его типа.
+ *
+ * @param {TemplateElement} element - Элемент шаблона для рендеринга.
+ */
+const renderElement = (element: TemplateElement): React.ReactNode => {
+  const Component = componentMap[element.type] || null;
+
+  if (Component) {
+    return <Component element={element} />;
   }
-};
 
-const getMarginLeftStyle = (level: number = 0): string => {
-  const base = level * 4;
-  return `ml-${base}`;
-};
-
-const TextComponent: React.FC<{ element: TextElement }> = ({ element }) => {
-  if (element.numberingBulletText) {
+  if (Array.isArray(element.data)) {
     return (
-      <p className={getMarginLeftStyle(element.nestingLevel)}>
-        {element.numberingBulletText && (
-          <span>{element.numberingBulletText + " "}</span>
-        )}
-        {element.data}
-      </p>
-    );
-  } else {
-    return (
-      <p className={getMarginLeftStyle(element.nestingLevel)}>{element.data}</p>
+      <div className={`my-5 ${getMarginLeftStyle(element.nestingLevel ?? 1)}`}>
+        {element.data.map((childElement, index) => (
+          <React.Fragment key={index}>
+            {renderElement(childElement)}
+          </React.Fragment>
+        ))}
+      </div>
     );
   }
+
+  return null;
 };
 
-const ImageComponent: React.FC<{ element: ImageElement }> = ({ element }) => (
-  <img src={element.data} alt="" className="mx-auto" />
-);
-
-const HeaderComponent: React.FC<{ element: HeaderElement }> = ({ element }) => {
-  const Tag = `h${element.headerLevel ?? 3}` as keyof JSX.IntrinsicElements;
-  return (
-    <Tag className={`font-medium ${getMarginLeftStyle(element.nestingLevel)}`}>
-      {element.numberingBulletText && (
-        <span>{element.numberingBulletText + " "}</span>
-      )}
-      {element.numberingHeaderText
-        ? `${element.numberingHeaderText} ${element.data}`
-        : element.data}
-    </Tag>
-  );
-};
-
-const QuestionComponent: React.FC<{ element: QuestionElement }> = ({
-  element,
-}) => (
-  <span
-    className={`italic inline-block my-3 ${getMarginLeftStyle(
-      element.nestingLevel
-    )}`}
-  >
-    {element.numberingBulletText && (
-      <span>{element.numberingBulletText + " "}</span>
-    )}
-    {element.data}
-  </span>
-);
-
-const AnswerComponent: React.FC = () => (
-  <>
-    <button className="px-2 py-1 ml-2 mb-2 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
-      Настройка ответа
-    </button>
-    <br />
-  </>
-);
-
-const TableComponent: React.FC<{ element: TableElement }> = ({ element }) => (
-  <table
-    className={`border-collapse ${getMarginLeftStyle(element.nestingLevel)}`}
-  >
-    <tbody>
-      {element.data.map((row, rowIndex) => (
-        <tr key={rowIndex}>
-          {row.map((cell, cellIndex) => {
-            const isMerged = cell?.merged;
-            const rowSpan = isMerged && cell?.cols;
-            const colSpan = isMerged && cell?.rows;
-
-            return (
-              <td
-                key={`${rowIndex}-${cellIndex}`}
-                rowSpan={rowSpan}
-                colSpan={colSpan}
-                className="border-2 p-2 border-zinc-950 dark:border-zinc-200"
-              >
-                {cell.data.map((nestedElement) =>
-                  TemplateFactory(nestedElement)
-                )}
-              </td>
-            );
-          })}
-        </tr>
-      ))}
-    </tbody>
-  </table>
-);
-
-const CompositeComponent: React.FC<{ element: CompositeElement }> = ({
-  element,
-}) => (
-  <div className={`my-5 ${getMarginLeftStyle(element.nestingLevel)}`}>
-    {element.data.map((childElement: TemplateElement) =>
-      TemplateFactory(childElement)
-    )}
-  </div>
-);
+export default Template;
+export { renderElement };
