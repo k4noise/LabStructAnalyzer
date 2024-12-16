@@ -23,7 +23,7 @@ const Modal = ({ isOpen, onClose, children }) => {
 
   return (
     <div
-      className="p-7 absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 border-solid rounded-2xl border-2 dark:border-zinc-200 border-zinc-950"
+      className="dark:bg-zinc-950 bg-zinc-200 p-7 absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 border-solid rounded-2xl border-2 dark:border-zinc-200 border-zinc-950"
       ref={modalRef}
     >
       <div className="mt-5">{children}</div>

@@ -59,9 +59,22 @@ const getMarginLeftStyle = (level: number = 0): string => {
   return `ml-${base}`;
 };
 
-const TextComponent: React.FC<{ element: TextElement }> = ({ element }) => (
-  <p className={getMarginLeftStyle(element.nestingLevel)}>{element.data}</p>
-);
+const TextComponent: React.FC<{ element: TextElement }> = ({ element }) => {
+  if (element.numberingBulletText) {
+    return (
+      <p className={getMarginLeftStyle(element.nestingLevel)}>
+        {element.numberingBulletText && (
+          <span>{element.numberingBulletText + " "}</span>
+        )}
+        {element.data}
+      </p>
+    );
+  } else {
+    return (
+      <p className={getMarginLeftStyle(element.nestingLevel)}>{element.data}</p>
+    );
+  }
+};
 
 const ImageComponent: React.FC<{ element: ImageElement }> = ({ element }) => (
   <img src={element.data} alt="" className="mx-auto" />
@@ -71,6 +84,9 @@ const HeaderComponent: React.FC<{ element: HeaderElement }> = ({ element }) => {
   const Tag = `h${element.headerLevel ?? 3}` as keyof JSX.IntrinsicElements;
   return (
     <Tag className={`font-medium ${getMarginLeftStyle(element.nestingLevel)}`}>
+      {element.numberingBulletText && (
+        <span>{element.numberingBulletText + " "}</span>
+      )}
       {element.numberingHeaderText
         ? `${element.numberingHeaderText} ${element.data}`
         : element.data}
@@ -86,6 +102,9 @@ const QuestionComponent: React.FC<{ element: QuestionElement }> = ({
       element.nestingLevel
     )}`}
   >
+    {element.numberingBulletText && (
+      <span>{element.numberingBulletText + " "}</span>
+    )}
     {element.data}
   </span>
 );
@@ -116,7 +135,7 @@ const TableComponent: React.FC<{ element: TableElement }> = ({ element }) => (
                 key={`${rowIndex}-${cellIndex}`}
                 rowSpan={rowSpan}
                 colSpan={colSpan}
-                className="border-2 p-2"
+                className="border-2 p-2 border-zinc-950 dark:border-zinc-200"
               >
                 {cell.data.map((nestedElement) =>
                   TemplateFactory(nestedElement)

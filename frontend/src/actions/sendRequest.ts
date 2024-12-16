@@ -1,11 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { NavigateFunction } from 'react-router';
-import Cookies from 'js-cookie';
-
-/**
- * An array of HTTP status codes that indicate an error page should be displayed
- */
-const ERROR_PAGES = [401, 403, 404];
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 /**
  * Represents the data from successful request
@@ -23,13 +16,13 @@ interface ResponseData<T> {
  * An enumeration of HTTP methods that can be used with the `sendRequest` function
  */
 enum AxiosMethod {
-  GET = 'get',
-  POST = 'post',
-  PUT = 'put',
-  PATCH = 'patch',
-  DELETE = 'delete',
-  HEAD = 'head',
-  OPTIONS = 'options',
+  GET = "get",
+  POST = "post",
+  PUT = "put",
+  PATCH = "patch",
+  DELETE = "delete",
+  HEAD = "head",
+  OPTIONS = "options",
 }
 
 /**
@@ -37,7 +30,7 @@ enum AxiosMethod {
  * @template ResType data return type
  * @param {string} url url
  * @param {AxiosMethod} method HTTP method, look at enum
- * @param {boolean} needAuth flag need use withCredintals or not
+ * @param {boolean} needAuth flag need use withCredentials or not
  * @param {Object} [body] request payload
  * @returns {Promise<ResponseData<ResponseType>>}
  */
@@ -51,34 +44,62 @@ const sendRequest = async <ResponseType>(
   let error: number | null = null;
   let description: string | null = null;
 
+  const config: AxiosRequestConfig = {
+    validateStatus(status) {
+      return status >= 200 && status < 303;
+    },
+  };
+
+  if (needAuth) {
+    config.withCredentials = true;
+  }
+
   try {
-    let response;
-    const config: AxiosRequestConfig = {
-      validateStatus(status) {
-        return status >= 200 && status < 303;
-      },
-    };
-    if (needAuth) {
-      const accessToken = Cookies.get('csrf_access_token');
-      if (accessToken) {
-      config.headers = {
-        ...(config.headers || {}),
-        "X-CSRF-Token": accessToken,
-      };
-      }
-      config.withCredentials = true;
+    let response: AxiosResponse<ResponseType>;
+    if (method === "get") {
+      response = await axios[method](url, config);
+    } else {
+      response = await axios[method](url, body, config);
     }
 
-    if (method === 'get') response = await axios[method](url, config);
-    else response = await axios[method](url, body, config);
     data = response.data;
   } catch (err) {
     if (axios.isAxiosError(err)) {
       const axiosError: AxiosError = err;
-      console.error(axiosError);
       error = Number(axiosError.response?.status ?? 500);
       const responseData = axiosError.response?.data;
-      description = responseData["detail"] || responseData["message"] || `"${JSON.stringify(responseData)}"`
+      description =
+        responseData["detail"] ||
+        responseData["message"] ||
+        `"${JSON.stringify(responseData)}"`;
+
+      if (error === 401 && needAuth) {
+        const { error: updateError } = await sendRequest<void>(
+          "/api/v1/jwt/refresh",
+          AxiosMethod.POST,
+          true
+        );
+        if (updateError) {
+          await sendRequest<void>(  
+            "/api/v1/jwt/logout",
+            AxiosMethod.DELETE,
+            true
+          );
+          return { data: null, error: 401, description: "Не авторизован" };
+        }
+
+        if (method === "get") {
+          const retryResponse = await axios[method](url, config);
+          data = retryResponse.data;
+          error = null;
+          description = null;
+        } else {
+          const retryResponse = await axios[method](url, body, config);
+          data = retryResponse.data;
+          error = null;
+          description = null;
+        }
+      }
     }
   }
 

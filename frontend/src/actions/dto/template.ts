@@ -3,9 +3,9 @@ export interface TemplateElement {
   id: string;
   data: string | TemplateElement[] | TemplateElement[][];
   contentType: string;
-  displayMode?: "always" | "prefer"
+  displayMode?: "always" | "prefer";
   nestingLevel?: number;
-  numberingHeaderText?: string;
+  numberingBulletText?: string;
 }
 
 export interface TextElement extends TemplateElement {
