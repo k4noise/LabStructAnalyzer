@@ -10,7 +10,6 @@ router = APIRouter()
 async def get_temp_image(filename: str):
     """
     Получить изображение из шаблона.
-    Внимание! Получить изображение можно только один раз!
     """
     try:
         image = FileUtils.get(template_prefix, filename)

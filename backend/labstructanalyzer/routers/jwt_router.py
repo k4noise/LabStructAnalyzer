@@ -42,6 +42,12 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
 
 @router.delete("/logout")
 async def logout(authorize: AuthJWT = Depends()):
+    """
+    Произвести выход из аккаунта
+
+    Args:
+        authorize: Объект для чтения/удаления JWT токенов
+    """
     authorize.jwt_required()
 
     authorize.unset_jwt_cookies()
