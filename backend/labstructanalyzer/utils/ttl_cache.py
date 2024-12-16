@@ -3,6 +3,9 @@ import threading
 
 
 class TTLCache:
+    """
+    Потокобезопасный кеш с вытеснением старых записей
+    """
     def __init__(self):
         self._cache = {}
         self._lock = threading.RLock()

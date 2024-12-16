@@ -1,7 +1,8 @@
 import Nav from "./components/Nav/Nav";
 import { Outlet, createBrowserRouter } from "react-router";
 import Templates from "./pages/Templates/Templates";
-import { Template } from "./pages/Template/Template";
+import Template from "./pages/Template/Template";
+import ErrorPage from "./pages/ErrorPage";
 
 const router = createBrowserRouter([
   {
@@ -21,6 +22,10 @@ const router = createBrowserRouter([
       {
         path: "/template",
         element: <Template />,
+      },
+      {
+        path: "*",
+        element: <ErrorPage />,
       },
     ],
   },

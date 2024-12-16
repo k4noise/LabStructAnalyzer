@@ -1,5 +1,4 @@
 import os
-from sys import prefix
 
 import uvicorn
 from fastapi import FastAPI
