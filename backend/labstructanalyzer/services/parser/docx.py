@@ -1,5 +1,7 @@
 import io
 import os, zipfile
+from urllib.parse import urljoin
+
 from lxml import etree
 from typing import Generator, List, Optional
 from zipfile import ZipFile
@@ -401,7 +403,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=FileUtils.save(self.images_dir, image_data, image_extension)
+                data=urljoin(os.getenv("BACKEND_EXTERNAL_URL"), FileUtils.save(self.images_dir, image_data, image_extension))
             )
 
         return None
@@ -471,6 +473,9 @@ class TableParser:
             for cell_element in row_element.findall(
                     ".//w:tc", namespaces=self.xml_manager.NAMESPACES
             ):
+                if self._is_merged(cell_element):
+                    continue
+
                 cell_width = self._get_cell_width(cell_element)
                 cell_height = self._get_cell_height(
                     row_elements, row_index, cell_element
@@ -484,6 +489,27 @@ class TableParser:
             table_data.append(row_data)
 
         return TableElement(data=table_data)
+
+    def _is_merged(self, cell: etree.Element):
+        """Проверяет, объединена ли ячейка вертикально
+
+        Args:
+          cell: Элемент-ячейка `<w:tc>`
+
+        Returns:
+          Результат проверки на вертикальное объединение
+        """
+        merge_element = cell.find(
+            ".//w:tcPr/w:vMerge", namespaces=self.xml_manager.NAMESPACES
+        )
+
+        if merge_element is None:
+            return False
+
+        merge_value = merge_element.get(f"{{{self.xml_manager.NAMESPACES['w']}}}val")
+        if not merge_value or merge_value == 'continue':
+            return True
+        return False
 
     def _get_cell_width(self, cell: etree.Element) -> int:
         """Вычисляет ширину ячейки таблицы

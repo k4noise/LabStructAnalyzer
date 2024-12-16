@@ -1,0 +1,16 @@
+{
+  "http://localhost": [
+    {
+      "client_id": "aoyNC8RdzqIzD9S",
+      "auth_login_url": "http://localhost/mod/lti/auth.php",
+      "auth_token_url": "http://localhost/mod/lti/token.php",
+      "key_set_url": "http://localhost/mod/lti/certs.php",
+      "key_set": null,
+      "private_key_file": "jwtRS256.key",
+      "public_key_file": "jwtRS256.key.pub",
+      "deployment_ids": [
+        "4"
+      ]
+    }
+  ]
+}

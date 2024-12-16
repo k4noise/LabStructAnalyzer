@@ -24,7 +24,7 @@
     {
       "type": "question",
       "contentType": "text",
-      "alwaysVisible": true
+      "displayMode": "always"
     },
     {
       "type": "cell",
@@ -34,7 +34,7 @@
   "composite": [
     {
       "type": "labPart",
-      "preferVisible": true,
+      "displayMode": "prefer",
       "data": [
         {
           "type": "header",
@@ -45,7 +45,7 @@
     },
     {
       "type": "labStep",
-      "preferVisible": true,
+      "displayMode": "prefer",
       "data": [
         {
           "type": "text",
@@ -66,7 +66,7 @@
     },
     {
       "type": "topology",
-      "alwaysVisible": true,
+      "displayMode": "always",
       "data": [
         {
           "type": "header",
@@ -81,7 +81,7 @@
     },
     {
       "type": "addressTable",
-      "alwaysVisible": true,
+      "displayMode": "always",
       "data": [
         {
           "type": "header",
@@ -96,7 +96,7 @@
     },
     {
       "type": "labName",
-      "alwaysVisible": true,
+      "displayMode": "always",
       "data": [
         {
           "type": "header",

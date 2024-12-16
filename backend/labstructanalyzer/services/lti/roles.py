@@ -15,7 +15,7 @@ class LTIRoles:
         Получить роли пользователей
         """
         roles = []
-        if self.data.check_staff_access():
+        if self.data.check_teacher_access():
             roles.append("teacher")
         elif self.data.check_teaching_assistant_access():
             roles.append("assistant")

@@ -1,22 +1,23 @@
 import json
 import os
 
-from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
+from fastapi_another_jwt_auth import AuthJWT
 
 from labstructanalyzer.configs.config import CONFIG_DIR
 from labstructanalyzer.services.parser.docx import DocxParser
 from labstructanalyzer.utils.rbac_decorator import roles_required
 
-router = APIRouter(prefix="/template")
+router = APIRouter()
 template_prefix = "images\\temp"
 
 
 @router.post("")
 @roles_required(["teacher"])
-async def parse_template(template: UploadFile = File(...)):
+async def parse_template(authorize: AuthJWT = Depends(), template: UploadFile = File(...)):
     """
-    Преобразовать шаблон из docx в json, применяя структуру
+    Преобразовать шаблон из docx в json, применяя структуру.
     """
     if not template:
         raise HTTPException(
