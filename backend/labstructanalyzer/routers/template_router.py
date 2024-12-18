@@ -13,11 +13,51 @@ router = APIRouter()
 template_prefix = "images\\temp"
 
 
-@router.post("")
+@router.post(
+    "",
+    summary="Преобразовать шаблон из docx в json",
+    description="Принимает файл формата `.docx`, применяет структуру и возвращает JSON-компоненты.",
+    tags=["Template"],
+    responses={
+        200: {
+            "description": "Успешное преобразование шаблона.",
+        },
+        400: {
+            "description": "Ошибка запроса. Файл отсутствует или имеет неподдерживаемый формат.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Нет файла шаблона"}
+                }
+            }
+        },
+        401: {
+            "description": "Неавторизованный доступ.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль преподавателя.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+    },
+)
 @roles_required(["teacher"])
-async def parse_template(authorize: AuthJWT = Depends(), template: UploadFile = File(...)):
+async def parse_template(
+        authorize: AuthJWT = Depends(),
+        template: UploadFile = File(..., description="DOCX файл для обработки")
+):
     """
     Преобразовать шаблон из docx в json, применяя структуру.
+
+    - **template**: Файл формата `.docx` для обработки.
+    - Требуется роль **teacher**.
     """
     if not template:
         raise HTTPException(
@@ -36,4 +76,3 @@ async def parse_template(authorize: AuthJWT = Depends(), template: UploadFile = 
         data_dict = json.load(file)
     docx_parser = DocxParser(await template.read(), data_dict, template_prefix)
     return docx_parser.get_structure_components()
-
