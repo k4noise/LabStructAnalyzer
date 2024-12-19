@@ -37,7 +37,7 @@ const ErrorPage = () => {
   }
 
   const handleGoBack = () => {
-    navigate(-1);
+    navigate(-1, { replace: true });
   };
 
   return (

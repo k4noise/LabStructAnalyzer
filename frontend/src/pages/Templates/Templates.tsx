@@ -1,7 +1,8 @@
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { sendTemplate } from "../../actions/sendTemplate";
+import { getCourseName } from "../../actions/getCourseName";
 
 /**
  * Компонент для управления шаблонами курса
@@ -17,16 +18,10 @@ const Templates = () => {
   const navigate = useNavigate();
 
   /**
-   * Параметры поиска из URL
-   * @type {URLSearchParams}
-   */
-  const [searchParams] = useSearchParams();
-
-  /**
-   * Название курса, полученное из параметров URL
+   * Состояние названия курса
    * @type {string|null}
    */
-  const courseName = searchParams.get("course");
+  const [courseName, setCourseName] = useState<string | null>(null);
 
   /**
    * Состояние модального окна (открыто/закрыто)
@@ -49,6 +44,31 @@ const Templates = () => {
   const handleClose = () => {
     setIsOpen(false);
   };
+
+  /**
+   * Получить имя курса.
+   * Выполняется только тогда, когда в текущем состоянии нет имени.
+   * Если имени нет, то получает его и устанавливает
+   * @function
+   */
+  const getName = async () => {
+    if (courseName) {
+      return;
+    }
+
+    const { data, error, description } = await getCourseName();
+
+    if (error) {
+      navigate(`/error?code=${error}&description=${description}`);
+      return;
+    }
+
+    setCourseName(data.name);
+  };
+
+  useEffect(() => {
+    getName();
+  }, []);
 
   /**
    * Обработчик загрузки шаблона.
@@ -76,7 +96,7 @@ const Templates = () => {
   return (
     <div>
       <h2 className="text-3xl font-medium text-center mb-10">
-        Отчеты лабораторных работ курса "{courseName}"
+        Отчеты лабораторных работ {courseName ? `курса ${courseName}` : ""}
       </h2>
       <button
         className="text-l p-4 rounded-xl underline mb-5"
@@ -92,7 +112,12 @@ const Templates = () => {
           <p className="text-l text-center mb-8">
             Поддерживаемые форматы: docx
           </p>
-          <input type="file" name="template" className="mb-8" />
+          <input
+            type="file"
+            name="template"
+            className="mb-8"
+            data-testid="template"
+          />
           <button className="block px-2 py-1 ml-auto border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
             Загрузить
           </button>

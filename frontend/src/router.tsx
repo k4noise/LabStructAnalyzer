@@ -2,7 +2,7 @@ import Nav from "./components/Nav/Nav";
 import { Outlet, createBrowserRouter } from "react-router";
 import Templates from "./pages/Templates/Templates";
 import Template from "./pages/Template/Template";
-import ErrorPage from "./pages/ErrorPage";
+import ErrorPage from "./pages/ErrorPage/ErrorPage";
 
 const router = createBrowserRouter([
   {

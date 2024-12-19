@@ -80,17 +80,10 @@ const sendRequest = async <ResponseType>(
 
       // Попытка обновления токена при ошибке 401
       if (error === 401 && needAuth) {
-        const { error: updateError } = await sendRequest<void>(
-          "/api/v1/jwt/refresh",
-          AxiosMethod.POST,
-          true
-        );
-        if (updateError) {
-          await sendRequest<void>(
-            "/api/v1/jwt/logout",
-            AxiosMethod.DELETE,
-            true
-          );
+        try {
+          await axios.post("/api/v1/jwt/refresh", null, config);
+        } catch (error: AxiosError) {
+          await axios.delete("/api/v1/jwt/logout", config);
           return { data: null, error: 401, description: "Не авторизован" };
         }
 
