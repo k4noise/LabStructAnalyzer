@@ -29,25 +29,27 @@ class TestUserRouter(unittest.TestCase):
 
         mock_auth_jwt_get_raw_jwt.return_value = {
             "sub": "test_user_id",
-            "launch_id": "test_launch_id"
+            "launch_id": "test_launch_id",
+            "role": ["test"]
         }
 
         mock_message_launch_instance = MagicMock()
         mock_message_launch_from_cache.return_value = mock_message_launch_instance
 
         mock_message_launch_instance.get_iss.return_value = "http://test_lms_url"
-        mock_message_launch_instance.get_nrps.return_value.get_context.return_value = {"title": "Test Course"}
         mock_message_launch_instance.get_nrps.return_value.get_members.return_value = [
-            {"user_id": "test_user_id", "name": "Test User"}
+            {"user_id": "test_user_id", "name": "Test User", "given_name": "User", "family_name": "Test"}
         ]
 
-        response = client.post("/users", headers={"Authorization": "Bearer test_token"})
+        response = client.get("/users/me")
 
         self.assertEqual(response.status_code, 200)
         expected_data = {
             "fullName": "Test User",
             "avatarUrl": "http://test_lms_url/user/pix.php/test_user_id/f1.jpg",
-            "courseName": "Test Course"
+            "name": "User",
+            'role': ['test'],
+            'surname': 'Test'
         }
         self.assertEqual(response.json(), expected_data)
 
@@ -55,11 +57,10 @@ class TestUserRouter(unittest.TestCase):
         mock_auth_jwt_get_raw_jwt.assert_called_once()
         mock_message_launch_instance.get_iss.assert_called_once()
         mock_message_launch_instance.get_nrps.assert_called_once()
-        mock_message_launch_instance.get_nrps.return_value.get_context.assert_called_once()
         mock_message_launch_instance.get_nrps.return_value.get_members.assert_called_once()
 
     def test_get_user_data_unauthorized(self):
-        response = client.post("/users", headers={"Authorization": "Bearer invalid_token"})
+        response = client.get("/users/me", headers={"Authorization": "Bearer invalid_token"})
 
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.json(), {"detail": "Не авторизован"})
@@ -84,12 +85,11 @@ class TestUserRouter(unittest.TestCase):
         mock_message_launch_from_cache.return_value = mock_message_launch_instance
 
         mock_message_launch_instance.get_iss.return_value = "test_lms_url"
-        mock_message_launch_instance.get_nrps.return_value.get_context.return_value = {"title": "Test Course"}
         mock_message_launch_instance.get_nrps.return_value.get_members.return_value = [
             {"user_id": "other_user_id", "name": "Other User"}
         ]
 
-        response = client.post("/users", headers={"Authorization": "Bearer test_token"})
+        response = client.get("/users/me", headers={"Authorization": "Bearer test_token"})
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {"detail": "Пользователь не найден"})
@@ -98,5 +98,4 @@ class TestUserRouter(unittest.TestCase):
         mock_auth_jwt_get_raw_jwt.assert_called_once()
         mock_message_launch_instance.get_iss.assert_called_once()
         mock_message_launch_instance.get_nrps.assert_called_once()
-        mock_message_launch_instance.get_nrps.return_value.get_context.assert_called_once()
         mock_message_launch_instance.get_nrps.return_value.get_members.assert_called_once()

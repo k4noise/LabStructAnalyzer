@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException
+from fastapi.params import Depends
 from fastapi_another_jwt_auth import AuthJWT
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from pylti1p3.exception import LtiException
+from starlette import status
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import tool_conf
-from labstructanalyzer.models.UserInfo import UserInfo
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
@@ -15,10 +17,16 @@ router = APIRouter()
 
 
 @router.get(
-    "/me",
-    tags=["User"],
+    "/current",
+    tags=["Course"],
     responses={
-        200: {"model": UserInfo},
+        200: {
+            "content": {
+                "application/json": {
+                    "example": {"name": "Test Course"}
+                }
+            },
+        },
         401: {
             "description": "Не авторизован или refresh токен истек",
             "content": {
@@ -36,45 +44,27 @@ router = APIRouter()
             },
         },
     },
-    summary="Получение информации о пользователе и курсе",
-    description="""Получение имени (ФИО, имени и фамилии отдельно), URL аватара и роли для аутентифицированного пользователя через данные LTI-запуска.
-
+    summary="Получение информации о курсе",
+    description="""Получение названия курса для аутентифицированного пользователя.
+    
     Этот эндпоинт требует действительного JWT-токена, который должен содержать информацию о LTI-запуске.
     Он использует контекст LTI для получения пользовательских данных из системы управления обучением (LMS).
     """
 )
-async def get_user_data(request: Request, authorize: AuthJWT = Depends()):
-    """
-    Получает и возвращает данные пользователя из контекста LTI запуска.
-
-    Args:
-        request: Объект запроса FastAPI для доступа к данным запроса.
-        authorize: Dependency для проверки JWT токена.
-    """
+async def get_current_course_name(request: Request, authorize: AuthJWT = Depends()):
     try:
         authorize.jwt_required()
         raw_jwt = authorize.get_raw_jwt()
-        user_id = raw_jwt.get("sub")
 
         launch_data_storage = FastAPICacheDataStorage(cache)
         message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
                                                          launch_data_storage=launch_data_storage)
+        course_name = message_launch.get_nrps() \
+            .get_context() \
+            .get("title")
 
-        lms_url = message_launch.get_iss()
-        avatar_url = f"{lms_url}/user/pix.php/{user_id}/f1.jpg"
-        members = message_launch.get_nrps().get_members()
-
-        current_user = next((user for user in members if str(user.get('user_id')) == str(user_id)), None)
-        if not current_user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
-
-        return UserInfo(
-            fullName=current_user.get("name"),
-            name=current_user.get("given_name"),
-            surname=current_user.get("family_name"),
-            role = raw_jwt.get("role"),
-            avatarUrl=avatar_url
-        )
+        return JSONResponse({"name": course_name})
 
     except AuthJWTException or LtiException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
+

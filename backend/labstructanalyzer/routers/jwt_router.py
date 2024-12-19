@@ -1,8 +1,9 @@
 
+
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi_another_jwt_auth import AuthJWT
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME
 
@@ -54,8 +55,9 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
             subject=current_user,
             user_claims={"role": role, "launch_id": launch_id},
         )
-        authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME)
-        return JSONResponse({"detail": "Обновлен токен доступа"})
+        response = JSONResponse({"detail": "Обновлен токен доступа"})
+        authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
+        return response
     except AuthJWTException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
 
@@ -72,25 +74,13 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
                     "example": {"detail": "Произведен выход из аккаунта"}
                 }
             },
-        },
-        401: {
-            "description": "Не авторизован",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Не авторизован"}
-                }
-            },
-        },
+        }
     },
 )
 async def logout(authorize: AuthJWT = Depends()):
     """
     Выполнить выход из аккаунта, удалив все связанные JWT токены.
-
-    **Процесс выхода:**
-
-    1. Проверяет наличие действительного access токена.
-    2. Удаляет JWT токены из куки.
+    Если кук нет, то ничего не произойдет.
 
     Args:
         authorize (AuthJWT): Объект для чтения и удаления JWT токенов.
@@ -99,7 +89,6 @@ async def logout(authorize: AuthJWT = Depends()):
         dict: Сообщение о результате операции.
     """
     try:
-        authorize.jwt_required()
         authorize.unset_jwt_cookies()
         return JSONResponse({"detail": "Произведен выход из аккаунта"})
     except AuthJWTException:
