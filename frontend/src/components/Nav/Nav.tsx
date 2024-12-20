@@ -3,6 +3,12 @@ import { getUser } from "../../actions/getUser";
 import { useNavigate } from "react-router";
 import { UserCourseInfo } from "../../actions/dto/user";
 
+/**
+ * Компонент навигационной панели, отображающий информацию о пользователе.
+ *
+ * @component
+ * @returns {JSX.Element} Элемент навигационной панели.
+ */
 const Nav = () => {
   /**
    * Хук навигации для перемещения между страницами
@@ -10,8 +16,20 @@ const Nav = () => {
    */
   const navigate = useNavigate();
 
+  /**
+   * Состояние, хранящее информацию о пользователе.
+   * @type {UserCourseInfo | null}
+   */
   const [userData, setUserData] = useState<UserCourseInfo | null>(null);
 
+  /**
+   * Асинхронная функция для получения данных пользователя.
+   * Если данные уже загружены, функция завершает выполнение.
+   * В случае ошибки перенаправляет на страницу ошибки.
+   *
+   * @async
+   * @returns {void}
+   */
   const getUserData = async () => {
     if (userData) {
       return;
@@ -27,6 +45,9 @@ const Nav = () => {
     setUserData(data);
   };
 
+  /**
+   * Эффект, вызывающий загрузку данных пользователя при монтировании компонента.
+   */
   useEffect(() => {
     getUserData();
   }, []);
