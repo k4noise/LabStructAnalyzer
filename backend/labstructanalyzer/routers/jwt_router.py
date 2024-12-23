@@ -50,10 +50,11 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
         raw_jwt = authorize.get_raw_jwt()
         role = raw_jwt.get("role")
         launch_id = raw_jwt.get("launch_id")
+        course_id = raw_jwt.get("course_id")
 
         new_access_token = authorize.create_access_token(
             subject=current_user,
-            user_claims={"role": role, "launch_id": launch_id},
+            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id},
         )
         response = JSONResponse({"detail": "Обновлен токен доступа"})
         authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)

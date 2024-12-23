@@ -5,7 +5,7 @@ from pylti1p3.exception import LtiException
 from starlette.requests import Request
 
 from labstructanalyzer.configs.config import tool_conf
-from labstructanalyzer.models.UserInfo import UserInfo
+from labstructanalyzer.models.user_info import UserInfo
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch

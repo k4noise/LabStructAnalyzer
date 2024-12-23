@@ -128,14 +128,17 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
         launch_data = message_launch.get_launch_data()
         user_id = launch_data.get('sub')
         launch_id = message_launch.get_launch_id()
+        course_id = message_launch.get_nrps() \
+            .get_context() \
+            .get("id")
 
         access_token = authorize.create_access_token(
             subject=user_id,
-            user_claims={"role": role, "launch_id": launch_id}
+            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
         )
         refresh_token = authorize.create_refresh_token(
             subject=user_id,
-            user_claims={"role": role, "launch_id": launch_id}
+            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
         )
 
         base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')

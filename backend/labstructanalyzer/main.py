@@ -1,8 +1,11 @@
 import os
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .database import close_db
 from .routers.jwt_router import router as jwt_router
 from .routers.lti_router import router as lti_router
 from .routers.template_router import router as template_router
@@ -13,7 +16,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_db()
+
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')

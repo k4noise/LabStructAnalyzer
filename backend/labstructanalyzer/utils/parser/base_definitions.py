@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Generic, Optional, TypeVar
-import uuid
 
 DataType = TypeVar("DataType")
 
@@ -31,7 +30,6 @@ class IParserElement(ABC, Generic[DataType]):
     def __init__(self, element_type: ParserElementType, data: DataType) -> None:
         self.element_type = element_type
         self.data = data
-        self.element_id = uuid.uuid4().hex
 
     @abstractmethod
     def to_dict(self) -> dict:

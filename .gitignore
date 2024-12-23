@@ -24,6 +24,8 @@ key.pem
 
 # Конфигурационные/секретные файлы бэкенда
 /backend/.env
+/backend/labstructanalyzer.db
+/backend/alembic.ini
 /backend/images/*
 /backend/labstructanalyzer/configs/lti_config.json
 /backend/labstructanalyzer/configs/jwtRS256.key
