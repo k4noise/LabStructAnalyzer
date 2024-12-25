@@ -16,6 +16,14 @@ vi.mock("../../components/Template/TextQuestionComponent", () => ({
   },
 }));
 
+vi.mock("useLoaderData", () => ({
+  template_id: "123",
+  name: "lol",
+  is_draft: true,
+  max_score: 20,
+  elements: [],
+}));
+
 vi.mock("../../components/Template/ImageComponent", () => ({
   default: ({ element }: { element: TemplateElement }) => (
     <div data-testid="image">{element.data}</div>

@@ -1,4 +1,3 @@
-import { TemplateElement } from "./dto/template";
 import { AxiosMethod, sendRequest } from "./sendRequest";
 
 /**
@@ -7,10 +6,10 @@ import { AxiosMethod, sendRequest } from "./sendRequest";
  * @async
  * @function
  * @param {FormData} formData - Данные формы, содержащие информацию для отправки.
- * @returns {Promise<TemplateElement[]>} Промис, который разрешается массивом элементов шаблона.
+ * @returns {Promise<TemplateElement[]>} Промис, который разрешается идентификатором загруженного шаблона.
  */
 export const sendTemplate = async (formData: FormData) => {
-  const data = await sendRequest<TemplateElement[]>(
+  const data = await sendRequest<{ template_id: string }>(
     "/api/v1/template",
     AxiosMethod.POST,
     true,

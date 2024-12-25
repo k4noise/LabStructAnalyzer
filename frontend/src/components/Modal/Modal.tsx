@@ -8,11 +8,6 @@ import { useEffect, useRef, useCallback } from "react";
  * @param {boolean} props.isOpen - Флаг, определяющий, открыто ли модальное окно.
  * @param {Function} props.onClose - Функция, вызываемая при закрытии модального окна.
  * @param {React.ReactNode} props.children - Дочерние элементы, которые отображаются внутри модального окна.
- *
- * @example
- * <Modal isOpen={true} onClose={() => console.log('Модальное окно закрыто')}>
- *   <p>Содержимое модального окна</p>
- * </Modal>
  */
 const Modal = ({ isOpen, onClose, children }) => {
   const modalRef = useRef(null);

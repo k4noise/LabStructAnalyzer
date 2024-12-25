@@ -11,6 +11,7 @@ cert.pem
 key.pem
 
 # Файлы и директории фронтенда
+/frontend/.env
 /frontend/node_modules/
 /frontend/dist/
 /frontend/build/

@@ -1,4 +1,22 @@
 /**
+ * Интерфейс, представляющий элемент шаблона.
+ * @interface Template
+ */
+export interface TemplateModel {
+  template_id: string;
+  name: string;
+  is_draft: boolean;
+  max_score: number;
+  elements: TemplateElementModel[];
+}
+
+export interface TemplateElementModel {
+  element_id: string;
+  element_type: string;
+  properties: TemplateElement;
+}
+
+/**
  * Интерфейс, представляющий базовый элемент шаблона.
  * @interface TemplateElement
  */
@@ -8,11 +26,6 @@ export interface TemplateElement {
    * @type {string}
    */
   type: string;
-  /**
-   * Уникальный идентификатор элемента.
-   * @type {string}
-   */
-  id: string;
   /**
    * Данные, содержащиеся в элементе. Может быть строкой, массивом элементов или массивом массивов элементов.
    * @type {string | TemplateElement[] | TemplateElement[][]}
@@ -155,11 +168,6 @@ export interface AnswerElement {
    * @type {"answer"}
    */
   type: "answer";
-  /**
-   * Уникальный идентификатор элемента.
-   * @type {string}
-   */
-  id: string;
   /**
    * Тип содержимого - "answer".
    * @type {"answer"}

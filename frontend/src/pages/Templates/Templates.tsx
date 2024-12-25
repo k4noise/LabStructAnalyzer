@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router";
+import { useLoaderData, useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { sendTemplate } from "../../actions/sendTemplate";
-import { getCourseName } from "../../actions/getCourseName";
+import { CourseInfo } from "../../actions/dto/course";
 
 /**
  * Компонент для управления шаблонами курса
@@ -11,17 +11,12 @@ import { getCourseName } from "../../actions/getCourseName";
  * @returns {JSX.Element} Страница шаблонов с возможностью загрузки нового шаблона
  */
 const Templates = () => {
+  const { name: courseName }: CourseInfo = useLoaderData();
   /**
    * Хук навигации для перемещения между страницами
    * @type {Function}
    */
   const navigate = useNavigate();
-
-  /**
-   * Состояние названия курса
-   * @type {string|null}
-   */
-  const [courseName, setCourseName] = useState<string | null>(null);
 
   /**
    * Состояние модального окна (открыто/закрыто)
@@ -46,31 +41,6 @@ const Templates = () => {
   };
 
   /**
-   * Получить имя курса.
-   * Выполняется только тогда, когда в текущем состоянии нет имени.
-   * Если имени нет, то получает его и устанавливает
-   * @function
-   */
-  const getName = async () => {
-    if (courseName) {
-      return;
-    }
-
-    const { data, error, description } = await getCourseName();
-
-    if (error) {
-      navigate(`/error?code=${error}&description=${description}`);
-      return;
-    }
-
-    setCourseName(data.name);
-  };
-
-  useEffect(() => {
-    getName();
-  }, []);
-
-  /**
    * Обработчик загрузки шаблона.
    * Перенаправляет на страницу ошибки, если произошла ошибка
    *
@@ -88,22 +58,23 @@ const Templates = () => {
       navigate(`/error?code=${error}&description=${description}`);
     }
     if (data) {
-      localStorage.setItem("pageData", JSON.stringify(data));
-      navigate("/template");
+      navigate(`/template/${data.template_id}`);
     }
   };
 
   return (
     <div>
       <h2 className="text-3xl font-medium text-center mb-10">
-        Отчеты лабораторных работ {courseName ? `курса ${courseName}` : ""}
+        {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
-      <button
-        className="text-l p-4 rounded-xl underline mb-5"
-        onClick={handleOpen}
-      >
-        + Добавить новый шаблон
-      </button>
+      {
+        <button
+          className="text-l p-4 rounded-xl underline mb-5"
+          onClick={handleOpen}
+        >
+          + Добавить новый шаблон
+        </button>
+      }
       <Modal isOpen={isOpen} onClose={handleClose}>
         <form onSubmit={handleUploadTemplate}>
           <h3 className="text-xl font-medium text-center mb-3">
