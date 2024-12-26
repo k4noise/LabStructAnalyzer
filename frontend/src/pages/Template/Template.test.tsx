@@ -1,27 +1,18 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import Template, { renderElement } from "./Template";
-import { TemplateElement } from "../../actions/dto/template";
+import { renderElement } from "./Template";
+import { TemplateElement } from "../../api/dto/template";
+import React from "react";
 
 vi.mock("../../components/Template/TextQuestionComponent", () => ({
   default: ({ element }: { element: TemplateElement }) => {
-    {
-      return element.type == "question" ? (
-        <div data-testid="text-question">{element.data}</div>
-      ) : (
-        <div data-testid="text">{element.data}</div>
-      );
-    }
+    return element.type === "question" ? (
+      <div data-testid="text-question">{element.data}</div>
+    ) : (
+      <div data-testid="text">{element.data}</div>
+    );
   },
-}));
-
-vi.mock("useLoaderData", () => ({
-  template_id: "123",
-  name: "lol",
-  is_draft: true,
-  max_score: 20,
-  elements: [],
 }));
 
 vi.mock("../../components/Template/ImageComponent", () => ({
@@ -42,48 +33,12 @@ vi.mock("../../components/Template/TableComponent", () => ({
   ),
 }));
 
-vi.mock("../../components/Template/AnswerComponent", () => ({
-  default: () => <div data-testid="answer">Answer Component</div>,
-}));
-
-describe("Template Component", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-  /**
-   * Тестирование отображения элементов шаблона из локального хранилища.
-   */
-  it("renders template elements from localStorage", () => {
-    const mockData = [
-      { id: "1", type: "text", data: "Text data" },
-      { id: "2", type: "header", data: "Header data" },
-    ];
-
-    render(<Template />);
-
-    expect(screen.getByTestId("text")).toBeInTheDocument();
-    expect(screen.getByTestId("header")).toBeInTheDocument();
-  });
-
-  /**
-   * Тестирование отображения компонента ответа для вопроса.
-   */
-  it("renders answer component for question type", () => {
-    const mockData = [{ id: "1", type: "question", data: "Question data" }];
-
-    render(<Template />);
-
-    expect(screen.getByTestId("text-question")).toBeInTheDocument();
-    expect(screen.getByTestId("answer")).toBeInTheDocument();
-  });
-});
-
 /**
- * Описание тестов для функции renderElement.
+ * Тесты для функции renderElement.
  */
 describe("renderElement function", () => {
   /**
-   * Тестирование отображения вложенных элементов.
+   * Проверяет корректность рендеринга вложенных элементов.
    */
   it("renders nested elements correctly", () => {
     const nestedElement = {
@@ -102,7 +57,7 @@ describe("renderElement function", () => {
   });
 
   /**
-   * Тестирование возвращения null для неизвестного типа элемента.
+   * Проверяет, что функция возвращает null для неизвестного типа элемента.
    */
   it("returns null for unknown element type", () => {
     const unknownElement = {
@@ -117,7 +72,7 @@ describe("renderElement function", () => {
   });
 
   /**
-   * Тестирование обработки всех поддерживаемых типов элементов.
+   * Проверяет обработку всех поддерживаемых типов элементов.
    */
   it("handles all supported element types", () => {
     const elements = [

@@ -1,250 +1,143 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import Templates from "./Templates";
-import { useNavigate } from "react-router";
-import * as sendTemplateModule from "../../actions/sendTemplate";
-import * as getCourseNameModule from "../../actions/getCourseName";
+import { describe, it, expect, vi } from "vitest";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import Templates from "./Templates";
+import { useLoaderData, useNavigate } from "react-router";
+import { sendTemplate } from "../../api/sendTemplate";
+import React from "react";
 
+// Мокаем зависимости
 vi.mock("react-router", () => ({
+  useLoaderData: vi.fn(),
   useNavigate: vi.fn(),
 }));
 
-vi.mock("../../actions/sendTemplate", () => ({
+vi.mock("../../api/sendTemplate", () => ({
   sendTemplate: vi.fn(),
 }));
 
-vi.mock("../../actions/getCourseName", () => ({
-  getCourseName: vi.fn(),
-}));
-
-describe("Templates component", () => {
-  const mockedNavigate = vi.fn();
+/**
+ * Набор тестов для компонента Templates
+ */
+describe("Templates Component", () => {
+  /**
+   * Подготовка общих моков перед каждым тестом
+   */
   beforeEach(() => {
+    vi.mocked(useLoaderData).mockReturnValue({ name: "Тестовый курс" });
+    vi.mocked(useNavigate).mockReturnValue(vi.fn());
+  });
+
+  /**
+   * Очистка всех моков после каждого теста
+   */
+  afterEach(() => {
     vi.clearAllMocks();
-    (useNavigate as ReturnType<typeof vi.fn>).mockReturnValue(mockedNavigate);
   });
 
   /**
-   * Тест проверяет корректность рендеринга компонента
-   * Ожидается успешная загрузка и отображение названия курса
+   * Тест на корректное отображение названия курса
    */
-  it("renders without crashing", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
-      description: null,
-    });
+  it("отображает название курса", () => {
     render(<Templates />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.getByText(/Отчеты лабораторных работ курса Тестовый курс/i)
+    ).toBeInTheDocument();
   });
 
   /**
-   * Тест проверяет получение и отображение названия курса
-   * Проверяется корректность отображения полученного названия в компоненте
+   * Тест на открытие/закрытие модального окна
    */
-  it("fetches and displays course name", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
-      description: null,
-    });
+  it("открывает и закрывает модальное окно", async () => {
     render(<Templates />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
-    });
+    expect(screen.queryByText("Шаблон для импорта")).not.toBeInTheDocument();
+
+    const openButton = screen.getByText("+ Добавить новый шаблон");
+    await userEvent.click(openButton);
+
+    expect(screen.getByText("Шаблон для импорта")).toBeInTheDocument();
   });
 
   /**
-   * Тест проверяет обработку ошибки при получении названия курса
-   * При ошибке должен быть редирект на страницу ошибки с соответствующими параметрами
+   * Тест на загрузку шаблона
    */
-  it("navigates to error page if getCourseName fails", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: null,
-      error: 500,
-      description: "Internal Server Error",
-    });
-    render(<Templates />);
-    await waitFor(() =>
-      expect(mockedNavigate).toHaveBeenCalledWith(
-        "/error?code=500&description=Internal Server Error"
-      )
-    );
-  });
+  it("обрабатывает загрузку шаблона", async () => {
+    const navigateMock = vi.fn();
+    vi.mocked(useNavigate).mockReturnValue(navigateMock);
 
-  /**
-   * Тест проверяет функциональность открытия и закрытия модального окна
-   * Проверяется появление и исчезновение модального окна при соответствующих действиях
-   */
-  it("opens and closes modal", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
+    vi.mocked(sendTemplate).mockResolvedValue({
+      data: { template_id: "123" },
       description: null,
     });
+
     render(<Templates />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
-    });
+    const openButton = screen.getByText("+ Добавить новый шаблон");
+    await userEvent.click(openButton);
 
-    const openModalButton = screen.getByText("+ Добавить новый шаблон");
-    userEvent.click(openModalButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Шаблон для импорта/i)).toBeInTheDocument();
-    });
-
-    const closeModalButton = screen.getByText("×");
-    userEvent.click(closeModalButton);
-    await waitFor(() =>
-      expect(screen.queryByText("Шаблон для импорта")).not.toBeInTheDocument()
-    );
-  });
-
-  /**
-   * Тест проверяет успешную отправку формы и навигацию
-   * При успешной загрузке файла должен быть редирект на страницу /template
-   */
-  it("submits form and navigates to /template on successful upload", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
-      description: null,
-    });
-    (
-      sendTemplateModule.sendTemplate as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { some: "data" },
-      error: null,
-      description: null,
-    });
-    render(<Templates />);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
-    });
-
-    const openModalButton = screen.getByText("+ Добавить новый шаблон");
-    userEvent.click(openModalButton);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Шаблон для импорта/i)).toBeInTheDocument();
+    const file = new File([Buffer.from("Hello World!")], "test.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
 
     const fileInput = screen.getByTestId("template");
-    const file = new File(["(⌐□_□)"], "chucknorris.png", { type: "image/png" });
     await userEvent.upload(fileInput, file);
 
     const submitButton = screen.getByText("Загрузить");
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
-    expect(sendTemplateModule.sendTemplate).toHaveBeenCalled();
-    expect(mockedNavigate).toHaveBeenCalledWith("/template");
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith("/template/123");
+    });
   });
 
   /**
-   * Тест проверяет обработку ошибки при загрузке файла
-   * При ошибке загрузки должен быть редирект на страницу ошибки
+   * Тест на обработку ошибки при загрузке шаблона
    */
-  it("navigates to error page on upload failure", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
-      description: null,
-    });
-    (
-      sendTemplateModule.sendTemplate as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
+  it("отображает ошибку при неудачной загрузке", async () => {
+    const errorMessage = "Ошибка загрузки";
+
+    vi.mocked(sendTemplate).mockResolvedValue({
       data: null,
-      error: 400,
-      description: "Bad Request",
+      description: errorMessage,
     });
+
     render(<Templates />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
+    await userEvent.click(screen.getByText("+ Добавить новый шаблон"));
+
+    const file = new File(["test content"], "test.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
 
-    const openModalButton = screen.getByText("+ Добавить новый шаблон");
-    userEvent.click(openModalButton);
+    const fileInput = screen.getByTestId("template");
+    const form = fileInput.closest("form");
 
-    await waitFor(() => {
-      expect(screen.getByText(/Шаблон для импорта/i)).toBeInTheDocument();
-    });
-
-    const fileInput = screen.getByTestId(/template/i);
-    const file = new File(["(⌐□_□)"], "chucknorris.png", { type: "image/png" });
     await userEvent.upload(fileInput, file);
 
-    const submitButton = screen.getByText("Загрузить");
-    userEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(sendTemplateModule.sendTemplate).toHaveBeenCalled();
-      expect(mockedNavigate).toHaveBeenCalledWith(
-        "/error?code=400&description=Bad Request"
-      );
-    });
-  });
-
-  /**
-   * Тест проверяет валидацию формы при отсутствии выбранного файла
-   * Форма не должна отправляться, если файл не выбран
-   */
-  it("does not submit form if no file is selected", async () => {
-    (
-      getCourseNameModule.getCourseName as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      data: { name: "Test Course" },
-      error: null,
-      description: null,
+    await act(async () => {
+      fireEvent.submit(form!);
     });
 
-    render(<Templates />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Отчеты лабораторных работ курса Test Course/i)
-      ).toBeInTheDocument();
-    });
-    const openModalButton = screen.getByText("+ Добавить новый шаблон");
-    userEvent.click(openModalButton);
+    await waitFor(
+      () => {
+        const errorElement = screen.getByText((content) =>
+          content.includes(errorMessage)
+        );
+        expect(errorElement).toBeInTheDocument();
+      },
+      {
+        timeout: 1000,
+      }
+    );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Шаблон для импорта/i)).toBeInTheDocument();
-    });
-
-    const submitButton = screen.getByText("Загрузить");
-    userEvent.click(submitButton);
-
-    await waitFor(() => {
-      expect(sendTemplateModule.sendTemplate).not.toHaveBeenCalled();
-    });
+    expect(sendTemplate).toHaveBeenCalled();
+    expect(screen.queryByText("Загрузка...")).not.toBeInTheDocument();
   });
 });

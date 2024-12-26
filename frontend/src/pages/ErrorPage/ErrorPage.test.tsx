@@ -1,130 +1,97 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { vi } from "vitest";
-import { MemoryRouter, useNavigate, useSearchParams } from "react-router";
+import { render, screen } from "@testing-library/react";
+import { Mock, vi } from "vitest";
+import { useRouteError } from "react-router";
 import ErrorPage from "./ErrorPage";
+import React from "react";
 
+// Мок компонента BackButtonComponent
+vi.mock("../../components/BackButtonComponent", () => {
+  return {
+    default: () => <button data-testid="back-button">Back</button>,
+  };
+});
+
+// Мок useRouteError
 vi.mock("react-router", async () => {
   const actual = await vi.importActual("react-router");
   return {
     ...actual,
-    useNavigate: vi.fn(),
-    useSearchParams: vi.fn(),
+    useRouteError: vi.fn(),
   };
 });
 
+/**
+ * Набор тестов для компонента ErrorPage
+ */
 describe("ErrorPage Component", () => {
-  const mockNavigate = vi.fn();
-
-  beforeEach(() => {
-    vi.mocked(useNavigate).mockReturnValue(mockNavigate);
-  });
-
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   /**
-   * Проверяет, что компонент отображает код ошибки и сообщение по умолчанию,
-   * когда нет параметров в строке запроса.
+   * Проверяет отображение страницы 404 при отсутствии ошибки
    */
-  it("renders default error code and message when no search params", () => {
-    vi.mocked(useSearchParams).mockReturnValue([
-      new URLSearchParams(),
-      vi.fn(),
-    ]);
+  it("Displays default 404 when no error is present", () => {
+    (useRouteError as Mock).mockReturnValue(undefined);
 
-    render(
-      <MemoryRouter>
-        <ErrorPage />
-      </MemoryRouter>
-    );
+    render(<ErrorPage />);
 
     expect(screen.getByText("404")).toBeInTheDocument();
     expect(screen.getByText("Не найдено")).toBeInTheDocument();
+    expect(screen.getByTestId("back-button")).toBeInTheDocument();
   });
 
   /**
-   * Проверяет, что компонент отображает пользовательский код ошибки и описание,
-   * переданные через параметры строки запроса.
+   * Проверяет отображение пользовательской ошибки из JSON
    */
-  it("renders custom error code and description from search params", () => {
-    vi.mocked(useSearchParams).mockReturnValue([
-      new URLSearchParams({
-        code: "500",
-        description: "Internal Server Error",
+  it("Displays custom error from JSON", () => {
+    const errorMock = {
+      message: JSON.stringify({
+        status: 500,
+        message: "Внутренняя ошибка сервера",
       }),
-      vi.fn(),
-    ]);
+    };
 
-    render(
-      <MemoryRouter>
-        <ErrorPage />
-      </MemoryRouter>
-    );
+    (useRouteError as Mock).mockReturnValue(errorMock);
+
+    render(<ErrorPage />);
 
     expect(screen.getByText("500")).toBeInTheDocument();
-    expect(screen.getByText("Internal Server Error")).toBeInTheDocument();
+    expect(screen.getByText("Внутренняя ошибка сервера")).toBeInTheDocument();
+    expect(screen.getByTestId("back-button")).toBeInTheDocument();
   });
 
   /**
-   * Проверяет, что компонент корректно парсит JSON-описание из параметров строки запроса.
+   * Проверяет отображение сообщения по умолчанию при пустом message
    */
-  it("parses JSON description from search params", () => {
-    const jsonDescription = `${JSON.stringify({ error: "invalid request" })}`;
-    vi.mocked(useSearchParams).mockReturnValue([
-      new URLSearchParams({ code: "400", description: jsonDescription }),
-      vi.fn(),
-    ]);
+  it("Shows default message when message is empty", () => {
+    const errorMock = {
+      message: JSON.stringify({ status: 500, message: "" }),
+    };
 
-    render(
-      <MemoryRouter>
-        <ErrorPage />
-      </MemoryRouter>
-    );
+    (useRouteError as Mock).mockReturnValue(errorMock);
 
-    expect(screen.getByText("400")).toBeInTheDocument();
-    expect(screen.getByText('{"error":"invalid request"}')).toBeInTheDocument();
+    render(<ErrorPage />);
+
+    expect(screen.getByText("500")).toBeInTheDocument();
+    expect(screen.getByText("Не найдено")).toBeInTheDocument();
+    expect(screen.getByTestId("back-button")).toBeInTheDocument();
   });
 
   /**
-   * Проверяет, что компонент обрабатывает некорректный JSON-описание грациозно,
-   * отображая код ошибки и сообщение по умолчанию.
+   * Проверяет обработку некорректного JSON в ошибке
    */
-  it("handles invalid JSON gracefully", () => {
-    const invalidJsonDescription = '"{\\"error\\":\\"Invalid Request"';
-    vi.mocked(useSearchParams).mockReturnValue([
-      new URLSearchParams({ description: invalidJsonDescription }),
-      vi.fn(),
-    ]);
+  it("Handles invalid JSON in error", () => {
+    const errorMock = {
+      message: "Некорректный JSON",
+    };
 
-    render(
-      <MemoryRouter>
-        <ErrorPage />
-      </MemoryRouter>
-    );
+    (useRouteError as Mock).mockReturnValue(errorMock);
+
+    render(<ErrorPage />);
 
     expect(screen.getByText("404")).toBeInTheDocument();
     expect(screen.getByText("Не найдено")).toBeInTheDocument();
-  });
-
-  /**
-   * Проверяет, что компонент возвращает на предыдущую страницу при нажатии на кнопку "Назад".
-   */
-  it('navigates back when "Назад" button is clicked', () => {
-    vi.mocked(useSearchParams).mockReturnValue([
-      new URLSearchParams(),
-      vi.fn(),
-    ]);
-
-    render(
-      <MemoryRouter>
-        <ErrorPage />
-      </MemoryRouter>
-    );
-
-    const backButton = screen.getByText("Назад");
-    fireEvent.click(backButton);
-
-    expect(mockNavigate).toHaveBeenCalledWith(-1, { replace: true });
+    expect(screen.getByTestId("back-button")).toBeInTheDocument();
   });
 });

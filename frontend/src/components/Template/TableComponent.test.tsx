@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi } from "vitest";
 import TableComponent from "./TableComponent";
 import { TableElement } from "../../actions/dto/template";
+import React from "react";
 
 vi.mock("../../utils/templateStyle", () => ({
   getMarginLeftStyle: (nestingLevel: number) => `ml-${nestingLevel}`,

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import Modal from "./Modal";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import React from "react";
 
 describe("Modal", () => {
   let onCloseMock: () => void;

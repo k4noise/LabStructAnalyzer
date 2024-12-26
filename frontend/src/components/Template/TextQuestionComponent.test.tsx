@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import { describe, it, expect, vi } from "vitest";
 import TextQuestionComponent from "./TextQuestionComponent";
 import { TextElement, QuestionElement } from "../../actions/dto/template";
+import React from "react";
 
 
 vi.mock("../../utils/templateStyle", () => ({

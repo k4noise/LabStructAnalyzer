@@ -1,104 +1,112 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import { useNavigate } from "react-router";
-import { getUser } from "../../actions/getUser";
+import { useLoaderData } from "react-router";
 import Nav from "./Nav";
+import React from "react";
 
-vi.mock("react-router", () => ({
-  useNavigate: vi.fn(),
-}));
+/**
+ * Мокаем хук useLoaderData из react-router
+ */
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
+  return {
+    ...actual,
+    useLoaderData: vi.fn(),
+  };
+});
 
-vi.mock("../../actions/getUser", () => ({
-  getUser: vi.fn(),
-}));
-
+/**
+ * Тесты для Nav компонента
+ */
 describe("Nav Component", () => {
-  const mockNavigate = vi.fn();
-
-  beforeEach(() => {
-    vi.resetAllMocks();
-    (useNavigate as vi.Mock).mockReturnValue(mockNavigate);
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   /**
-   * Тестирует корректный рендер компонента при успешном получении данных пользователя.
+   * Проверяет отображение аватара пользователя и имени студента
    */
-  it("renders correctly when user data is fetched", async () => {
-    const mockUserData = {
-      data: {
-        avatarUrl: "https://example.com/avatar.jpg",
-        fullName: "John Doe",
-        name: "John",
-        surname: "Doe",
-        role: ["student"],
-      },
-      error: null,
-      description: null,
-    };
-
-    (getUser as vi.Mock).mockResolvedValue(mockUserData);
+  it("Displays the user avatar and student name", () => {
+    (useLoaderData as vi.Mock).mockReturnValue({
+      avatarUrl: "https://example.com/avatar.jpg",
+      role: "student",
+      name: "Иван",
+      surname: "Иванов",
+      fullName: "Иван Иванов",
+    });
 
     render(<Nav />);
 
-    await waitFor(() => {
-      expect(screen.getByAltText("avatar")).toBeInTheDocument();
-      expect(screen.getByText("John Doe")).toBeInTheDocument();
-    });
-
-    expect(screen.getByAltText("avatar")).toHaveAttribute(
+    const avatarImage = screen.getByAltText("avatar");
+    expect(avatarImage).toBeInTheDocument();
+    expect(avatarImage).toHaveAttribute(
       "src",
       "https://example.com/avatar.jpg"
     );
+
+    expect(screen.getByText("Иван Иванов")).toBeInTheDocument();
   });
 
   /**
-   * Тестирует навигацию на страницу ошибки при возникновении ошибки API.
+   * Проверяет отображение полного имени пользователя при роли, отличной от студента
    */
-  it("navigates to error page on API error", async () => {
-    const mockErrorResponse = {
-      data: null,
-      error: "403",
-      description: "Forbidden",
-    };
-
-    (getUser as vi.Mock).mockResolvedValue(mockErrorResponse);
+  it("Displays the full user name for a role other than student", () => {
+    (useLoaderData as vi.Mock).mockReturnValue({
+      avatarUrl: "https://example.com/avatar.jpg",
+      role: "admin",
+      fullName: "Админ Иванов",
+    });
 
     render(<Nav />);
 
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(
-        "/error?code=403&description=Forbidden"
-      );
-    });
+    const avatarImage = screen.getByAltText("avatar");
+    expect(avatarImage).toBeInTheDocument();
+    expect(avatarImage).toHaveAttribute(
+      "src",
+      "https://example.com/avatar.jpg"
+    );
+
+    expect(screen.getByText("Админ Иванов")).toBeInTheDocument();
   });
 
   /**
-   * Тестирует, что функция getUser не вызывается повторно, если данные пользователя уже установлены.
+   * Проверяет отсутствие аватара, если avatarUrl не передан
    */
-  it("does not call getUser again if userData is already set", async () => {
-    const mockUserData = {
-      data: {
-        avatarUrl: "https://example.com/avatar.jpg",
-        fullName: "John Doe",
-        name: "John",
-        surname: "Doe",
-        role: ["student"],
-      },
-      error: null,
-      description: null,
-    };
-
-    (getUser as vi.Mock).mockResolvedValue(mockUserData);
-
-    const { rerender } = render(<Nav />);
-
-    await waitFor(() => {
-      expect(screen.getByAltText("avatar")).toBeInTheDocument();
-      expect(screen.getByText("John Doe")).toBeInTheDocument();
+  it("Does not display avatar if avatarUrl is missing", () => {
+    (useLoaderData as vi.Mock).mockReturnValue({
+      role: "student",
+      name: "Иван",
+      surname: "Иванов",
+      fullName: "Иван Иванов",
     });
 
-    rerender(<Nav />);
+    render(<Nav />);
 
-    expect(getUser).toHaveBeenCalledTimes(1);
+    const avatarImage = screen.queryByAltText("avatar");
+    expect(avatarImage).not.toBeInTheDocument();
+
+    expect(screen.getByText("Иван Иванов")).toBeInTheDocument();
+  });
+
+  /**
+   * Проверяет отсутствие имени, если fullName не передан
+   */
+  it("Does not display name if fullName is missing", () => {
+    (useLoaderData as vi.Mock).mockReturnValue({
+      avatarUrl: "https://example.com/avatar.jpg",
+      role: "student",
+    });
+
+    render(<Nav />);
+
+    const avatarImage = screen.getByAltText("avatar");
+    expect(avatarImage).toBeInTheDocument();
+    expect(avatarImage).toHaveAttribute(
+      "src",
+      "https://example.com/avatar.jpg"
+    );
+
+    const nameElement = screen.queryByText(/Иван Иванов/);
+    expect(nameElement).not.toBeInTheDocument();
   });
 });
