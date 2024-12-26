@@ -1,5 +1,5 @@
 import React from "react";
-import { TemplateModel, TemplateElement } from "../../actions/dto/template";
+import { TemplateModel, TemplateElement } from "../../api/dto/template";
 import TextQuestionComponent from "../../components/Template/TextQuestionComponent";
 import ImageComponent from "../../components/Template/ImageComponent";
 import HeaderComponent from "../../components/Template/HeaderComponent";
@@ -7,6 +7,7 @@ import TableComponent from "../../components/Template/TableComponent";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 import AnswerComponent from "../../components/Template/AnswerComponent";
 import { useLoaderData } from "react-router";
+import BackButtonComponent from "../../components/BackButtonComponent";
 
 /**
  * Карта соответствий типов элементов и компонентов для рендеринга.
@@ -30,19 +31,20 @@ const Template: React.FC = () => {
 
   return (
     <div>
+      <BackButtonComponent positionClasses="" />
       <input
-        className="text-3xl font-medium text-center mb-10 w-full
+        className="text-3xl font-medium text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
         focus-visible:outline-none focus-visible:border-zinc-950 dark:focus-visible:border-zinc-200"
         defaultValue={template.name}
       />
-      <p>
+      <p className="opacity-60">
         Максимальное количество баллов:
         <input
           type="number"
           min="0"
           defaultValue={template.max_score}
-          className="w-20 bg-transparent border-b focus-visible:outline-none border-zinc-950 dark:border-zinc-200 mb-4"
+          className="w-20 mb-4 ml-3 bg-transparent border-b focus-visible:outline-none border-zinc-950 dark:border-zinc-200"
         />
       </p>
       {template?.elements.map((element) => (

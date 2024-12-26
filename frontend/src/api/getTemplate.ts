@@ -1,4 +1,4 @@
-import { TemplateModel, TemplateElement } from "./dto/template";
+import { TemplateModel } from "./dto/template";
 import { AxiosMethod, sendRequest } from "./sendRequest";
 
 /**

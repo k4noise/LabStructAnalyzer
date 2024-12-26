@@ -1,8 +1,8 @@
 import { useLoaderData, useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
 import { useState } from "react";
-import { sendTemplate } from "../../actions/sendTemplate";
-import { CourseInfo } from "../../actions/dto/course";
+import { sendTemplate } from "../../api/sendTemplate";
+import { CourseInfo } from "../../api/dto/course";
 
 /**
  * Компонент для управления шаблонами курса
@@ -23,6 +23,12 @@ const Templates = () => {
    * @type {boolean}
    */
   const [isOpen, setIsOpen] = useState(false);
+
+  /**
+   * Состояние сообщения об ошибке при загрузке шаблона
+   * @type {string | null}
+   */
+  const [errorInUpload, setErrorInUpload] = useState<string | null>(null);
 
   /**
    * Открывает модальное окно
@@ -53,17 +59,18 @@ const Templates = () => {
     const formData = new FormData(event.target);
     const template = formData.get("template");
     if (template && template["name"] == "") return;
-    const { data, error, description } = await sendTemplate(formData);
-    if (error) {
-      navigate(`/error?code=${error}&description=${description}`);
+    const { data, description } = await sendTemplate(formData);
+    if (description) {
+      setErrorInUpload(description);
     }
     if (data) {
+      setErrorInUpload(null);
       navigate(`/template/${data.template_id}`);
     }
   };
 
   return (
-    <div>
+    <div className="mt-8">
       <h2 className="text-3xl font-medium text-center mb-10">
         {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
@@ -89,6 +96,11 @@ const Templates = () => {
             className="mb-8"
             data-testid="template"
           />
+          {errorInUpload && (
+            <p className="text-center mb-3 bg-gradient-to-r from-transparent via-red-400/50 to-transparent">
+              {errorInUpload}
+            </p>
+          )}
           <button className="block px-2 py-1 ml-auto border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
             Загрузить
           </button>

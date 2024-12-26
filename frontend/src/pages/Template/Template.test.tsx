@@ -59,8 +59,6 @@ describe("Template Component", () => {
       { id: "2", type: "header", data: "Header data" },
     ];
 
-    localStorage.setItem("pageData", JSON.stringify(mockData));
-
     render(<Template />);
 
     expect(screen.getByTestId("text")).toBeInTheDocument();
@@ -72,8 +70,6 @@ describe("Template Component", () => {
    */
   it("renders answer component for question type", () => {
     const mockData = [{ id: "1", type: "question", data: "Question data" }];
-
-    localStorage.setItem("pageData", JSON.stringify(mockData));
 
     render(<Template />);
 

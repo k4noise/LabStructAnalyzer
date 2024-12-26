@@ -82,7 +82,7 @@ const sendRequest = async <ResponseType>(
       if (error === 401 && needAuth) {
         try {
           await axios.post("/api/v1/jwt/refresh", null, config);
-        } catch (error: AxiosError) {
+        } catch (error) {
           await axios.delete("/api/v1/jwt/logout", config);
           return { data: null, error: 401, description: "Не авторизован" };
         }

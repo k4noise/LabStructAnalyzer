@@ -1,4 +1,5 @@
-import { useNavigate, useSearchParams } from "react-router";
+import { useRouteError } from "react-router";
+import BackButtonComponent from "../../components/BackButtonComponent";
 
 /**
  * Компонент для отображения страницы ошибок.
@@ -11,44 +12,31 @@ import { useNavigate, useSearchParams } from "react-router";
  * @returns {JSX.Element} - Рендерит страницу ошибок
  */
 const ErrorPage = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const error: Error = useRouteError() as Error;
+
+  let parsedError: { status: number; message: string };
+  if (error) {
+    parsedError = JSON.parse(error.message);
+  }
 
   const DEFAULT_ERROR_CODE = 404;
   const DEFAULT_ERROR_MESSAGE = "Не найдено";
 
-  const errorCode = searchParams.get("code") ?? DEFAULT_ERROR_CODE;
+  const errorCode = parsedError?.status ?? DEFAULT_ERROR_CODE;
 
   let definition =
     errorCode === DEFAULT_ERROR_CODE
       ? DEFAULT_ERROR_MESSAGE
-      : searchParams.get("description");
-
-  if (definition && definition.startsWith('"') && definition.endsWith('"')) {
-    try {
-      definition = JSON.parse(definition.substring(1, definition.length - 1));
-    } catch (err) {
-      console.error("Ошибка при парсинге описания:", err);
-    }
-  }
+      : JSON.stringify(parsedError.message);
 
   if (!definition) {
     definition = DEFAULT_ERROR_MESSAGE;
   }
 
-  const handleGoBack = () => {
-    navigate(-1, { replace: true });
-  };
-
   return (
     <>
-      <button
-        className="absolute mt-5 ml-16 cursor-pointer"
-        onClick={handleGoBack}
-      >
-        Назад
-      </button>
-      <div className="absolute top-1/3 left-1/3 -translate-y-1/3 -translate-x-1/3">
+      <BackButtonComponent positionClasses="mt-5" />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <h1 className="text-8xl mb-8">{errorCode}</h1>
         <p className="text-5xl">{definition}</p>
       </div>

@@ -1,4 +1,3 @@
-import uuid
 from collections import deque
 from typing import Generator
 from labstructanalyzer.utils.parser.base_definitions import IParserElement
@@ -150,7 +149,7 @@ class StructureManager:
         Returns:
             Словарь с данными элемента "Ответ"
         """
-        answer_dict = {"type": "answer", "contentType": "answer", "id": uuid.uuid4().hex}
+        answer_dict = {"type": "answer", "contentType": "answer"}
         if nesting_level:
             answer_dict["nestingLevel"] = nesting_level
         if answer_template:

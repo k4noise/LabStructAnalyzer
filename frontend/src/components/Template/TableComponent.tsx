@@ -1,4 +1,4 @@
-import { TableElement } from "../../actions/dto/template";
+import { TableElement } from "../../api/dto/template";
 import { renderElement } from "../../pages/Template/Template";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 

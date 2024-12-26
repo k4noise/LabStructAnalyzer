@@ -1,4 +1,4 @@
-import { QuestionElement, TextElement } from "../../actions/dto/template";
+import { QuestionElement, TextElement } from "../../api/dto/template";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**
@@ -19,7 +19,7 @@ interface TextBlockProps {
 const TextQuestionComponent: React.FC<TextBlockProps> = ({ element }) => {
   const isQuestion = (element.type as "text" | "question") === "question";
   const className = `${
-    isQuestion ? "italic inline-block my-3" : ""
+    isQuestion ? "italic inline-block my-3" : "mb-3"
   } ${getMarginLeftStyle(element.nestingLevel)}`;
 
   return (

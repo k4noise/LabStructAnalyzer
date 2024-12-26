@@ -1,19 +1,19 @@
 import Nav from "./components/Nav/Nav";
-import { Outlet, createBrowserRouter, redirect } from "react-router";
+import { Outlet, createBrowserRouter } from "react-router";
 import Templates from "./pages/Templates/Templates";
 import ErrorPage from "./pages/ErrorPage/ErrorPage";
 import { lazy, Suspense } from "react";
-import { getTemplate } from "./actions/getTemplate";
+import { getTemplate } from "./api/getTemplate";
 import Spinner from "./components/Spinner";
-import { getCourseName } from "./actions/getCourseName";
-import { getUser } from "./actions/getUser";
+import { getCourseName } from "./api/getCourseName";
+import { getUser } from "./api/getUser";
 
 const Template = lazy(() => import("./pages/Template/Template"));
 
 const tryGetData = async (callback) => {
   const { data, error, description } = await callback();
   if (error) {
-    return redirect(`/error?code=${error}&description=${description}`);
+    throw new Error(JSON.stringify({ status: error, message: description }));
   }
   return data;
 };
@@ -33,11 +33,13 @@ const router = createBrowserRouter([
       </>
     ),
     loader: async () => tryGetData(() => getUser()),
+    errorElement: <ErrorPage />,
     children: [
       {
         path: "/templates",
         element: <Templates />,
         loader: async () => tryGetData(() => getCourseName()),
+        errorElement: <ErrorPage />,
       },
       {
         path: "/template/:id",
