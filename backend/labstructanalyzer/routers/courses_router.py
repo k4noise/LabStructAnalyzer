@@ -1,9 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.params import Depends
 from fastapi_another_jwt_auth import AuthJWT
-from fastapi_another_jwt_auth.exceptions import AuthJWTException
-from pylti1p3.exception import LtiException
-from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -35,6 +32,14 @@ router = APIRouter()
                 }
             },
         },
+        403: {
+            "description": "Не авторизован или refresh токен истек",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка внешнего инструмента, необходим повторный вход через LMS"}
+                }
+            },
+        },
         404: {
             "description": "Пользователь не найден",
             "content": {
@@ -52,19 +57,14 @@ router = APIRouter()
     """
 )
 async def get_current_course_name(request: Request, authorize: AuthJWT = Depends()):
-    try:
-        authorize.jwt_required()
-        raw_jwt = authorize.get_raw_jwt()
+    authorize.jwt_required()
+    raw_jwt = authorize.get_raw_jwt()
 
-        launch_data_storage = FastAPICacheDataStorage(cache)
-        message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
-                                                         launch_data_storage=launch_data_storage)
-        course_name = message_launch.get_nrps() \
-            .get_context() \
-            .get("title")
+    launch_data_storage = FastAPICacheDataStorage(cache)
+    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+                                                     launch_data_storage=launch_data_storage)
+    course_name = message_launch.get_nrps() \
+        .get_context() \
+        .get("title")
 
-        return JSONResponse({"name": course_name})
-
-    except AuthJWTException or LtiException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
-
+    return JSONResponse({"name": course_name})

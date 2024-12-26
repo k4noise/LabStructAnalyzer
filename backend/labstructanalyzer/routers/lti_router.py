@@ -98,7 +98,7 @@ async def login(
                  500: {"description": "LTI ошибка данных регистрации внешнего инструмента",
                        "content": {
                            "application/json": {
-                               "example": {"detail": 'Ошибка регистрации внешнего инструмента"'}
+                               "example": {"detail": 'Ошибка внешнего инструмента, необходим повторный вход через LMS"'}
                            }
                        }
                        }
@@ -118,36 +118,33 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     await request_obj.parse_request()
     launch_data_storage = FastAPICacheDataStorage(cache)
 
-    try:
-        message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
-        message_launch.validate_registration()
+    message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
+    message_launch.validate_registration()
 
-        roles = LTIRoles(message_launch)
-        role = roles.get_role()
+    roles = LTIRoles(message_launch)
+    role = roles.get_role()
 
-        launch_data = message_launch.get_launch_data()
-        user_id = launch_data.get('sub')
-        launch_id = message_launch.get_launch_id()
-        course_id = message_launch.get_nrps() \
-            .get_context() \
-            .get("id")
+    launch_data = message_launch.get_launch_data()
+    user_id = launch_data.get('sub')
+    launch_id = message_launch.get_launch_id()
+    course_id = message_launch.get_nrps() \
+        .get_context() \
+        .get("id")
 
-        access_token = authorize.create_access_token(
-            subject=user_id,
-            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
-        )
-        refresh_token = authorize.create_refresh_token(
-            subject=user_id,
-            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
-        )
+    access_token = authorize.create_access_token(
+        subject=user_id,
+        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
+    )
+    refresh_token = authorize.create_refresh_token(
+        subject=user_id,
+        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
+    )
 
-        base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
-        response = RedirectResponse(url=base_url, status_code=302)
-        authorize.set_access_cookies(access_token, response=response, max_age=0)
-        authorize.set_refresh_cookies(refresh_token, response=response, max_age=JWT_ACCESS_TOKEN_LIFETIME)
-        return response
-    except LtiException:
-        return JSONResponse({"detail": "Ошибка регистрации внешнего инструмента"}, 500)
+    base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
+    response = RedirectResponse(url=base_url, status_code=302)
+    authorize.set_access_cookies(access_token, response=response, max_age=JWT_ACCESS_TOKEN_LIFETIME)
+    authorize.set_refresh_cookies(refresh_token, response=response, max_age=0)
+    return response
 
 
 @router.get("/jwks", tags=["LTI"], summary="Получение набора ключей JWKS",

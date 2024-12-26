@@ -1,9 +1,6 @@
-
-
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi_another_jwt_auth import AuthJWT
-from fastapi_another_jwt_auth.exceptions import AuthJWTException
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME
 
@@ -43,24 +40,21 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
     Returns:
         JSONResponse: Сообщение о результате операции
     """
-    try:
-        authorize.jwt_refresh_token_required()
+    authorize.jwt_refresh_token_required()
 
-        current_user = authorize.get_jwt_subject()
-        raw_jwt = authorize.get_raw_jwt()
-        role = raw_jwt.get("role")
-        launch_id = raw_jwt.get("launch_id")
-        course_id = raw_jwt.get("course_id")
+    current_user = authorize.get_jwt_subject()
+    raw_jwt = authorize.get_raw_jwt()
+    role = raw_jwt.get("role")
+    launch_id = raw_jwt.get("launch_id")
+    course_id = raw_jwt.get("course_id")
 
-        new_access_token = authorize.create_access_token(
-            subject=current_user,
-            user_claims={"role": role, "launch_id": launch_id, "course_id": course_id},
-        )
-        response = JSONResponse({"detail": "Обновлен токен доступа"})
-        authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
-        return response
-    except AuthJWTException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
+    new_access_token = authorize.create_access_token(
+        subject=current_user,
+        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id},
+    )
+    response = JSONResponse({"detail": "Обновлен токен доступа"})
+    authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
+    return response
 
 
 @router.delete(
@@ -91,6 +85,5 @@ async def logout(authorize: AuthJWT = Depends()):
     """
     try:
         authorize.unset_jwt_cookies()
+    finally:
         return JSONResponse({"detail": "Произведен выход из аккаунта"})
-    except AuthJWTException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")

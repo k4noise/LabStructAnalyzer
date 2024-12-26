@@ -1,7 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_another_jwt_auth import AuthJWT
-from fastapi_another_jwt_auth.exceptions import AuthJWTException
-from pylti1p3.exception import LtiException
 from starlette.requests import Request
 
 from labstructanalyzer.configs.config import tool_conf
@@ -24,6 +22,14 @@ router = APIRouter()
             "content": {
                 "application/json": {
                     "example": {"detail": "Не авторизован"}
+                }
+            },
+        },
+        403: {
+            "description": "Не авторизован или refresh токен истек",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка внешнего инструмента, необходим повторный вход через LMS"}
                 }
             },
         },
@@ -51,30 +57,27 @@ async def get_user_data(request: Request, authorize: AuthJWT = Depends()):
         request: Объект запроса FastAPI для доступа к данным запроса.
         authorize: Dependency для проверки JWT токена.
     """
-    try:
-        authorize.jwt_required()
-        raw_jwt = authorize.get_raw_jwt()
-        user_id = raw_jwt.get("sub")
 
-        launch_data_storage = FastAPICacheDataStorage(cache)
-        message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
-                                                         launch_data_storage=launch_data_storage)
+    authorize.jwt_required()
+    raw_jwt = authorize.get_raw_jwt()
+    user_id = raw_jwt.get("sub")
 
-        lms_url = message_launch.get_iss()
-        avatar_url = f"{lms_url}/user/pix.php/{user_id}/f1.jpg"
-        members = message_launch.get_nrps().get_members()
+    launch_data_storage = FastAPICacheDataStorage(cache)
+    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+                                                     launch_data_storage=launch_data_storage)
 
-        current_user = next((user for user in members if str(user.get('user_id')) == str(user_id)), None)
-        if not current_user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+    lms_url = message_launch.get_iss()
+    avatar_url = f"{lms_url}/user/pix.php/{user_id}/f1.jpg"
+    members = message_launch.get_nrps().get_members()
 
-        return UserInfo(
-            fullName=current_user.get("name"),
-            name=current_user.get("given_name"),
-            surname=current_user.get("family_name"),
-            role = raw_jwt.get("role"),
-            avatarUrl=avatar_url
-        )
+    current_user = next((user for user in members if str(user.get('user_id')) == str(user_id)), None)
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 
-    except AuthJWTException or LtiException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
+    return UserInfo(
+        fullName=current_user.get("name"),
+        name=current_user.get("given_name"),
+        surname=current_user.get("family_name"),
+        role=raw_jwt.get("role"),
+        avatarUrl=avatar_url
+    )

@@ -152,7 +152,10 @@ async def get_template(
 ):
     authorize.jwt_required()
     try:
-        return await session.get(Template, template_id)
+        template = await session.get(Template, template_id)
+        if template:
+            return template
+        return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)
     except Exception as e:
         print(e)
         await session.rollback()
