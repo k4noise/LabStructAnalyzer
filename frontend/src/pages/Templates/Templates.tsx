@@ -1,8 +1,8 @@
 import { useLoaderData, useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
 import { useState } from "react";
-import { sendTemplate } from "../../api/sendTemplate";
-import { CourseInfo } from "../../api/dto/course";
+import { CourseInfo } from "../../model/course";
+import { api, extractMessage } from "../../utils/sendRequest";
 
 /**
  * Компонент для управления шаблонами курса
@@ -11,7 +11,8 @@ import { CourseInfo } from "../../api/dto/course";
  * @returns {JSX.Element} Страница шаблонов с возможностью загрузки нового шаблона
  */
 const Templates = () => {
-  const { name: courseName }: CourseInfo = useLoaderData();
+  const { data } = useLoaderData<{ data: CourseInfo }>();
+  const courseName = data.name;
   /**
    * Хук навигации для перемещения между страницами
    * @type {Function}
@@ -59,13 +60,12 @@ const Templates = () => {
     const formData = new FormData(event.target);
     const template = formData.get("template");
     if (template && template["name"] == "") return;
-    const { data, description } = await sendTemplate(formData);
-    if (description) {
-      setErrorInUpload(description);
-    }
-    if (data) {
+    try {
+      const { data } = await api.post("/api/v1/template", formData);
       setErrorInUpload(null);
       navigate(`/template/${data.template_id}`);
+    } catch (error) {
+      setErrorInUpload(extractMessage(error.response));
     }
   };
 

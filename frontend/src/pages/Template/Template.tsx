@@ -1,5 +1,5 @@
 import React from "react";
-import { TemplateModel, TemplateElement } from "../../api/dto/template";
+import { TemplateModel, TemplateElement } from "../../model/template";
 import TextQuestionComponent from "../../components/Template/TextQuestionComponent";
 import ImageComponent from "../../components/Template/ImageComponent";
 import HeaderComponent from "../../components/Template/HeaderComponent";
@@ -27,7 +27,7 @@ const componentMap: Record<string, React.FC<{ element: TemplateElement }>> = {
  * Основной компонент шаблона, отображающий различные элементы.
  */
 const Template: React.FC = () => {
-  const template: TemplateModel = useLoaderData();
+  const { data: template } = useLoaderData<{ data: TemplateModel }>();
 
   return (
     <div>

@@ -1,5 +1,5 @@
 import { useLoaderData } from "react-router";
-import { UserCourseInfo } from "../../api/dto/user";
+import { UserCourseInfo } from "../../model/user";
 
 /**
  * Компонент навигационной панели, отображающий информацию о пользователе.
@@ -8,7 +8,7 @@ import { UserCourseInfo } from "../../api/dto/user";
  * @returns {JSX.Element} Элемент навигационной панели.
  */
 const Nav = () => {
-  const userData: UserCourseInfo = useLoaderData();
+  const { data: userData } = useLoaderData<{ data: UserCourseInfo }>();
 
   return (
     <nav className="min-h-12 flex  items-center justify-end gap-4">

@@ -28,11 +28,13 @@ describe("Nav Component", () => {
    */
   it("Displays the user avatar and student name", () => {
     (useLoaderData as vi.Mock).mockReturnValue({
-      avatarUrl: "https://example.com/avatar.jpg",
-      role: "student",
-      name: "Иван",
-      surname: "Иванов",
-      fullName: "Иван Иванов",
+      data: {
+        avatarUrl: "https://example.com/avatar.jpg",
+        role: "student",
+        name: "Иван",
+        surname: "Иванов",
+        fullName: "Иван Иванов",
+      },
     });
 
     render(<Nav />);
@@ -52,9 +54,11 @@ describe("Nav Component", () => {
    */
   it("Displays the full user name for a role other than student", () => {
     (useLoaderData as vi.Mock).mockReturnValue({
-      avatarUrl: "https://example.com/avatar.jpg",
-      role: "admin",
-      fullName: "Админ Иванов",
+      data: {
+        avatarUrl: "https://example.com/avatar.jpg",
+        role: "admin",
+        fullName: "Админ Иванов",
+      },
     });
 
     render(<Nav />);
@@ -74,10 +78,12 @@ describe("Nav Component", () => {
    */
   it("Does not display avatar if avatarUrl is missing", () => {
     (useLoaderData as vi.Mock).mockReturnValue({
-      role: "student",
-      name: "Иван",
-      surname: "Иванов",
-      fullName: "Иван Иванов",
+      data: {
+        role: "student",
+        name: "Иван",
+        surname: "Иванов",
+        fullName: "Иван Иванов",
+      },
     });
 
     render(<Nav />);
@@ -93,8 +99,10 @@ describe("Nav Component", () => {
    */
   it("Does not display name if fullName is missing", () => {
     (useLoaderData as vi.Mock).mockReturnValue({
-      avatarUrl: "https://example.com/avatar.jpg",
-      role: "student",
+      data: {
+        avatarUrl: "https://example.com/avatar.jpg",
+        role: "student",
+      },
     });
 
     render(<Nav />);

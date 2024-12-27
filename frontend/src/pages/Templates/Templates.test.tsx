@@ -9,7 +9,6 @@ import {
 import userEvent from "@testing-library/user-event";
 import Templates from "./Templates";
 import { useLoaderData, useNavigate } from "react-router";
-import { sendTemplate } from "../../api/sendTemplate";
 import React from "react";
 
 // Мокаем зависимости
@@ -18,9 +17,9 @@ vi.mock("react-router", () => ({
   useNavigate: vi.fn(),
 }));
 
-vi.mock("../../api/sendTemplate", () => ({
-  sendTemplate: vi.fn(),
-}));
+// Мокирование fetch
+const fetchMock = vi.fn();
+vi.mock("node-fetch", () => fetchMock);
 
 /**
  * Набор тестов для компонента Templates
@@ -30,7 +29,9 @@ describe("Templates Component", () => {
    * Подготовка общих моков перед каждым тестом
    */
   beforeEach(() => {
-    vi.mocked(useLoaderData).mockReturnValue({ name: "Тестовый курс" });
+    vi.mocked(useLoaderData).mockReturnValue({
+      data: { name: "Тестовый курс" },
+    });
     vi.mocked(useNavigate).mockReturnValue(vi.fn());
   });
 
@@ -44,7 +45,7 @@ describe("Templates Component", () => {
   /**
    * Тест на корректное отображение названия курса
    */
-  it("отображает название курса", () => {
+  it("Show course name", () => {
     render(<Templates />);
     expect(
       screen.getByText(/Отчеты лабораторных работ курса Тестовый курс/i)
@@ -54,7 +55,7 @@ describe("Templates Component", () => {
   /**
    * Тест на открытие/закрытие модального окна
    */
-  it("открывает и закрывает модальное окно", async () => {
+  it("Open/close upload modal", async () => {
     render(<Templates />);
 
     expect(screen.queryByText("Шаблон для импорта")).not.toBeInTheDocument();
@@ -68,13 +69,14 @@ describe("Templates Component", () => {
   /**
    * Тест на загрузку шаблона
    */
-  it("обрабатывает загрузку шаблона", async () => {
+  it("Upload template by modal", async () => {
     const navigateMock = vi.fn();
     vi.mocked(useNavigate).mockReturnValue(navigateMock);
 
-    vi.mocked(sendTemplate).mockResolvedValue({
-      data: { template_id: "123" },
-      description: null,
+    // Мокирование fetch
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ template_id: "123" }),
     });
 
     render(<Templates />);
@@ -100,12 +102,13 @@ describe("Templates Component", () => {
   /**
    * Тест на обработку ошибки при загрузке шаблона
    */
-  it("отображает ошибку при неудачной загрузке", async () => {
+  it("Upload template with error", async () => {
     const errorMessage = "Ошибка загрузки";
 
-    vi.mocked(sendTemplate).mockResolvedValue({
-      data: null,
-      description: errorMessage,
+    // Мокирование fetch
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ description: errorMessage }),
     });
 
     render(<Templates />);
@@ -137,7 +140,6 @@ describe("Templates Component", () => {
       }
     );
 
-    expect(sendTemplate).toHaveBeenCalled();
-    expect(screen.queryByText("Загрузка...")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { QuestionElement, TextElement } from "../../api/dto/template";
+import { QuestionElement, TextElement } from "../../model/template";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**

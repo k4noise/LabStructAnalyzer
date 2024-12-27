@@ -1,4 +1,4 @@
-import { ImageElement } from "../../api/dto/template";
+import { ImageElement } from "../../model/template";
 
 /**
  * Свойства для компонента ImageComponent.

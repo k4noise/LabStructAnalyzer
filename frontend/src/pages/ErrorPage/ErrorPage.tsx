@@ -1,38 +1,46 @@
 import { useRouteError } from "react-router";
 import BackButtonComponent from "../../components/BackButtonComponent";
+import { AxiosError } from "axios";
+import { extractMessage } from "../../utils/sendRequest";
 
 /**
  * Компонент для отображения страницы ошибок.
- * Ошибка по умолчанию 404 Не найдено.
+ * Обрабатывает ошибки AxiosError и некоторые дефолтные.
  */
 const ErrorPage = () => {
-  const error: Error = useRouteError() as Error;
+  const error = useRouteError() as Error;
 
-  const DEFAULT_ERROR_CODE = 404;
-  const DEFAULT_ERROR_MESSAGE = "Не найдено";
-
-  let parsedError: { status: number; message: string } | null = null;
-
-  if (error?.message) {
-    try {
-      parsedError = JSON.parse(error.message);
-    } catch {
-      parsedError = null;
+  /**
+   * Представляет ошибку как 2 компоненты: код (для сетевой ошибки) и сообщение.
+   * Сообщение может быть как текстовым, так и формата JSON.
+   */
+  const getErrorContent = () => {
+    if (!error) {
+      return { code: 404, message: "Не найдено" };
     }
-  }
+    if (error instanceof AxiosError) {
+      return {
+        code: error.response?.status || error.status,
+        message: extractMessage(error.response),
+      };
+    }
+    return { message: error?.message };
+  };
 
-  const errorCode = parsedError?.status ?? DEFAULT_ERROR_CODE;
-  const definition =
-    parsedError?.message && parsedError.message !== ""
-      ? parsedError.message
-      : DEFAULT_ERROR_MESSAGE;
+  const { code, message } = getErrorContent();
 
   return (
     <>
       <BackButtonComponent positionClasses="mt-5" />
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <h1 className="text-8xl mb-8">{errorCode}</h1>
-        <p className="text-5xl">{definition}</p>
+        {!!code && <h1 className="text-8xl mb-8">{code}</h1>}
+        {typeof message === "string" ? (
+          <p className="leading-tight text-5xl text-center">{message}</p>
+        ) : (
+          <pre data-testid="json" className="leading-tight">
+            {JSON.stringify(message, null, 2)}
+          </pre>
+        )}
       </div>
     </>
   );

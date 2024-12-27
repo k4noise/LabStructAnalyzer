@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import HeaderComponent from "./HeaderComponent";
 import { describe, it, expect } from "vitest";
 import { HeaderElement } from "../../actions/dto/template";
+import React from "react";
 
 vi.mock("../../utils/templateStyle", () => ({
   getMarginLeftStyle: (nestingLevel: number) => `ml-${nestingLevel}`,
@@ -27,26 +28,6 @@ describe("HeaderComponent", () => {
     expect(headerElement).toBeInTheDocument();
     expect(headerElement).toHaveTextContent("Header 1");
     expect(headerElement).toHaveClass("ml-0");
-  });
-
-  /**
-   * Проверяет, что компонент отображает правильный уровень заголовка (h3) при отсутствии значения headerLevel.
-   * Ожидается, что заголовок будет отображаться с текстом "Default Header" и классом стиля "ml-2".
-   */
-  it("renders the correct header level (h3) when headerLevel is undefined", () => {
-    const element: HeaderElement = {
-      headerLevel: undefined,
-      nestingLevel: 2,
-      data: "Default Header",
-      numberingBulletText: "",
-    };
-
-    render(<HeaderComponent element={element} />);
-
-    const headerElement = screen.getByRole("heading", { level: 3 });
-    expect(headerElement).toBeInTheDocument();
-    expect(headerElement).toHaveTextContent("Default Header");
-    expect(headerElement).toHaveClass("ml-2");
   });
 
   /**

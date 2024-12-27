@@ -1,97 +1,110 @@
 import { render, screen } from "@testing-library/react";
-import { Mock, vi } from "vitest";
-import { useRouteError } from "react-router";
+import { vi, describe, it, expect, beforeEach } from "vitest";
+import { useRouteError, MemoryRouter } from "react-router";
 import ErrorPage from "./ErrorPage";
+import { extractMessage } from "../../utils/sendRequest";
+import { AxiosError } from "axios";
 import React from "react";
 
-// Мок компонента BackButtonComponent
-vi.mock("../../components/BackButtonComponent", () => {
-  return {
-    default: () => <button data-testid="back-button">Back</button>,
-  };
-});
-
-// Мок useRouteError
-vi.mock("react-router", async () => {
-  const actual = await vi.importActual("react-router");
-  return {
-    ...actual,
-    useRouteError: vi.fn(),
-  };
-});
+/**
+ * Мокирование хука useRouteError из react-router.
+ */
+vi.mock("react-router", async () => ({
+  ...(await vi.importActual("react-router")),
+  useRouteError: vi.fn(),
+}));
 
 /**
- * Набор тестов для компонента ErrorPage
+ * Мокирование функции extractMessage из utils/sendRequest.
  */
-describe("ErrorPage Component", () => {
-  afterEach(() => {
-    vi.clearAllMocks();
+vi.mock("../../utils/sendRequest", async () => ({
+  ...(await vi.importActual("../../utils/sendRequest")),
+  extractMessage: vi.fn(),
+}));
+
+/**
+ * Тесты для компонента ErrorPage.
+ */
+describe("ErrorPage", () => {
+  /**
+   * Экземпляр ошибки для тестирования.
+   */
+  const mockError = new Error("Something went wrong");
+
+  /**
+   * Экземпляр ошибки Axios для тестирования.
+   */
+  const mockAxiosError = new AxiosError(
+    "Network error",
+    "ECONNABORTED",
+    undefined,
+    undefined,
+    {
+      status: 500,
+      data: { message: "Internal Server Error" },
+    }
+  );
+
+  /**
+   * Переустановка всех моков перед каждым тестом.
+   */
+  beforeEach(() => {
+    vi.resetAllMocks();
   });
 
   /**
-   * Проверяет отображение страницы 404 при отсутствии ошибки
+   * Функция для рендеринга ErrorPage с заданной ошибкой.
+   * @param {Error | AxiosError | null} error - Ошибка для рендеринга.
    */
-  it("Displays default 404 when no error is present", () => {
-    (useRouteError as Mock).mockReturnValue(undefined);
+  const renderWithError = (error: Error | AxiosError | null) => {
+    (useRouteError as vi.Mock).mockReturnValue(error);
+    render(
+      <MemoryRouter>
+        <ErrorPage />
+      </MemoryRouter>
+    );
+  };
 
-    render(<ErrorPage />);
-
+  /**
+   * Тест: отображение 404 при отсутствии ошибки.
+   */
+  it("should display 404 when no error is provided", () => {
+    renderWithError(null);
     expect(screen.getByText("404")).toBeInTheDocument();
     expect(screen.getByText("Не найдено")).toBeInTheDocument();
-    expect(screen.getByTestId("back-button")).toBeInTheDocument();
   });
 
   /**
-   * Проверяет отображение пользовательской ошибки из JSON
+   * Тест: отображение ошибки Axios со статусом и сообщением.
    */
-  it("Displays custom error from JSON", () => {
-    const errorMock = {
-      message: JSON.stringify({
-        status: 500,
-        message: "Внутренняя ошибка сервера",
-      }),
-    };
-
-    (useRouteError as Mock).mockReturnValue(errorMock);
-
-    render(<ErrorPage />);
-
+  it("should display Axios error with status and message", () => {
+    (extractMessage as vi.Mock).mockReturnValue("Internal Server Error");
+    renderWithError(mockAxiosError);
     expect(screen.getByText("500")).toBeInTheDocument();
-    expect(screen.getByText("Внутренняя ошибка сервера")).toBeInTheDocument();
-    expect(screen.getByTestId("back-button")).toBeInTheDocument();
+    expect(screen.getByText("Internal Server Error")).toBeInTheDocument();
   });
 
   /**
-   * Проверяет отображение сообщения по умолчанию при пустом message
+   * Тест: отображение сообщения ошибки по умолчанию.
    */
-  it("Shows default message when message is empty", () => {
-    const errorMock = {
-      message: JSON.stringify({ status: 500, message: "" }),
-    };
+  it("should display default error message", () => {
+    renderWithError(mockError);
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+  });
 
-    (useRouteError as Mock).mockReturnValue(errorMock);
-
-    render(<ErrorPage />);
-
+  /**
+   * Тест: обработка JSON-сообщения из ошибки Axios.
+   */
+  it("should handle JSON message from Axios error", () => {
+    (extractMessage as vi.Mock).mockReturnValue({
+      test: 123,
+    });
+    renderWithError(mockAxiosError);
     expect(screen.getByText("500")).toBeInTheDocument();
-    expect(screen.getByText("Не найдено")).toBeInTheDocument();
-    expect(screen.getByTestId("back-button")).toBeInTheDocument();
-  });
 
-  /**
-   * Проверяет обработку некорректного JSON в ошибке
-   */
-  it("Handles invalid JSON in error", () => {
-    const errorMock = {
-      message: "Некорректный JSON",
-    };
-
-    (useRouteError as Mock).mockReturnValue(errorMock);
-
-    render(<ErrorPage />);
-
-    expect(screen.getByText("404")).toBeInTheDocument();
-    expect(screen.getByText("Не найдено")).toBeInTheDocument();
-    expect(screen.getByTestId("back-button")).toBeInTheDocument();
+    const preElement = screen.getByTestId("json");
+    expect(preElement.textContent).toBe(`{
+  "test": 123
+}`);
   });
 });

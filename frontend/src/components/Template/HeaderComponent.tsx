@@ -1,4 +1,4 @@
-import { HeaderElement } from "../../api/dto/template";
+import { HeaderElement } from "../../model/template";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**
