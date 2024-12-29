@@ -6,7 +6,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.testclient import TestClient
 
 from labstructanalyzer.routers.courses_router import router
-from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
+from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 
 app = FastAPI()
 app.include_router(router, prefix="/courses")

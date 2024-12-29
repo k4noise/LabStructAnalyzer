@@ -6,10 +6,10 @@ from fastapi_another_jwt_auth import AuthJWT
 from pylti1p3.exception import OIDCException, LtiException
 from unittest.mock import patch, MagicMock
 
-from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
-from labstructanalyzer.services.lti.oidc_login import FastAPIOIDCLogin
+from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
+from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
 from labstructanalyzer.routers.lti_router import router as lti_router
-from labstructanalyzer.services.lti.roles import LTIRoles
+from labstructanalyzer.services.roles import LTIRoles
 
 
 class TestLoginRoute(unittest.TestCase):

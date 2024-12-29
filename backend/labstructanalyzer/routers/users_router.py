@@ -5,9 +5,9 @@ from starlette.requests import Request
 from labstructanalyzer.configs.config import tool_conf
 from labstructanalyzer.models.user_info import UserInfo
 from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
-from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
-from labstructanalyzer.services.lti.request import FastAPIRequest
+from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
+from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
+from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 
 router = APIRouter()
 

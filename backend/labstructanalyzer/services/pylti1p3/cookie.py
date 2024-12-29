@@ -1,7 +1,7 @@
 from fastapi import Response
 from pylti1p3.cookie import CookieService
 
-from labstructanalyzer.services.lti.request import FastAPIRequest
+from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 
 
 class FastAPICookieService(CookieService):

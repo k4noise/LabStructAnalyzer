@@ -4,16 +4,15 @@ from urllib.parse import urljoin
 from fastapi import APIRouter, Request
 from fastapi.params import Depends, Query
 from fastapi_another_jwt_auth import AuthJWT
-from pylti1p3.exception import LtiException
 from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, tool_conf
-from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
-from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
-from labstructanalyzer.services.lti.oidc_login import FastAPIOIDCLogin
-from labstructanalyzer.services.lti.request import FastAPIRequest
-from labstructanalyzer.services.lti.roles import LTIRoles
+from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
+from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
+from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
+from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
+from labstructanalyzer.services.roles import LTIRoles
 from labstructanalyzer.utils.ttl_cache import TTLCache
 
 router = APIRouter()

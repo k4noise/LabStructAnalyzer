@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi_another_jwt_auth import AuthJWT
 
 from labstructanalyzer.routers.users_router import router
-from labstructanalyzer.services.lti.message_launch import FastAPIMessageLaunch
+from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 
 app = FastAPI()
 app.include_router(router, prefix="/users")

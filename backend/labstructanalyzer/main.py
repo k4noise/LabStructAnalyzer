@@ -2,38 +2,38 @@ import os
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from pylti1p3.exception import LtiException
-from starlette import status
 
-from .database import close_db
+from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_existing_template, no_ags_service_access
+from .core.exceptions import TemplateNotFoundException, AgsNotSupportedException
 from .routers.jwt_router import router as jwt_router
 from .routers.lti_router import router as lti_router
 from .routers.template_router import router as template_router
 from .routers.file_router import router as file_router
 from .routers.users_router import router as users_router
 from .routers.courses_router import router as courses_router
+
 from dotenv import load_dotenv
 
 load_dotenv()
+from labstructanalyzer.core.database import close_db
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     await close_db()
 
+
 app = FastAPI(lifespan=lifespan)
 
-@app.exception_handler(AuthJWTException)
-async def invalid_input_exception_handler(request, exc):
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
-
-@app.exception_handler(LtiException)
-async def invalid_input_exception_handler(request, exc):
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка внешнего инструмента, необходим повторный вход через LMS")
-
+app.add_exception_handler(AuthJWTException, invalid_jwt_state)
+app.add_exception_handler(LtiException, invalid_lti_state)
+app.add_exception_handler(TemplateNotFoundException, no_existing_template)
+app.add_exception_handler(AgsNotSupportedException, no_ags_service_access)
 
 app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')
@@ -50,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 def start_dev():
     uvicorn.run(
         app="labstructanalyzer.main:app",
@@ -57,6 +58,7 @@ def start_dev():
         ssl_certfile="../cert.pem",
         ssl_keyfile="../key.pem"
     )
+
 
 def start_prod():
     port = int(os.environ.get("PORT", 8000))
