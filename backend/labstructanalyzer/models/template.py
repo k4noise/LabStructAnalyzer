@@ -2,9 +2,8 @@ import uuid
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import Column, TIMESTAMP, text, FetchedValue
+from sqlalchemy import Column, TIMESTAMP, text, FetchedValue, Index
 from sqlmodel import SQLModel, Field, Relationship, asc
-
 from labstructanalyzer.models.template_element import TemplateElement
 
 
@@ -43,3 +42,8 @@ class Template(SQLModel, table=True):
             "order_by": asc(TemplateElement.order)
         }
     )
+
+    __table_args__ = (
+        Index("templates_template_id_is_draft_idx", "template_id", "is_draft"),
+    )
+

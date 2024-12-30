@@ -12,6 +12,7 @@ class ParserElementType(Enum):
     TEXT = "text"
     TABLE = "table"
     CELL = "cell"
+    ROW = "row"
 
 
 class IParserElement(ABC, Generic[DataType]):

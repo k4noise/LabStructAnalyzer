@@ -124,21 +124,10 @@ async def parse_template(
 
     raw_jwt = authorize.get_raw_jwt()
     course_id = raw_jwt.get("course_id")
-
-    template_model = Template(
-        user_id=raw_jwt.get("sub"),
-        course_id=course_id,
-        name=file_name_parts[0],
-        is_draft=True,
-        elements=[TemplateElement(
-            properties=template_element,
-            element_type=template_element.get("type"),
-            order=i + 1
-        ) for i, template_element in enumerate(template_components)]
-    )
+    user_id = raw_jwt.get("sub")
 
     try:
-        await template_service.create(template_model)
+        template_model = await template_service.create(user_id, course_id, file_name_parts[0], template_components)
         return JSONResponse({"template_id": str(template_model.template_id)})
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
@@ -271,7 +260,14 @@ async def get_template(
     try:
         template = await template_service.get_by_id(template_id)
         if template:
-            return template
+            elements = template_service.build_hierarchy(template.elements)
+            return TemplateWithElementsDto.model_construct(
+                template_id=template_id,
+                name=template.name,
+                is_draft=template.is_draft,
+                max_score=template.max_score,
+                elements=elements
+            )
         return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при получении данных"},

@@ -1,4 +1,5 @@
 import uuid
+from functools import lru_cache
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -22,21 +23,32 @@ class TemplateService:
         self.session = session
         self.elements_service = TemplateElementService(session)
 
-    async def create(self, template: Template) -> Template:
+    async def create(self, author_id: str, course_id: str, name: str, template_components: list[dict]) -> Template:
         """
         Сохраняет шаблон вместе с элементами в БД.
 
         Args:
-            template: Подготовленный к сохранению шаблон
+            author_id: id пользователя, создающего шаблон
+            course_id: id курса, для которого создается шаблон
+            name: Имя шаблона
+            template_components: Массив преобразованных парсером элементов с примененной структурой
 
         Returns:
             Модель шаблона после сохранения с актуальными данными
         """
+        template = Template(
+            user_id=author_id,
+            course_id=course_id,
+            name=name,
+            is_draft=True,
+            elements=self.elements_service.bulk_create_elements(template_components, None)
+        )
         self.session.add(template)
         await self.session.commit()
         await self.session.refresh(template)
         return template
 
+    @lru_cache
     async def get_by_id(self, template_id: uuid.UUID) -> Optional[Template]:
         """
         Возвращает шаблон по ID.
@@ -47,7 +59,8 @@ class TemplateService:
         Returns:
             Модель шаблона, если шаблон с переданным id существует, иначе None
         """
-        return await self.session.get(Template, template_id)
+        template = await self.session.get(Template, template_id)
+        return template
 
     async def update(self, data_to_modify: TemplateToModify):
         """
@@ -108,6 +121,32 @@ class TemplateService:
         result = await self.session.exec(statement)
         return result.unique().all()
 
+    def build_hierarchy(self, elements: list[TemplateElement]):
+        """
+        Строит иерархическую структуру элементов из плоского списка.
+
+        Args:
+            elements (list[TemplateElement]): Список элементов.
+
+        Returns:
+            list[dict]: Иерархическая структура элементов.
+        """
+        def build_subtree(parent_id):
+            subtree = []
+            for element in elements:
+                if element.parent_element_id == parent_id:
+                    data = build_subtree(element.element_id)
+                    properties = element.properties.copy()
+                    if data:
+                        properties["data"] = data
+                    subtree.append({
+                        "type": element.element_type,
+                        "id": element.element_id,
+                        "properties": properties
+                    })
+            return subtree
+
+        return build_subtree(None)
 
 class TemplateElementService:
     """
@@ -116,6 +155,52 @@ class TemplateElementService:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    def bulk_create_elements(self, components: list[dict], parent_id=None):
+        """
+        Массово создает модели элементов из списка структурных компонент парсера, в том числе обрабатывает вложенные элементы.
+        Модели создаются без template_id для одновременного сохранения внутри модели Template
+
+        Args:
+            components: Список структурных компонент
+            parent_id: id родительского элемента, для элементов первого уровня вложенности должен быть None
+
+        Returns:
+            Массив моделей элементов
+        """
+
+        elements = []
+        i = 1
+        for component in components:
+            if isinstance(component, list):
+                child_elements = self.bulk_create_elements(
+                    component,
+                    parent_id
+                )
+                elements.extend(child_elements)
+                continue
+
+            data = None
+            if "data" in component and isinstance(component["data"], list):
+                data = component["data"]
+                del component["data"]
+
+            element = TemplateElement(
+                properties=component,
+                element_type=component.get("type"),
+                order=i,
+                parent_element_id=parent_id
+            )
+            elements.append(element)
+            i += 1
+
+            if data:
+                child_elements = self.bulk_create_elements(
+                    data,
+                    element.element_id
+                )
+                elements.extend(child_elements)
+        return elements
 
     async def bulk_update_properties(self, elements_to_update: list[TemplateElementDto]):
         """
@@ -141,7 +226,10 @@ class TemplateElementService:
             if template_element:
                 await self.session.delete(template_element)
 
-    async def get_elements_with_files(self, template_id: uuid.UUID):
+    async def remove_all_files_from_data(self, template_id: uuid.UUID):
+        """
+        Для всех элементов шаблона находит те, которые имеют сохраненные файлы на диске и удаляет их
+        """
         image_elements: list[TemplateElement] = await self.session.exec(
             select(TemplateElement).where(
                 TemplateElement.template_id == template_id,

@@ -29,6 +29,10 @@
     {
       "type": "cell",
       "contentType": "cell"
+    },
+    {
+      "type": "row",
+      "contentType": "row"
     }
   ],
   "composite": [
@@ -54,7 +58,7 @@
         }
       ]
     },
-     {
+    {
       "type": "warning",
       "data": [
         {

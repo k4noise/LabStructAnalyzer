@@ -1,10 +1,8 @@
 import uuid
+from typing import Optional
 
 from sqlalchemy import Index, Column, JSON
 from sqlmodel import SQLModel, Field
-
-
-
 
 
 class TemplateElement(SQLModel, table=True):
@@ -15,8 +13,8 @@ class TemplateElement(SQLModel, table=True):
     element_type: str = Field(max_length=255)
     order: int
     properties: dict = Field(sa_column=Column(JSON))
+    parent_element_id: Optional[uuid.UUID] = None
 
     __table_args__ = (
         Index("template_element_templates_id_order_idx", "template_id", "order"),
     )
-

@@ -37,7 +37,7 @@ app.add_exception_handler(AgsNotSupportedException, no_ags_service_access)
 
 app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')
-app.include_router(template_router, prefix='/api/v1/template')
+app.include_router(template_router, prefix='/api/v1/templates')
 app.include_router(users_router, prefix='/api/v1/users')
 app.include_router(courses_router, prefix='/api/v1/courses')
 app.include_router(file_router)
