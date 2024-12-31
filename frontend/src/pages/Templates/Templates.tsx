@@ -61,7 +61,7 @@ const Templates = () => {
     const template = formData.get("template");
     if (template && template["name"] == "") return;
     try {
-      const { data } = await api.post("/api/v1/template", formData);
+      const { data } = await api.post("/api/v1/templates", formData);
       setErrorInUpload(null);
       navigate(`/template/${data.template_id}`);
     } catch (error) {

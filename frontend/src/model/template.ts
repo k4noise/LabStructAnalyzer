@@ -11,8 +11,8 @@ export interface TemplateModel {
 }
 
 export interface TemplateElementModel {
-  element_id: string;
-  element_type: string;
+  id: string;
+  type: string;
   properties: TemplateElement;
 }
 
@@ -27,10 +27,10 @@ export interface TemplateElement {
    */
   type: string;
   /**
-   * Данные, содержащиеся в элементе. Может быть строкой, массивом элементов или массивом массивов элементов.
-   * @type {string | TemplateElement[] | TemplateElement[][]}
+   * Данные, содержащиеся в элементе. Может быть строкой или массивом элементов .
+   * @type {string | TemplateElement[]}
    */
-  data: string | TemplateElement[] | TemplateElement[][];
+  data: string | TemplateElement[];
   /**
    * Тип содержимого элемента. Например, "text", "image", "table" и т.д.
    * @type {string}
@@ -59,7 +59,6 @@ export interface TemplateElement {
 /**
  * Интерфейс, представляющий текстовый элемент.
  * @interface TextElement
- * @extends {TemplateElement}
  */
 export interface TextElement extends TemplateElement {
   /**
@@ -82,7 +81,6 @@ export interface TextElement extends TemplateElement {
 /**
  * Интерфейс, представляющий элемент изображения.
  * @interface ImageElement
- * @extends {TemplateElement}
  */
 export interface ImageElement extends TemplateElement {
   /**
@@ -105,7 +103,6 @@ export interface ImageElement extends TemplateElement {
 /**
  * Интерфейс, представляющий элемент заголовка.
  * @interface HeaderElement
- * @extends {TemplateElement}
  */
 export interface HeaderElement extends TemplateElement {
   /**
@@ -133,7 +130,6 @@ export interface HeaderElement extends TemplateElement {
 /**
  * Интерфейс, представляющий элемент вопроса.
  * @interface QuestionElement
- * @extends {TextElement}
  */
 export interface QuestionElement extends TextElement {
   /**
@@ -160,9 +156,9 @@ export interface QuestionElement extends TextElement {
 
 /**
  * Интерфейс, представляющий элемент ответа.
- * @interface AnswerElement
+ * @interface AnswerElement {
  */
-export interface AnswerElement {
+interface AnswerElement {
   /**
    * Тип элемента - "answer".
    * @type {"answer"}
@@ -182,9 +178,25 @@ export interface AnswerElement {
 }
 
 /**
+ * Интерфейс, представляющий элемент строки таблицы.
+ * @interface RowElement
+ */
+export interface RowElement extends TemplateElement {
+  /**
+   * Тип элемента - "row".
+   * @type {"row"}
+   */
+  type: "row";
+  /**
+   * Содержимое строки (массив ячеек).
+   * @type {CellElement[]}
+   */
+  data: CellElement[];
+}
+
+/**
  * Интерфейс, представляющий элемент ячейки таблицы.
  * @interface CellElement
- * @extends {TemplateElement}
  */
 export interface CellElement extends TemplateElement {
   /**
@@ -220,7 +232,6 @@ export interface CellElement extends TemplateElement {
 /**
  * Интерфейс, представляющий элемент таблицы.
  * @interface TableElement
- * @extends {TemplateElement}
  */
 export interface TableElement extends TemplateElement {
   /**
@@ -235,15 +246,14 @@ export interface TableElement extends TemplateElement {
   contentType: "table";
   /**
    * Данные таблицы (двумерный массив ячеек).
-   * @type {CellElement[][]}
+   * @type {RowElement[]}
    */
-  data: CellElement[][];
+  data: RowElement[];
 }
 
 /**
  * Интерфейс, представляющий составной элемент.
  * @interface CompositeElement
- * @extends {TemplateElement}
  */
 export interface CompositeElement extends TemplateElement {
   /**

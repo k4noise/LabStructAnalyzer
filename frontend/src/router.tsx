@@ -44,7 +44,7 @@ const router = createBrowserRouter([
         path: "/template/:id",
         element: <Template />,
         loader: async ({ params }) =>
-          await api.get(`/api/v1/template/${params.id}`),
+          await api.get(`/api/v1/templates/${params.id}`),
       },
       {
         path: "*",

@@ -1,6 +1,10 @@
 import React from "react";
-import { TemplateModel, TemplateElement } from "../../model/template";
-import TextQuestionComponent from "../../components/Template/TextQuestionComponent";
+import {
+  TemplateModel,
+  TemplateElement,
+  TemplateElementModel,
+} from "../../model/template";
+import TextComponent from "../../components/Template/TextComponent";
 import ImageComponent from "../../components/Template/ImageComponent";
 import HeaderComponent from "../../components/Template/HeaderComponent";
 import TableComponent from "../../components/Template/TableComponent";
@@ -8,6 +12,7 @@ import { getMarginLeftStyle } from "../../utils/templateStyle";
 import AnswerComponent from "../../components/Template/AnswerComponent";
 import { useLoaderData } from "react-router";
 import BackButtonComponent from "../../components/BackButtonComponent";
+import QuestionAnswerComponent from "../../components/Template/QuestionAnswerComponent";
 
 /**
  * Карта соответствий типов элементов и компонентов для рендеринга.
@@ -16,11 +21,12 @@ import BackButtonComponent from "../../components/BackButtonComponent";
  * @type {Record<string, React.FC<any>>}
  */
 const componentMap: Record<string, React.FC<{ element: TemplateElement }>> = {
-  text: TextQuestionComponent,
+  text: TextComponent,
   image: ImageComponent,
   header: HeaderComponent,
-  question: TextQuestionComponent,
+  question: QuestionAnswerComponent,
   table: TableComponent,
+  answer: AnswerComponent,
 };
 
 /**
@@ -47,12 +53,7 @@ const Template: React.FC = () => {
           className="w-20 mb-4 ml-3 bg-transparent border-b focus-visible:outline-none border-zinc-950 dark:border-zinc-200"
         />
       </p>
-      {template?.elements.map((element) => (
-        <React.Fragment key={element.element_id}>
-          {renderElement(element.properties)}
-          {element.element_type === "question" && <AnswerComponent />}
-        </React.Fragment>
-      ))}
+      {template?.elements.map((element) => renderElement(element))}
       {/* Ни в коем случае не удаляйте этот элемент, так как не будут сгенерированы нужные классы отступов и размеров заголовков*/}
       <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36 ml-40 text-3xl text-2xl"></span>
     </div>
@@ -64,20 +65,22 @@ const Template: React.FC = () => {
  *
  * @param {TemplateElement} element - Элемент шаблона для рендеринга.
  */
-const renderElement = (element: TemplateElement): React.ReactNode => {
+const renderElement = (element: TemplateElementModel): React.ReactNode => {
   const Component = componentMap[element.type] || null;
   if (Component) {
-    return <Component element={element} />;
+    return <Component element={element.properties} />;
   }
 
-  if (Array.isArray(element.data)) {
+  if (Array.isArray(element.properties.data)) {
     return (
-      <div className={`my-5 ${getMarginLeftStyle(element.nestingLevel ?? 1)}`}>
-        {element.data.map((childElement, index) => (
-          <React.Fragment key={index}>
-            {renderElement(childElement)}
-          </React.Fragment>
-        ))}
+      <div
+        className={`my-5 ${getMarginLeftStyle(
+          element.properties.nestingLevel ?? 1
+        )}`}
+      >
+        {element.properties.data.map((childElement) =>
+          renderElement(childElement)
+        )}
       </div>
     );
   }
