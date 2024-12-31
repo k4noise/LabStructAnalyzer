@@ -27,6 +27,11 @@
       "displayMode": "always"
     },
     {
+      "type": "answer",
+      "contentType": "text",
+      "displayMode": "always"
+    },
+    {
       "type": "cell",
       "contentType": "cell"
     },
