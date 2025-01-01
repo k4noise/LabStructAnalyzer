@@ -29,10 +29,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         // Использование axios вместо api - не ошибка, тут работа перехватчиков лишняя
-        await axios.post("/api/v1/jwt/refresh/", { withCredentials: true });
+        await axios.post("/api/v1/jwt/refresh", { withCredentials: true });
         return await api(originalRequest);
       } catch (refreshError) {
-        await axios.delete("/api/v1/jwt/logout/", { withCredentials: true });
+        await axios.delete("/api/v1/jwt/logout", { withCredentials: true });
         window.location.href = "/";
       }
     }

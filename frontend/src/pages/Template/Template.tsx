@@ -1,9 +1,5 @@
 import React from "react";
-import {
-  TemplateModel,
-  TemplateElement,
-  TemplateElementModel,
-} from "../../model/template";
+import { TemplateModel, TemplateElementModel } from "../../model/template";
 import TextComponent from "../../components/Template/TextComponent";
 import ImageComponent from "../../components/Template/ImageComponent";
 import HeaderComponent from "../../components/Template/HeaderComponent";
@@ -20,7 +16,10 @@ import QuestionAnswerComponent from "../../components/Template/QuestionAnswerCom
  * @constant
  * @type {Record<string, React.FC<any>>}
  */
-const componentMap: Record<string, React.FC<{ element: TemplateElement }>> = {
+const componentMap: Record<
+  string,
+  React.FC<{ element: TemplateElementModel }>
+> = {
   text: TextComponent,
   image: ImageComponent,
   header: HeaderComponent,
@@ -66,17 +65,18 @@ const Template: React.FC = () => {
  * @param {TemplateElement} element - Элемент шаблона для рендеринга.
  */
 const renderElement = (element: TemplateElementModel): React.ReactNode => {
-  const Component = componentMap[element.type] || null;
+  const Component = componentMap[element.element_type] || null;
   if (Component) {
-    return <Component element={element.properties} />;
+    return <Component element={element} key={element.element_id} />;
   }
 
   if (Array.isArray(element.properties.data)) {
     return (
       <div
         className={`my-5 ${getMarginLeftStyle(
-          element.properties.nestingLevel ?? 1
+          element.properties.nestingLevel
         )}`}
+        key={element.element_id}
       >
         {element.properties.data.map((childElement) =>
           renderElement(childElement)

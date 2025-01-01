@@ -17,11 +17,11 @@ interface TextBlockProps {
  * @param {TextBlockProps} props - Свойства компонента.
  */
 const TextComponent: React.FC<TextBlockProps> = ({ element }) => (
-  <p className={`mb-3 ${getMarginLeftStyle(element.nestingLevel)}`}>
-    {element.numberingBulletText && (
-      <span>{element.numberingBulletText + " "}</span>
+  <p className={`mb-3 ${getMarginLeftStyle(element.properties.nestingLevel)}`}>
+    {element.properties?.numberingBulletText && (
+      <span>{element.properties.numberingBulletText + " "}</span>
     )}
-    {element.data}
+    {element.properties.data}
   </p>
 );
 

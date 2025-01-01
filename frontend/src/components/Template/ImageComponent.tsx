@@ -16,7 +16,7 @@ interface ImageComponentProps {
  * @param {ImageComponentProps} props - Свойства компонента.
  */
 const ImageComponent: React.FC<ImageComponentProps> = ({ element }) => (
-  <img src={element.data} alt="" className="mx-auto" />
+  <img src={element.properties.data} className="mx-auto" />
 );
 
 export default ImageComponent;

@@ -17,17 +17,22 @@ interface HeaderComponentProps {
  * @param {HeaderComponentProps} props - Свойства компонента.
  */
 const HeaderComponent: React.FC<HeaderComponentProps> = ({ element }) => {
-  const Tag = `h${element.headerLevel}` as keyof JSX.IntrinsicElements;
-  const numberingText = element.numberingBulletText;
+  const Tag =
+    `h${element.properties.headerLevel}` as keyof JSX.IntrinsicElements;
+  const numberingText = element.properties.numberingBulletText;
   return (
     <Tag
       className={`font-medium mb-5 ${getMarginLeftStyle(
-        element.nestingLevel
+        element.properties.nestingLevel
       )} ${
-        4 - element.headerLevel > 0 ? `text-${4 - element.headerLevel}xl` : ""
+        4 - element.properties.headerLevel > 0
+          ? `text-${4 - element.properties.headerLevel}xl`
+          : ""
       }`}
     >
-      {numberingText ? `${numberingText} ${element.data}` : element.data}
+      {numberingText
+        ? `${numberingText} ${element.properties.data}`
+        : element.properties.data}
     </Tag>
   );
 };

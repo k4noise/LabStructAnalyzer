@@ -20,15 +20,19 @@ interface QuestionAnswerProps {
 const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
   element,
 }) => {
-  const [question, answer] = element.data;
+  const [question, answer] = element.properties.data;
   return (
-    <div className={`italic my-3 ${getMarginLeftStyle(element.nestingLevel)}`}>
+    <div
+      className={`italic my-3 ${getMarginLeftStyle(
+        element.properties.nestingLevel
+      )}`}
+    >
       <p>
-        {element.numberingBulletText && (
-          <span>{element.numberingBulletText + " "}</span>
+        {question.properties.numberingBulletText && (
+          <span>{question.properties.numberingBulletText + " "}</span>
         )}
         {question.properties.data}
-        <AnswerComponent />
+        <AnswerComponent element={answer} />
       </p>
     </div>
   );
