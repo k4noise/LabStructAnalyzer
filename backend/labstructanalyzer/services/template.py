@@ -140,8 +140,8 @@ class TemplateService:
                     if data:
                         properties["data"] = data
                     subtree.append({
-                        "type": element.element_type,
-                        "id": element.element_id,
+                        "element_type": element.element_type,
+                        "element_id": element.element_id,
                         "properties": properties
                     })
             return subtree

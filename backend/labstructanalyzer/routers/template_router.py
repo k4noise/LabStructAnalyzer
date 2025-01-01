@@ -261,7 +261,7 @@ async def get_template(
         template = await template_service.get_by_id(template_id)
         if template:
             elements = template_service.build_hierarchy(template.elements)
-            return TemplateWithElementsDto.model_construct(
+            return TemplateWithElementsDto(
                 template_id=template_id,
                 name=template.name,
                 is_draft=template.is_draft,

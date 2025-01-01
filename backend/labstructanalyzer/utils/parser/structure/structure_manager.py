@@ -1,3 +1,4 @@
+import copy
 from collections import deque
 from typing import Generator, Optional
 from labstructanalyzer.utils.parser.base_definitions import IParserElement
@@ -72,7 +73,13 @@ class StructureManager:
                             chunk.popleft()
                         break
                 else:
-                    structured_element = self.recursive_apply_structure(chunk.popleft())
+                    current_element = chunk.popleft()
+                    next_element = chunk[0] if len(chunk) else None
+                    if current_element.structure_type == "text" and self.is_only_answer_mark(next_element):
+                        current_element.structure_type = "question"
+                        current_element.data += next_element.data
+                        chunk.popleft()
+                    structured_element = self.recursive_apply_structure(current_element)
                     yield structured_element
 
         while chunk:
@@ -87,16 +94,18 @@ class StructureManager:
         Returns:
             Словарь, представляющий структурированный элемент
         """
-        if not hasattr(element, "structure_type") or element.structure_type is None:
+        structure_type = element.structure_type if hasattr(element, "structure_type") else None
+
+        if structure_type is None:
             for base in self.base.values():
                 if base.validate(element):
                     element.structure_type = base.structure_type
                     break
 
-        if element.structure_type == "question":
+        if structure_type == "question":
             element = self.extract_question_from_text(element)
 
-        element_dict = self.base[element.structure_type].apply_structure(element)
+        element_dict = self.base[structure_type].apply_structure(element) if structure_type else element.to_dict()
         element_dict["data"] = self.recursive_apply_structure_in_child(element.data)
         return element_dict
 
@@ -162,6 +171,8 @@ class StructureManager:
         Returns:
             True, если элемент состоит только из метки ответа, иначе False
         """
+        if element.element_type.value != 'text':
+            return False
         return element.data.find(self.answer_delimiter) == 0
 
     def extract_question_from_text(self, element: IParserElement):
@@ -177,9 +188,8 @@ class StructureManager:
         question_text_component = element.data[:index].strip()
         answer_template = self.extract_answer_template(element)
 
-        text_component = element
+        text_component = copy.deepcopy(element)
         text_component.data = question_text_component
-        text_component.nesting_level = None
         text_component.structure_type = "text"
 
         answer_component = self.create_answer_element(None, answer_template)
