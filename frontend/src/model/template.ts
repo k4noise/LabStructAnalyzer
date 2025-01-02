@@ -1,3 +1,5 @@
+import { AnswerEdit } from "./answer";
+
 /**
  * Интерфейс, представляющий элемент шаблона.
  * @interface Template
@@ -179,23 +181,24 @@ export interface QuestionElement extends TemplateElementModel {
  */
 export interface AnswerElement extends TemplateElementModel {
   element_type: "answer";
-  properties: TemplateElement & {
-    /**
-     * Тип элемента - "answer".
-     * @type {"answer"}
-     */
-    type: "answer";
-    /**
-     * Тип содержимого - "answer".
-     * @type {"answer"}
-     */
-    contentType: "answer";
-    /**
-     * Тип данных - string.
-     * @type {string}
-     */
-    data: string;
-  };
+  properties: TemplateElement &
+    AnswerEdit & {
+      /**
+       * Тип элемента - "answer".
+       * @type {"answer"}
+       */
+      type: "answer";
+      /**
+       * Тип содержимого - "answer".
+       * @type {"answer"}
+       */
+      contentType: "answer";
+      /**
+       * Тип данных - string.
+       * @type {string}
+       */
+      data: string;
+    };
 }
 
 /**

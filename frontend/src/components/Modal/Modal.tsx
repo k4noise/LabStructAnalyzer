@@ -41,8 +41,15 @@ const Modal = ({ isOpen, onClose, children }) => {
 
     document.addEventListener("keydown", handleKeyDown);
 
+    document.body.style.paddingRight = `
+      ${window.innerWidth - document.documentElement.clientWidth}px`;
+    document.body.style.overflow = "hidden";
+
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+
+      document.body.style.overflow = "visible";
+      document.body.style.paddingRight = "0";
     };
   }, [isOpen, onClose]);
 
@@ -50,7 +57,7 @@ const Modal = ({ isOpen, onClose, children }) => {
 
   return (
     <div
-      className="dark:bg-zinc-950 bg-zinc-200 p-7 absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 border-solid rounded-2xl border-2 dark:border-zinc-200 border-zinc-950"
+      className="dark:bg-zinc-950 bg-zinc-200 p-7 fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 border-solid rounded-2xl border-2 dark:border-zinc-200 border-zinc-950"
       ref={modalRef}
     >
       <button
