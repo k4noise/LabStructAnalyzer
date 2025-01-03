@@ -1,17 +1,11 @@
 import json
 import os
 import uuid
-from urllib.parse import urlparse
-
-import requests
 
 from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
 from fastapi_another_jwt_auth import AuthJWT
-from pylti1p3.lineitem import LineItem
-from pylti1p3.service_connector import REQUESTS_USER_AGENT
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette import status
 from starlette.requests import Request
@@ -21,8 +15,6 @@ from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
 from labstructanalyzer.core.database import get_session
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.models.dto.template import TemplateDto, TemplateWithElementsDto
-from labstructanalyzer.models.template import Template
-from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.ags import AgsService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
@@ -30,7 +22,6 @@ from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLau
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.parser.docx import DocxParser
 from labstructanalyzer.services.template import TemplateService
-from labstructanalyzer.utils.file_utils import FileUtils
 from labstructanalyzer.utils.rbac_decorator import roles_required
 
 
@@ -135,7 +126,7 @@ async def parse_template(
 
 
 @router.patch(
-    "",
+    "/{template_id}",
     summary="Сохранить новые данные шаблона",
     description="Обновляет существующие данные, заменяя их новыми пользовательскими данными",
     tags=["Template"],
@@ -193,12 +184,13 @@ async def parse_template(
 @roles_required(["teacher"])
 async def save_modified_template(
         request: Request,
+        template_id: uuid.UUID,
         modified_template: TemplateToModify,
         authorize: AuthJWT = Depends(),
         template_service: TemplateService = Depends(get_template_service)
 ):
     try:
-        template = await template_service.update(modified_template)
+        template = await template_service.update(template_id, modified_template)
 
         if not modified_template.is_draft:
             launch_data_storage = FastAPICacheDataStorage(cache)

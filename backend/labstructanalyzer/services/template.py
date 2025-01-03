@@ -1,3 +1,4 @@
+import copy
 import uuid
 from functools import lru_cache
 from typing import List, Optional
@@ -7,7 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from labstructanalyzer.core.exceptions import TemplateNotFoundException
-from labstructanalyzer.models.dto.template_element import TemplateElementDto
+from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
@@ -62,33 +63,30 @@ class TemplateService:
         template = await self.session.get(Template, template_id)
         return template
 
-    async def update(self, data_to_modify: TemplateToModify):
+    async def update(self, template_id: uuid.UUID, data_to_modify: TemplateToModify):
         """
         Обновляет данные сохраненного шаблона - изменяет только те параметры, которые были переданы пользователем.
 
         Args:
+            template_id: id шаблона
             data_to_modify: Новые данные шаблона
 
         Raises:
             TemplateNotFoundError: Шаблон не найден
         """
-        template = self.get_by_id(data_to_modify.template_id)
+        template = await self.get_by_id(template_id)
         if template is None:
-            raise TemplateNotFoundException(data_to_modify.template_id)
+            raise TemplateNotFoundException(template_id)
 
-        if data_to_modify.name is not None:
-            template.name = data_to_modify.name
-
-        if data_to_modify.max_score is not None:
-            template.max_score = data_to_modify.max_score
-
+        template.name = data_to_modify.name
+        template.max_score = data_to_modify.max_score
         template.is_draft = data_to_modify.is_draft
 
         if data_to_modify.updated_elements:
-            await self.elements_service.bulk_update_properties(data_to_modify.updated_elements)
+            await self.elements_service.bulk_update_properties(template_id, data_to_modify.updated_elements)
 
         if data_to_modify.deleted_elements:
-            await self.elements_service.bulk_delete_elements(data_to_modify.deleted_elements)
+            await self.elements_service.bulk_delete_elements(template_id, data_to_modify.deleted_elements)
 
         await self.session.commit()
         await self.session.refresh(template)
@@ -105,7 +103,7 @@ class TemplateService:
         if template is None:
             raise TemplateNotFoundException(template_id)
 
-        self.elements_service.remove_files_by_elements(template.template_id)
+        await self.elements_service.remove_all_files_from_data(template.template_id)
         await self.session.delete(template)
         await self.session.commit()
 
@@ -202,29 +200,39 @@ class TemplateElementService:
                 elements.extend(child_elements)
         return elements
 
-    async def bulk_update_properties(self, elements_to_update: list[TemplateElementDto]):
+    async def bulk_update_properties(self, template_id: uuid.UUID, elements_to_update: list[BaseTemplateElementDto]):
         """
-        Массово обновляет элементы, производя частичную замену свойств
+        Массово обновляет элементы, относящиеся к определенному шаблону, производя частичную замену свойств.
+        Элементы из другого шаблона или несуществующие будут проигнорированы.
 
         Args:
+            template_id: id шаблона
             elements_to_update: Данные элементов с обновленными свойствами
         """
         for updated_element in elements_to_update:
             template_element = await self.session.get(TemplateElement, updated_element.element_id)
-            if template_element:
-                template_element.properties.update(updated_element.properties)
+            if template_element and template_element.template_id == template_id:
+                properties = copy.deepcopy(template_element.properties)
+                properties.update(updated_element.properties)
+                template_element.properties = properties
 
-    async def bulk_delete_elements(self, elements_to_remove: list[TemplateElementDto]):
+        await self.session.commit()
+
+    async def bulk_delete_elements(self, template_id: uuid.UUID, elements_to_remove: list[TemplateElementDto]):
         """
-        Массово удаляет элементы
+        Массово удаляет элементы, относящиеся к определенному шаблону.
+        Элементы из другого шаблона или несуществующие будут проигнорированы.
 
         Args:
+            template_id: id шаблона
             elements_to_remove: Элементы к удалению
         """
         for updated_element in elements_to_remove:
             template_element = await self.session.get(TemplateElement, updated_element.element_id)
-            if template_element:
+            if template_element and template_element.template_id == template_id:
                 await self.session.delete(template_element)
+
+        await self.session.commit()
 
     async def remove_all_files_from_data(self, template_id: uuid.UUID):
         """
