@@ -1,21 +1,23 @@
 import React, { useState } from "react";
+import { TemplateModel, UpdateTemplateModel } from "../../model/template";
 import {
-  TemplateModel,
   TemplateElementModel,
   AnswerElement,
-} from "../../model/template";
+} from "../../model/templateElement";
 import TextComponent from "../../components/Template/TextComponent";
 import ImageComponent from "../../components/Template/ImageComponent";
 import HeaderComponent from "../../components/Template/HeaderComponent";
 import TableComponent from "../../components/Template/TableComponent";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 import AnswerComponent from "../../components/Template/AnswerComponent";
-import { useLoaderData } from "react-router";
+import { useLoaderData, useNavigate } from "react-router";
 import BackButtonComponent from "../../components/BackButtonComponent";
 import QuestionAnswerComponent from "../../components/Template/QuestionAnswerComponent";
 import Modal from "../../components/Modal/Modal";
 import AnswerContext from "../../context/AnswerContext";
 import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
+import { FieldValues, useForm } from "react-hook-form";
+import { api, extractMessage } from "../../utils/sendRequest";
 
 /**
  * Карта соответствий типов элементов и компонентов для рендеринга.
@@ -39,10 +41,18 @@ const componentMap: Record<
  * Основной компонент шаблона, отображающий различные элементы.
  */
 const Template: React.FC = () => {
+  const navigate = useNavigate();
   /**
    * Предварительно загруженные данные шаблона
    */
   const { data: template } = useLoaderData<{ data: TemplateModel }>();
+
+  const [error, setError] = useState<string>(null);
+
+  const handleError = (error) => {
+    setError(extractMessage(error.response) || error.message);
+    setIsOpen(true);
+  };
   /**
    * Состояние выбранного элемента ответа для редактирования свойств
    * @type {AnswerElement | null}
@@ -51,7 +61,9 @@ const Template: React.FC = () => {
     null
   );
 
-  const [updatedElements, setUpdatedElements] = useState({});
+  const [updatedElements, setUpdatedElements] = useState<{
+    [id: string]: Partial<TemplateElementModel>;
+  }>({});
   const updateElements = (
     id: string,
     updatedProperties: Partial<AnswerElement["properties"]>
@@ -61,10 +73,13 @@ const Template: React.FC = () => {
       ...prevItems,
       [id]: {
         ...prevItems[id],
+        element_id: id,
         properties: { ...prevItems[id]?.properties, ...updatedProperties },
       },
     }));
   };
+
+  const { register, handleSubmit } = useForm();
 
   /**
    * Состояние модального окна редактирования свойств ответа (открыто/закрыто)
@@ -86,11 +101,13 @@ const Template: React.FC = () => {
    */
   const handleClose = () => {
     setIsOpen(false);
+    setError(null);
+    setSelectedElement(null);
   };
 
   const handleSelectAnswer = (element: AnswerElement) => {
     const updatedElement = updatedElements[element.element_id];
-    setSelectedElement(updatedElement ?? element);
+    setSelectedElement((updatedElement as AnswerElement) ?? element);
     handleOpen();
   };
 
@@ -99,15 +116,43 @@ const Template: React.FC = () => {
     setUpdatedElements({});
   };
 
+  const handleSaveTemplate = async (data: FieldValues) => {
+    const templateWithUpdatedData: UpdateTemplateModel = {
+      is_draft: false,
+      name: data.name,
+      max_score: data.max_score,
+      updated_elements: Object.values(updatedElements),
+    };
+    try {
+      await api.patch(
+        `/api/v1/templates/${template.template_id}`,
+        templateWithUpdatedData
+      );
+      template.is_draft = false;
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/api/v1/templates/${template.template_id}`);
+      navigate("/templates");
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
   return (
     <>
-      <form onSubmit={(event) => event.preventDefault()} onReset={handleReset}>
+      <form onReset={handleReset} onSubmit={handleSubmit(handleSaveTemplate)}>
         <BackButtonComponent positionClasses="" />
         <input
           className="text-3xl font-medium text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
         focus-visible:outline-none focus-visible:border-zinc-950 dark:focus-visible:border-zinc-200"
           defaultValue={template.name}
+          {...register("name")}
         />
         <p className="opacity-60">
           Максимальное количество баллов:
@@ -116,6 +161,7 @@ const Template: React.FC = () => {
             min="0"
             defaultValue={template.max_score}
             className="w-20 mb-4 ml-3 bg-transparent border-b focus-visible:outline-none border-zinc-950 dark:border-zinc-200"
+            {...register("max_score")}
           />
         </p>
         <AnswerContext.Provider
@@ -124,6 +170,13 @@ const Template: React.FC = () => {
           {template?.elements.map((element) => renderElement(element))}
         </AnswerContext.Provider>
         <div className="flex justify-end gap-6 mt-10">
+          <button
+            className="px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
+            onClick={handleDelete}
+            type="button"
+          >
+            Удалить
+          </button>
           <button
             className="px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
             type="reset"
@@ -139,7 +192,22 @@ const Template: React.FC = () => {
         <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36 ml-40 text-3xl text-2xl"></span>
       </form>
       <Modal isOpen={isOpen} onClose={handleClose}>
-        <EditAnswerModal element={selectedElement} onSave={updateElements} />
+        <div className="w-80">
+          {error && (
+            <p>
+              Произошла ошибка:
+              <br />
+              <br />
+              {error}
+            </p>
+          )}
+          {!error && selectedElement && (
+            <EditAnswerModal
+              element={selectedElement}
+              onSave={updateElements}
+            />
+          )}
+        </div>
       </Modal>
     </>
   );

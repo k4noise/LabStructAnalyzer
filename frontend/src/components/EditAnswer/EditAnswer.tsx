@@ -1,9 +1,9 @@
 import { AnswerElement, TemplateElementModel } from "../../model/template";
 import Textarea from "../Textarea/TextareaComponent";
-import * as zod from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldValues, useForm } from "react-hook-form";
 import { AnswerEdit } from "../../model/answer";
+import EditAnswerSchema from "./EditAnswerSchema";
 
 interface EditAnswerModalProps {
   element: AnswerElement | null;
@@ -12,24 +12,6 @@ interface EditAnswerModalProps {
     element: Partial<TemplateElementModel["properties"]>
   ) => void;
 }
-
-const MIN_POSSIBLE_ANSWER_WEIGHT = 0;
-const MAX_POSSIBLE_ANSWER_WEIGHT = 20;
-
-const EditAnswerSchema = zod.object({
-  customId: zod
-    .string()
-    .min(5, "Не менее 5 символов")
-    .refine(
-      (value) => /^[a-zA-Z\d_]+$/.test(value ?? ""),
-      "Идентификатор может состоять только из латинских букв, цифр и нижнего подчеркивания"
-    ),
-  weight: zod.coerce
-    .number()
-    .min(MIN_POSSIBLE_ANSWER_WEIGHT, "Вес не может быть меньше нуля")
-    .max(MAX_POSSIBLE_ANSWER_WEIGHT, "Вес не может быть более 20"),
-  simple: zod.boolean(),
-});
 
 const EditAnswer = ({
   element,
@@ -55,15 +37,15 @@ const EditAnswer = ({
         <Textarea
           className="ml-3 w-60 align-top bg-transparent border-b-2  border-zinc-950 dark:border-zinc-200 overflow-hidden"
           placeholder="Пользовательское имя"
-          value={element.properties?.customId ?? ""}
+          value={element?.properties?.customId ?? ""}
           minRowsCount={1}
           validationOptions={register("customId")}
         />
       </label>
       {errors.customId?.message && (
-        <p className="text-center mb-3 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent">
+        <span className="text-center mb-3 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent">
           {errors.customId?.message}
-        </p>
+        </span>
       )}
       <label className="block mb-3">
         Вес [0-20]:
@@ -82,11 +64,11 @@ const EditAnswer = ({
         </p>
       )}
       <label className="block mb-3">
-        Открытый:
+        Краткий ответ:
         <input
           type="checkbox"
           className="ml-3"
-          defaultChecked={!element?.properties.simple}
+          defaultChecked={element?.properties.simple}
           {...register("simple")}
         />
       </label>
