@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from tempfile import template
 
 from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
@@ -14,7 +15,8 @@ from starlette.responses import JSONResponse
 from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
 from labstructanalyzer.core.database import get_session
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
-from labstructanalyzer.models.dto.template import TemplateDto, TemplateWithElementsDto
+from labstructanalyzer.models.dto.template import TemplateDto, TemplateWithElementsDto, AllTemplatesDto, \
+    TemplateMinimalProperties
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.ags import AgsService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
@@ -199,12 +201,55 @@ async def save_modified_template(
                                                              tool_conf,
                                                              launch_data_storage=launch_data_storage)
             ags_service = AgsService(message_launch)
-            ags_service.create_lineitem(template)
+            ags_service.update_lineitem(template)
         return JSONResponse({"detail": "Шаблон обновлен успешно"})
 
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@router.get(
+    "/all",
+    response_model=AllTemplatesDto,
+    summary="Получить все доступные шаблоны",
+    description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками",
+    tags=["Template"],
+    responses={
+        200: {
+            "description": "Данные шаблонов",
+        },
+        401: {
+            "description": "Неавторизованный доступ.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        }
+    },
+)
+async def get_templates(request: Request,
+                        authorize: AuthJWT = Depends(),
+                        template_service: TemplateService = Depends(get_template_service)
+                        ):
+    authorize.jwt_required()
+    raw_jwt = authorize.get_raw_jwt()
+    course_id = raw_jwt.get("course_id")
+
+    launch_data_storage = FastAPICacheDataStorage(cache)
+    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+                                                     launch_data_storage=launch_data_storage)
+    course_name = message_launch.get_nrps() \
+        .get_context() \
+        .get("title")
+
+    templates_with_base_properties = await template_service.get_all_by_course(course_id)
+
+    return AllTemplatesDto(
+        teacher_interface="teacher" in raw_jwt.get("role"),
+        course_name=course_name,
+        templates=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in templates_with_base_properties]
+    )
 
 
 @router.get(
@@ -258,6 +303,7 @@ async def get_template(
                 name=template.name,
                 is_draft=template.is_draft,
                 max_score=template.max_score,
+                teacher_interface="teacher" in authorize.get_raw_jwt().get("role"),
                 elements=elements
             )
         return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)
@@ -346,30 +392,3 @@ async def remove_template(
         return JSONResponse({"detail": "Произошла ошибка при удалении данных"},
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-@router.get(
-    "",
-    response_model=list[TemplateDto],
-    summary="Получить все доступные шаблоны",
-    description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками",
-    tags=["Template"],
-    responses={
-        200: {
-            "description": "Данные шаблонов",
-        },
-        401: {
-            "description": "Неавторизованный доступ.",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Не авторизован"}
-                }
-            }
-        }
-    },
-)
-async def get_templates(authorize: AuthJWT = Depends(),
-                        template_service: TemplateService = Depends(get_template_service)
-                        ):
-    authorize.jwt_required()
-    course_id = authorize.get_raw_jwt().get("course_id")
-    return template_service.get_all_by_course(course_id)

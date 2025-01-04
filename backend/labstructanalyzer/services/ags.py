@@ -1,8 +1,6 @@
 import requests
-from pylti1p3.assignments_grades import AssignmentsGradesService
+from pylti1p3.exception import LtiException
 from pylti1p3.message_launch import MessageLaunch
-from starlette import status
-from starlette.responses import JSONResponse
 
 from pylti1p3.lineitem import LineItem
 from pylti1p3.service_connector import REQUESTS_USER_AGENT
@@ -22,20 +20,6 @@ class AgsService:
     def __init__(self, message_launch: MessageLaunch):
         self.message_launch = message_launch
 
-    def create_lineitem(self, template: Template):
-        """
-        Создает lineitem по шаблону с тэгом, равным id шаблона и именем, равным имени шаблона
-
-        Args:
-            template: Шаблон, не являющийся черновиком. Создание линии для черновика не приведет к ошибке
-        """
-        if not self.message_launch.has_ags():
-            raise AgsNotSupportedException
-
-        ags = self.message_launch.get_ags()
-        lineitem = self._create_lineitem_object(template)
-        return ags.find_or_create_lineitem(lineitem)
-
     def update_lineitem(self, template: Template):
         """
         Обновляет существующий lineitem. Если lineitem не существует, то будет создан новый.
@@ -46,13 +30,16 @@ class AgsService:
         ags = self.message_launch.get_ags()
         existing_lineitem = ags.find_lineitem_by_tag(str(template.template_id))
         if not existing_lineitem:
-            self.create_lineitem(template)
+            lineitem = self._create_lineitem_object(template)
+            ags.find_or_create_lineitem(lineitem)
+            return
 
         updated_lineitem = self._create_lineitem_object(template)
-        updated_lineitem.set_id(existing_lineitem.get_id())
 
         request_headers = self._create_ags_request_headers()
-        requests.Session().put(updated_lineitem.get_id(), data=updated_lineitem.get_value(), headers=request_headers)
+        response = requests.Session().put(existing_lineitem.get_id(), data=updated_lineitem.get_value(), headers=request_headers)
+        if response.status_code != 200:
+            raise LtiException("Ошибка Moodle")
 
     def delete_lineitem(self, template_id):
         """

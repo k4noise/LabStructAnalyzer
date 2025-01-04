@@ -15,7 +15,7 @@ class Template(SQLModel, table=True):
     user_id: str = Field(max_length=255)
     name: str = Field(max_length=255)
     is_draft: bool = Field(default=True)
-    max_score: int = Field(default=20)
+    max_score: int = Field(default=30)
 
     created_at: datetime = Field(
         default=None,

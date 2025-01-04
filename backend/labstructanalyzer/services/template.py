@@ -107,12 +107,12 @@ class TemplateService:
         await self.session.delete(template)
         await self.session.commit()
 
-    async def get_all_by_course(self, course_id: str) -> List[Template]:
+    async def get_all_by_course(self, course_id: str):
         """
-        Возвращает шаблоны по course_id, которые не являются черновиками.
+        Возвращает id и имена всех шаблонов по course_id, которые не являются черновиками.
         Может вернуть пустой лист
         """
-        statement = select(Template).where(
+        statement = select(Template.template_id, Template.name).where(
             Template.course_id == course_id,
             Template.is_draft == False
         )
