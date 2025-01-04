@@ -63,8 +63,9 @@ class FileUtils:
         Raises:
             IOError Файл не найден
         """
+        if filename.startswith('/'):
+            filename = filename[1:]
         file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
-
         if os.path.isfile(file_path):
             os.remove(file_path)
         else:

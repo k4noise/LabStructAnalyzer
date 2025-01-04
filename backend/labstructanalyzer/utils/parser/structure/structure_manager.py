@@ -1,7 +1,8 @@
-import uuid
+import copy
 from collections import deque
-from typing import Generator
+from typing import Generator, Optional
 from labstructanalyzer.utils.parser.base_definitions import IParserElement
+from labstructanalyzer.utils.parser.common_elements import QuestionElement, AnswerElement
 from labstructanalyzer.utils.parser.structure.checkers import CheckerRegistry
 from labstructanalyzer.utils.parser.structure.structure_components import BaseStructureComponent, \
     CompositeStructureComponent
@@ -54,7 +55,7 @@ class StructureManager:
                 if base.validate(item):
                     item.structure_type = base.structure_type
                     if self.contain_answer_mark(item):
-                        item.structure_type = "QnA"
+                        item.structure_type = "question"
                     break
 
             chunk.append(item)
@@ -72,15 +73,13 @@ class StructureManager:
                             chunk.popleft()
                         break
                 else:
-                    structured_element = self.recursive_apply_structure(chunk.popleft())
-                    if structured_element.get("type") == "question":
-                        structured_element.pop("answer_template", None)
-                        yield structured_element
-                        yield self.create_answer_dict(structured_element.get("nestingLevel"),
-                                                      structured_element.get("answer_template"))
-                        continue
-                    elif chunk[0].structure_type == "QnA" and self.is_only_answer_mark(chunk[0]):
-                        structured_element["type"] = "question"
+                    current_element = chunk.popleft()
+                    next_element = chunk[0] if len(chunk) else None
+                    if current_element.structure_type == "text" and self.is_only_answer_mark(next_element):
+                        current_element.structure_type = "question"
+                        current_element.data += next_element.data
+                        chunk.popleft()
+                    structured_element = self.recursive_apply_structure(current_element)
                     yield structured_element
 
         while chunk:
@@ -95,29 +94,19 @@ class StructureManager:
         Returns:
             Словарь, представляющий структурированный элемент
         """
-        if not hasattr(element, "structure_type") or element.structure_type is None:
+        structure_type = element.structure_type if hasattr(element, "structure_type") else None
+
+        if structure_type is None:
             for base in self.base.values():
                 if base.validate(element):
                     element.structure_type = base.structure_type
                     break
 
-        if element.structure_type == "QnA":
-            question_text = self.extract_question_text(element)
-            answer_template = self.extract_answer_template(element)
+        if structure_type == "question":
+            element = self.extract_question_from_text(element)
 
-            if question_text:
-                element.structure_type = "question"
-                element.data = question_text
-                question_element = self.base["question"].apply_structure(element)
-                if answer_template:
-                    question_element["answer_template"] = answer_template
-                return question_element
-
-            return self.create_answer_dict(element.nesting_level, answer_template)
-
-        element_dict = self.base[element.structure_type].apply_structure(element)
+        element_dict = self.base[structure_type].apply_structure(element) if structure_type else element.to_dict()
         element_dict["data"] = self.recursive_apply_structure_in_child(element.data)
-
         return element_dict
 
     def recursive_apply_structure_in_child(self, element) -> dict | list[dict] | None:
@@ -137,25 +126,27 @@ class StructureManager:
 
         if self.contain_answer_mark(element):
             answer_template = self.extract_answer_template(element)
-            return self.create_answer_dict(element.nesting_level, answer_template)
+            return self.recursive_apply_structure(
+                self.create_answer_element(element.nesting_level, answer_template)
+            )
+
         return self.recursive_apply_structure(element)
 
-    def create_answer_dict(self, nesting_level: int, answer_template: str) -> dict:
-        """Создает словарь для элемента "Ответ"
+    def create_answer_element(self, nesting_level: Optional[int], answer_template: Optional[str]) -> AnswerElement:
+        """Создает элемент "Ответ"
 
         Args:
             nesting_level: Уровень вложенности родительского элемента
             answer_template: Шаблон для заполнения ответа
 
         Returns:
-            Словарь с данными элемента "Ответ"
+            Элемент "Ответ"
         """
-        answer_dict = {"type": "answer", "contentType": "answer", "id": uuid.uuid4().hex}
+        answer_element = AnswerElement(answer_template)
+        answer_element.structure_type = "answer"
         if nesting_level:
-            answer_dict["nestingLevel"] = nesting_level
-        if answer_template:
-            answer_dict["template"] = answer_template
-        return answer_dict
+            answer_element.nesting_level = nesting_level
+        return answer_element
 
     def contain_answer_mark(self, element: IParserElement) -> bool:
         """
@@ -180,20 +171,36 @@ class StructureManager:
         Returns:
             True, если элемент состоит только из метки ответа, иначе False
         """
+        if element.element_type.value != 'text':
+            return False
         return element.data.find(self.answer_delimiter) == 0
 
-    def extract_question_text(self, element: IParserElement):
-        """Извлекает текст вопроса из элемента
+    def extract_question_from_text(self, element: IParserElement):
+        """Извлекает вопрос и создает элемент ответа из текстового элемента
 
         Args:
             element: Объект IParserElement
 
         Returns:
-            Текст вопроса или None, если текст вопроса не найден
+            Элемент вопроса или None, если текст не содержит метки вопроса
         """
         index = element.data.find(self.answer_delimiter)
-        question_text = element.data[:index]
-        return question_text.strip() if question_text else None
+        question_text_component = element.data[:index].strip()
+        answer_template = self.extract_answer_template(element)
+
+        text_component = copy.deepcopy(element)
+        text_component.data = question_text_component
+        text_component.structure_type = "text"
+
+        answer_component = self.create_answer_element(None, answer_template)
+
+        question_element = QuestionElement(data=[
+            text_component,
+            answer_component
+        ])
+        question_element.structure_type = "question"
+        question_element.nesting_level = element.nesting_level
+        return question_element
 
     def extract_answer_template(self, element: IParserElement):
         """Извлекает шаблон ответа из элемента

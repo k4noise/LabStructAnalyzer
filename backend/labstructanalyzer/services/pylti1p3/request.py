@@ -28,7 +28,7 @@ class FastAPIRequest(Request):
         return self._request.session
 
     def is_secure(self) -> bool:
-        return True
+        return self._request.url.scheme == "https"
 
     def get_param(self, key):
         if self.body and self.body.get(key, [None]):
