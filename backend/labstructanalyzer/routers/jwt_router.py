@@ -1,54 +1,89 @@
 from fastapi import APIRouter, Depends
 from fastapi_another_jwt_auth import AuthJWT
+from starlette.responses import JSONResponse
 
-from labstructanalyzer.configs.config import User, JWT_ACCESS_TOKEN_LIFETIME
+from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME
 
 router = APIRouter()
 
 
-@router.post("/token")
-async def get_jwt_pair(user: User, authorize: AuthJWT = Depends()):
-    """
-    Выдать пользователю связку токенов после проверки LTI-запроса
-
-    Args:
-        user: Данные пользователя (id, role) из Moodle
-        authorize: Объект для создания JWT токенов
-    """
-    access_token = authorize.create_access_token(subject=user.id, user_claims={"role": user.role})
-    refresh_token = authorize.create_refresh_token(subject=user.id, user_claims={"role": user.role})
-    authorize.set_access_cookies(access_token)
-    authorize.set_refresh_cookies(refresh_token)
-    return {"message": "Установлены новые токены"}
-
-
-@router.post("/refresh")
+@router.post(
+    "/refresh", tags=["JWT"],
+    summary="Обновление токена доступа JWT",
+    description="Позволяет обновить только access токен при наличии действительного refresh токена",
+    responses={
+        200: {
+            "description": "Токен доступа успешно обновлен",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Обновлен токен доступа"}
+                }
+            },
+        },
+        401: {
+            "description": "Не авторизован или refresh токен истек",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            },
+        },
+    },
+)
 async def refresh_access_token(authorize: AuthJWT = Depends()):
     """
-    Обновить только access токен
+    Обновить токен доступа
 
     Args:
-        authorize: Объект для создания JWT токенов
+        authorize: Объект создания и проверки JWT токенов
+
+    Returns:
+        JSONResponse: Сообщение о результате операции
     """
     authorize.jwt_refresh_token_required()
 
     current_user = authorize.get_jwt_subject()
-    role = authorize.get_raw_jwt().get("role")
+    raw_jwt = authorize.get_raw_jwt()
+    role = raw_jwt.get("role")
+    launch_id = raw_jwt.get("launch_id")
+    course_id = raw_jwt.get("course_id")
 
-    new_access_token = authorize.create_access_token(subject=current_user, user_claims={"role": role})
-    authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME)
-    return {"message": "Обновлен токен доступа"}
+    new_access_token = authorize.create_access_token(
+        subject=current_user,
+        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id},
+    )
+    response = JSONResponse({"detail": "Обновлен токен доступа"})
+    authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
+    return response
 
 
-@router.delete("/logout")
+@router.delete(
+    "/logout", tags=["JWT"],
+    summary="Выход из аккаунта",
+    description="Удаляет JWT токены из куки, осуществляя выход пользователя из аккаунта",
+    responses={
+        200: {
+            "description": "Успешный выход из аккаунта",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Произведен выход из аккаунта"}
+                }
+            },
+        }
+    },
+)
 async def logout(authorize: AuthJWT = Depends()):
     """
-    Произвести выход из аккаунта
+    Выполнить выход из аккаунта, удалив все связанные JWT токены.
+    Если кук нет, то ничего не произойдет.
 
     Args:
-        authorize: Объект для чтения/удаления JWT токенов
-    """
-    authorize.jwt_required()
+        authorize (AuthJWT): Объект для чтения и удаления JWT токенов.
 
-    authorize.unset_jwt_cookies()
-    return {"message": "Произведен выход из аккаунта"}
+    Returns:
+        dict: Сообщение о результате операции.
+    """
+    try:
+        authorize.unset_jwt_cookies()
+    finally:
+        return JSONResponse({"detail": "Произведен выход из аккаунта"})

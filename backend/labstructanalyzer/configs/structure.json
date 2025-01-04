@@ -27,8 +27,9 @@
       "displayMode": "always"
     },
     {
-      "type": "cell",
-      "contentType": "cell"
+      "type": "answer",
+      "contentType": "text",
+      "displayMode": "always"
     }
   ],
   "composite": [
@@ -54,7 +55,7 @@
         }
       ]
     },
-     {
+    {
       "type": "warning",
       "data": [
         {

@@ -6,7 +6,9 @@
 ## Перед запуском:
 
 Система работает только по HTTPS. Для этого сгенерируйте сертификат и ключ (или используйте существующие `cert.pem` и `key.pem`):
-`openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"`
+```
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
+```
 
 ### Бэкенд
 
@@ -28,11 +30,12 @@ openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
 
 4. Установить `poetry`, если не установлен: `pip install poetry`
 5. Установить зависимости проекта: `poetry install`
+4. Для запуска миграций переименовать `alembic.ini.example` в `alembic.ini` и указать для свойства `sqlalchemy.url` путь к БД (должен совпадать с указанным в `.env`) и запустить `poetry run alembic upgrade head`
 6. Запустить проект: `poetry run dev`
 
 ### Фронтенд
 
 0. Перейти в папку `frontend`
 1. Установить `nodejs` с [офиц. сайта](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) или через пакетные менеджеры, если не установлен
-1. Установить зависимости проекта: `npm install`
-1. Запустить проект: `npm run dev`
+2. Установить зависимости проекта: `npm install`
+3. Запустить проект: `npm run dev`

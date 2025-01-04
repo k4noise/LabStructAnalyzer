@@ -56,10 +56,26 @@ class CellElement(IParserElement[List[IParserElement]]):
 
 
 @dataclass
-class TableElement(IParserElement[List[List[CellElement]]]):
+class RowElement(IParserElement[List[CellElement]]):
+    """Элемент строки таблицы"""
+    data: List[CellElement]
+
+    def __post_init__(self) -> None:
+        super().__init__(ParserElementType.ROW, self.data)
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.element_type.value,
+            "data": [cell.to_dict() for cell in self.data],
+            **self.collect_common_fields(),
+        }
+
+
+@dataclass
+class TableElement(IParserElement[List[RowElement]]):
     """Элемент таблицы"""
 
-    data: List[List[CellElement]]
+    data: List[RowElement]
 
     def __post_init__(self) -> None:
         super().__init__(ParserElementType.TABLE, self.data)
@@ -68,7 +84,7 @@ class TableElement(IParserElement[List[List[CellElement]]]):
         return {
             "type": self.element_type.value,
             **self.collect_common_fields(),
-            "data": [y.to_dict() for sublist in self.data for y in sublist],
+            "data": [row.to_dict() for row in self.data],
         }
 
 
@@ -92,3 +108,41 @@ class TextElement(IParserElement[str]):
         if self.header_level:
             data.update({"headerLevel": self.header_level})
         return data
+
+
+@dataclass
+class QuestionElement(IParserElement[list[IParserElement]]):
+    """Элемент вопроса"""
+
+    data: list[IParserElement]
+
+    def __post_init__(self) -> None:
+        super().__init__(ParserElementType.QUESTION, self.data)
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.element_type.value,
+            "data": self.data,
+            **self.collect_common_fields(),
+        }
+
+@dataclass
+class AnswerElement(IParserElement[str]):
+    """Элемент ответа"""
+
+    data: str
+    weight: int = field(default=1)
+    simple: bool = field(default=True)
+
+    def __post_init__(self) -> None:
+        super().__init__(ParserElementType.ANSWER, self.data)
+
+    def to_dict(self) -> dict:
+        properties = {
+            "type": self.element_type.value,
+            "data": self.data,
+            "weight": self.weight,
+            "simple": self.simple,
+            **self.collect_common_fields(),
+        }
+        return properties

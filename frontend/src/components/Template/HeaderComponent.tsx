@@ -1,4 +1,4 @@
-import { HeaderElement } from "../../actions/dto/template";
+import { HeaderElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**
@@ -17,11 +17,22 @@ interface HeaderComponentProps {
  * @param {HeaderComponentProps} props - Свойства компонента.
  */
 const HeaderComponent: React.FC<HeaderComponentProps> = ({ element }) => {
-  const Tag = `h${element.headerLevel ?? 3}` as keyof JSX.IntrinsicElements;
-  const numberingText = element.numberingBulletText;
+  const Tag =
+    `h${element.properties.headerLevel}` as keyof JSX.IntrinsicElements;
+  const numberingText = element.properties.numberingBulletText;
   return (
-    <Tag className={`font-medium ${getMarginLeftStyle(element.nestingLevel)}`}>
-      {numberingText ? `${numberingText} ${element.data}` : element.data}
+    <Tag
+      className={`font-medium mb-5 ${getMarginLeftStyle(
+        element.properties.nestingLevel
+      )} ${
+        4 - element.properties.headerLevel > 0
+          ? `text-${4 - element.properties.headerLevel}xl`
+          : ""
+      }`}
+    >
+      {numberingText
+        ? `${numberingText} ${element.properties.data}`
+        : element.properties.data}
     </Tag>
   );
 };

@@ -9,7 +9,7 @@ from labstructanalyzer.utils.parser.common_elements import (
     ImageElement,
     TextElement,
     TableElement,
-    CellElement,
+    CellElement, RowElement,
 )
 
 from labstructanalyzer.utils.parser.base_definitions import IParserElement
@@ -486,7 +486,7 @@ class TableParser:
                     cols=cell_height,
                 )
                 row_data.append(cell_data)
-            table_data.append(row_data)
+            table_data.append(RowElement(data=row_data))
 
         return TableElement(data=table_data)
 

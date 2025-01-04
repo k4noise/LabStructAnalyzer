@@ -1,6 +1,6 @@
 from pylti1p3.message_launch import MessageLaunch
-from labstructanalyzer.services.lti.cookie import FastAPICookieService
-from labstructanalyzer.services.lti.session import FastAPISessionService
+from labstructanalyzer.services.pylti1p3.cookie import FastAPICookieService
+from labstructanalyzer.services.pylti1p3.session import FastAPISessionService
 
 
 class FastAPIMessageLaunch(MessageLaunch):

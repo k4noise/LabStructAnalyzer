@@ -4,10 +4,10 @@ from pylti1p3.request import Request
 from pylti1p3.session import SessionService
 from pylti1p3.tool_config import ToolConfAbstract
 
-from labstructanalyzer.services.lti.cache import FastAPICacheDataStorage
-from labstructanalyzer.services.lti.cookie import FastAPICookieService
-from labstructanalyzer.services.lti.redirect import FastAPIRedirect
-from labstructanalyzer.services.lti.session import FastAPISessionService
+from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
+from labstructanalyzer.services.pylti1p3.cookie import FastAPICookieService
+from labstructanalyzer.services.pylti1p3.redirect import FastAPIRedirect
+from labstructanalyzer.services.pylti1p3.session import FastAPISessionService
 
 
 class FastAPIOIDCLogin(OIDCLogin):
