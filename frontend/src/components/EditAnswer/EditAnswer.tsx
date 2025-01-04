@@ -1,9 +1,10 @@
-import { AnswerElement, TemplateElementModel } from "../../model/template";
+import { AnswerElement, TemplateElementModel } from "../../model/templateElement";
 import Textarea from "../Textarea/TextareaComponent";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldValues, useForm } from "react-hook-form";
 import { AnswerEdit } from "../../model/answer";
 import EditAnswerSchema from "./EditAnswerSchema";
+import Button from "../Button/Button";
 
 interface EditAnswerModalProps {
   element: AnswerElement | null;
@@ -72,12 +73,7 @@ const EditAnswer = ({
           {...register("simple")}
         />
       </label>
-      <button
-        className="block px-2 py-1 ml-auto border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
-        type="submit"
-      >
-        Сохранить
-      </button>
+      <Button text="Сохранить" type="submit" classes="block ml-auto" />
     </form>
   );
 };

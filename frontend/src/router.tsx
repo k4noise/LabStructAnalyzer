@@ -38,7 +38,7 @@ const router = createBrowserRouter([
       {
         path: "/templates",
         element: <Templates />,
-        loader: async () => await api.get("/api/v1/courses/current"),
+        loader: async () => await api.get("/api/v1/templates/all"),
       },
       {
         path: "/template/:id",

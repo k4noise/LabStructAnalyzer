@@ -1,4 +1,4 @@
-import { QuestionElement } from "../../model/template";
+import { QuestionElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 import AnswerComponent from "./AnswerComponent";
 

@@ -1,6 +1,7 @@
 import { useContext } from "react";
-import { AnswerElement } from "../../model/template";
+import { AnswerElement } from "../../model/templateElement";
 import AnswerContext from "../../context/AnswerContext";
+import Button from "../Button/Button";
 
 /**
  * Свойства для компонента ImageComponent.
@@ -18,16 +19,14 @@ interface AnswerComponentProps {
 const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
   const { handleSelectAnswerForEdit } = useContext(AnswerContext);
   return (
-    <span>
-      <button
-        className="px-2 py-1 ml-2 mb-2 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
+    <>
+      <Button
+        text="⚙️ Настройка ответа"
+        classes="ml-2 mb-2"
         onClick={() => handleSelectAnswerForEdit(element)}
-        type="button"
-      >
-        ⚙️ Настройка ответа
-      </button>
+      />
       <br />
-    </span>
+    </>
   );
 };
 

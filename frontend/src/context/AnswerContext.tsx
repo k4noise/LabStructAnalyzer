@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { AnswerElement } from "../model/template";
+import { AnswerElement } from "../model/templateElement";
 
 /**
  * Интерфейс для контекста ответов.

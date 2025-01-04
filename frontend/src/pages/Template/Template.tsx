@@ -18,6 +18,7 @@ import AnswerContext from "../../context/AnswerContext";
 import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
 import { FieldValues, useForm } from "react-hook-form";
 import { api, extractMessage } from "../../utils/sendRequest";
+import Button from "../../components/Button/Button";
 
 /**
  * Карта соответствий типов элементов и компонентов для рендеринга.
@@ -42,10 +43,27 @@ const componentMap: Record<
  */
 const Template: React.FC = () => {
   const navigate = useNavigate();
+
+  const [displayModeFilter, setDisplayModeFilter] = useState<string>("all");
+
   /**
    * Предварительно загруженные данные шаблона
    */
   const { data: template } = useLoaderData<{ data: TemplateModel }>();
+
+  const filteredElements = template?.elements.filter((element) => {
+    if (displayModeFilter === null) return true;
+    switch (displayModeFilter) {
+      case "prefer":
+        return (
+          element.properties.displayMode === displayModeFilter ||
+          element.properties.displayMode === "always"
+        );
+      case "always":
+        return element.properties.displayMode === displayModeFilter;
+    }
+    return true;
+  });
 
   const [error, setError] = useState<string>(null);
 
@@ -128,7 +146,6 @@ const Template: React.FC = () => {
         `/api/v1/templates/${template.template_id}`,
         templateWithUpdatedData
       );
-      template.is_draft = false;
     } catch (error) {
       handleError(error);
     }
@@ -147,45 +164,73 @@ const Template: React.FC = () => {
     <>
       <form onReset={handleReset} onSubmit={handleSubmit(handleSaveTemplate)}>
         <BackButtonComponent positionClasses="" />
-        <input
-          className="text-3xl font-medium text-center mt-12 mb-10 w-full
+        {template.teacher_interface ? (
+          <input
+            className="text-3xl font-medium text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
-        focus-visible:outline-none focus-visible:border-zinc-950 dark:focus-visible:border-zinc-200"
-          defaultValue={template.name}
-          {...register("name")}
-        />
+        focus:outline-none focus:border-zinc-950 dark:focus:border-zinc-200"
+            defaultValue={template.name}
+            {...register("name")}
+          />
+        ) : (
+          <h1 className="inline-block text-3xl font-medium text-center mt-12 mb-10 w-full bg-transparent">
+            {template.name}
+          </h1>
+        )}
         <p className="opacity-60">
           Максимальное количество баллов:
-          <input
-            type="number"
-            min="0"
-            defaultValue={template.max_score}
-            className="w-20 mb-4 ml-3 bg-transparent border-b focus-visible:outline-none border-zinc-950 dark:border-zinc-200"
-            {...register("max_score")}
-          />
+          {template.teacher_interface ? (
+            <input
+              type="number"
+              min="0"
+              defaultValue={template.max_score}
+              className="w-20 mb-4 ml-3 bg-transparent border-b focus:outline-none border-zinc-950 dark:border-zinc-200"
+              {...register("max_score")}
+            />
+          ) : (
+            ` ${template.max_score}`
+          )}
         </p>
+        {template.teacher_interface && (
+          <div className="flex gap-3 items-center mb-3">
+            Режим просмотра:
+            <Button
+              text="Полный"
+              onClick={() => setDisplayModeFilter("all")}
+              classes={`${displayModeFilter === "all" ? "bg-blue-500/50" : ""}`}
+            />
+            <Button
+              text="Сокращенный"
+              onClick={() => setDisplayModeFilter("prefer")}
+              classes={`${
+                displayModeFilter === "prefer" ? "bg-blue-500/50" : ""
+              }`}
+            />
+            <Button
+              text="Минимальный"
+              onClick={() => setDisplayModeFilter("always")}
+              classes={`${
+                displayModeFilter === "always" ? "bg-blue-500/50" : ""
+              }`}
+            />
+          </div>
+        )}
+
         <AnswerContext.Provider
           value={{ handleSelectAnswerForEdit: handleSelectAnswer }}
         >
-          {template?.elements.map((element) => renderElement(element))}
+          {filteredElements?.map((element) => renderElement(element))}
         </AnswerContext.Provider>
-        <div className="flex justify-end gap-6 mt-10">
-          <button
-            className="px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
-            onClick={handleDelete}
-            type="button"
-          >
-            Удалить
-          </button>
-          <button
-            className="px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950"
-            type="reset"
-          >
-            Сброс
-          </button>
-          <button className="px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
-            Сохранить
-          </button>
+        <div className="flex justify-end gap-5 mt-10">
+          {template.teacher_interface ? (
+            <>
+              <Button text="Удалить" onClick={handleDelete} />
+              <Button text="Сброс" type="reset" />
+            </>
+          ) : (
+            <Button text="Закрыть" onClick={() => navigate("/templates")} />
+          )}
+          <Button text="Сохранить" type="submit" />
         </div>
 
         {/* Ни в коем случае не удаляйте этот элемент, так как не будут сгенерированы нужные классы отступов и размеров заголовков*/}

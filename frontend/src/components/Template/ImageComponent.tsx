@@ -1,4 +1,4 @@
-import { ImageElement } from "../../model/template";
+import { ImageElement } from "../../model/templateElement";
 
 /**
  * Свойства для компонента ImageComponent.
@@ -16,7 +16,7 @@ interface ImageComponentProps {
  * @param {ImageComponentProps} props - Свойства компонента.
  */
 const ImageComponent: React.FC<ImageComponentProps> = ({ element }) => (
-  <img src={element.properties.data} className="mx-auto" />
+  <img src={element.properties.data} className="mx-auto dark:brightness-75" />
 );
 
 export default ImageComponent;

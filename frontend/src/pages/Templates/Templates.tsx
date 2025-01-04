@@ -1,8 +1,9 @@
-import { useLoaderData, useNavigate } from "react-router";
+import { Link, useLoaderData, useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
 import { useState } from "react";
-import { CourseInfo } from "../../model/course";
 import { api, extractMessage } from "../../utils/sendRequest";
+import Button from "../../components/Button/Button";
+import { AllTemplatesInfo } from "../../model/template";
 
 /**
  * Компонент для управления шаблонами курса
@@ -11,8 +12,8 @@ import { api, extractMessage } from "../../utils/sendRequest";
  * @returns {JSX.Element} Страница шаблонов с возможностью загрузки нового шаблона
  */
 const Templates = () => {
-  const { data } = useLoaderData<{ data: CourseInfo }>();
-  const courseName = data.name;
+  const { data } = useLoaderData<{ data: AllTemplatesInfo }>();
+  const courseName = data.course_name;
   /**
    * Хук навигации для перемещения между страницами
    * @type {Function}
@@ -74,14 +75,30 @@ const Templates = () => {
       <h2 className="text-3xl font-medium text-center mb-10">
         {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
-      {
-        <button
-          className="text-l p-4 rounded-xl underline mb-5"
+      {data.teacher_interface && (
+        <Button
+          text="+ Добавить новый шаблон"
           onClick={handleOpen}
-        >
-          + Добавить новый шаблон
-        </button>
-      }
+          classes="mb-6"
+        />
+      )}
+      <div className="flex flex-col gap-4">
+        {data.templates ? (
+          <>
+            {data.templates.map((templateProperties) => (
+              <Link
+                to={`/template/${templateProperties.template_id}`}
+                key={templateProperties.template_id}
+                className="underline"
+              >
+                {templateProperties.name}
+              </Link>
+            ))}
+          </>
+        ) : (
+          <p className="text-l">Шаблоны отсутствуют</p>
+        )}
+      </div>
       <Modal isOpen={isOpen} onClose={handleClose}>
         <form onSubmit={handleUploadTemplate}>
           <h3 className="text-xl font-medium text-center mb-3">
@@ -93,7 +110,7 @@ const Templates = () => {
           <input
             type="file"
             name="template"
-            className="mb-8"
+            className="mb-8 block"
             data-testid="template"
           />
           {errorInUpload && (
@@ -101,12 +118,9 @@ const Templates = () => {
               {errorInUpload}
             </p>
           )}
-          <button className="block px-2 py-1 ml-auto border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
-            Загрузить
-          </button>
+          <Button text="Загрузить" classes="block ml-auto" type="submit" />
         </form>
       </Modal>
-      <p className="text-l">Нет шаблонов</p>
     </div>
   );
 };

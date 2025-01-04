@@ -1,4 +1,4 @@
-import { HeaderElement } from "../../model/template";
+import { HeaderElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**

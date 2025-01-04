@@ -1,4 +1,4 @@
-import { TextElement } from "../../model/template";
+import { TextElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 /**
