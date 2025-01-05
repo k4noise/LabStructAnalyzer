@@ -63,6 +63,7 @@ const Modal = ({ isOpen, onClose, children }) => {
       <button
         className="self-start text-3xl absolute top-2 right-5"
         onClick={handleClose}
+        type="button"
       >
         &times;
       </button>

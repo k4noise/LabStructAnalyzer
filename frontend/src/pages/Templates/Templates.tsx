@@ -27,6 +27,12 @@ const Templates = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   /**
+   * Состояние загрузки нового шаблона (в процессе загрузки/не загружается)
+   * @type {boolean}
+   */
+  const [isTemplateUpload, setIsTemplateUpload] = useState(false);
+
+  /**
    * Состояние сообщения об ошибке при загрузке шаблона
    * @type {string | null}
    */
@@ -62,7 +68,9 @@ const Templates = () => {
     const template = formData.get("template");
     if (template && template["name"] == "") return;
     try {
+      setIsTemplateUpload(true);
       const { data } = await api.post("/api/v1/templates", formData);
+      setIsTemplateUpload(false);
       setErrorInUpload(null);
       navigate(`/template/${data.template_id}`);
     } catch (error) {
@@ -82,9 +90,26 @@ const Templates = () => {
           classes="mb-6"
         />
       )}
-      <div className="flex flex-col gap-4">
-        {data.templates ? (
-          <>
+      {!!data?.drafts?.length && (
+        <div>
+          <p className="font-bold">Черновики шаблонов:</p>
+          <div className="ml-4 flex flex-col gap-4 my-4">
+            {data.drafts.map((templateProperties) => (
+              <Link
+                to={`/template/${templateProperties.template_id}`}
+                key={templateProperties.template_id}
+                className="underline"
+              >
+                {templateProperties.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <div>
+        <p className="font-bold">Доступные шаблоны:</p>
+        {data.templates.length ? (
+          <div className="flex flex-col gap-4 my-4 ml-4">
             {data.templates.map((templateProperties) => (
               <Link
                 to={`/template/${templateProperties.template_id}`}
@@ -94,9 +119,9 @@ const Templates = () => {
                 {templateProperties.name}
               </Link>
             ))}
-          </>
+          </div>
         ) : (
-          <p className="text-l">Шаблоны отсутствуют</p>
+          <p className="text-l mt-4">Шаблоны отсутствуют</p>
         )}
       </div>
       <Modal isOpen={isOpen} onClose={handleClose}>
@@ -118,7 +143,11 @@ const Templates = () => {
               {errorInUpload}
             </p>
           )}
-          <Button text="Загрузить" classes="block ml-auto" type="submit" />
+          <Button
+            text={isTemplateUpload ? "Загружаю..." : "Загрузить"}
+            classes="block ml-auto disabled:border-zinc-500 disabled:text-zinc-500"
+            type="submit"
+          />
         </form>
       </Modal>
     </div>

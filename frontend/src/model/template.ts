@@ -30,4 +30,5 @@ export interface AllTemplatesInfo {
   teacher_interface: boolean;
   course_name: string;
   templates: MinimalTemplateInfo[];
+  drafts?: MinimalTemplateInfo[];
 }

@@ -25,4 +25,4 @@ const TextComponent: React.FC<TextBlockProps> = ({ element }) => (
   </p>
 );
 
-export default TextComponent;
+export default TextComponent; 
