@@ -7,8 +7,8 @@ from labstructanalyzer.models.dto.template_element import TemplateElementDto, Ba
 
 class TemplateToModify(TemplateDto):
     template_id: Optional[uuid.UUID] = None
-    name: str
-    max_score: int
+    name: Optional[str] = None
+    max_score: Optional[int] = None
     elements: Optional[list[TemplateElementDto]] = None
 
     updated_elements: Optional[list[BaseTemplateElementDto]] = None

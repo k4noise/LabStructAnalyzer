@@ -1,7 +1,6 @@
 import json
 import os
 import uuid
-from tempfile import template
 
 from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
@@ -201,12 +200,13 @@ async def save_modified_template(
                                                              tool_conf,
                                                              launch_data_storage=launch_data_storage)
             ags_service = AgsService(message_launch)
-            ags_service.update_lineitem(template)
+            ags_service.create_lineitem(template)
         return JSONResponse({"detail": "Шаблон обновлен успешно"})
 
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @router.get(
     "/all",
@@ -243,13 +243,21 @@ async def get_templates(request: Request,
         .get_context() \
         .get("title")
 
+    has_teacher_access = "teacher" in raw_jwt.get("role")
     templates_with_base_properties = await template_service.get_all_by_course(course_id)
 
-    return AllTemplatesDto(
-        teacher_interface="teacher" in raw_jwt.get("role"),
+    data = AllTemplatesDto(
+        teacher_interface=has_teacher_access,
         course_name=course_name,
-        templates=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in templates_with_base_properties]
+        templates=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
+                   templates_with_base_properties],
+
     )
+    if has_teacher_access:
+        drafts_with_base_properties = await template_service.get_all_by_course(course_id, True)
+        data.drafts=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
+                drafts_with_base_properties]
+    return data
 
 
 @router.get(
@@ -391,4 +399,3 @@ async def remove_template(
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при удалении данных"},
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-

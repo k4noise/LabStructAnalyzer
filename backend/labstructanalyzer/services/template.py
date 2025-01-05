@@ -1,7 +1,7 @@
 import copy
 import uuid
 from functools import lru_cache
-from typing import List, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -66,6 +66,7 @@ class TemplateService:
     async def update(self, template_id: uuid.UUID, data_to_modify: TemplateToModify):
         """
         Обновляет данные сохраненного шаблона - изменяет только те параметры, которые были переданы пользователем.
+        Для опубликованного шаблона нельзя изменять имя и максимальный балл
 
         Args:
             template_id: id шаблона
@@ -78,8 +79,10 @@ class TemplateService:
         if template is None:
             raise TemplateNotFoundException(template_id)
 
-        template.name = data_to_modify.name
-        template.max_score = data_to_modify.max_score
+        if template.is_draft:
+            template.name = data_to_modify.name
+            template.max_score = data_to_modify.max_score
+
         template.is_draft = data_to_modify.is_draft
 
         if data_to_modify.updated_elements:
@@ -107,14 +110,15 @@ class TemplateService:
         await self.session.delete(template)
         await self.session.commit()
 
-    async def get_all_by_course(self, course_id: str):
+    @lru_cache()
+    async def get_all_by_course(self, course_id: str, is_draft: bool = False):
         """
         Возвращает id и имена всех шаблонов по course_id, которые не являются черновиками.
         Может вернуть пустой лист
         """
         statement = select(Template.template_id, Template.name).where(
             Template.course_id == course_id,
-            Template.is_draft == False
+            Template.is_draft == is_draft
         )
         result = await self.session.exec(statement)
         return result.unique().all()

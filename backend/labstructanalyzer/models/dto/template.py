@@ -29,4 +29,5 @@ class AllTemplatesDto(BaseModel):
     teacher_interface: bool
     course_name: str
     templates: list[TemplateMinimalProperties]
+    drafts: Optional[list[TemplateMinimalProperties]] = None
 
