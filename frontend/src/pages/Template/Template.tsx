@@ -1,4 +1,4 @@
-import React, { useState, memo, useMemo, useCallback } from "react";
+import React, { useState, memo, useCallback } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { FieldValues, useForm } from "react-hook-form";
 import { TemplateModel, UpdateTemplateModel } from "../../model/template";
@@ -20,12 +20,23 @@ import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
 import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 
-const MemoizedTextComponent = memo(TextComponent);
-const MemoizedImageComponent = memo(ImageComponent);
-const MemoizedHeaderComponent = memo(HeaderComponent);
-const MemoizedQuestionAnswerComponent = memo(QuestionAnswerComponent);
-const MemoizedTableComponent = memo(TableComponent);
-const MemoizedAnswerComponent = memo(AnswerComponent);
+/**
+ * Карта соответствий типов элементов и компонентов для рендеринга.
+ *
+ * @constant
+ * @type {Record<string, React.FC<any>>}
+ */
+const componentMap: Record<
+  string,
+  React.FC<{ element: TemplateElementModel }>
+> = {
+  text: memo(TextComponent),
+  image: memo(ImageComponent),
+  header: memo(HeaderComponent),
+  question: memo(QuestionAnswerComponent),
+  table: memo(TableComponent),
+  answer: memo(AnswerComponent),
+};
 
 const renderElement = (element: TemplateElementModel): React.ReactNode => {
   const Component = componentMap[element.element_type] || null;
@@ -45,24 +56,6 @@ const renderElement = (element: TemplateElementModel): React.ReactNode => {
   }
 
   return null;
-};
-
-/**
- * Карта соответствий типов элементов и компонентов для рендеринга.
- *
- * @constant
- * @type {Record<string, React.FC<any>>}
- */
-const componentMap: Record<
-  string,
-  React.FC<{ element: TemplateElementModel }>
-> = {
-  text: MemoizedTextComponent,
-  image: MemoizedImageComponent,
-  header: MemoizedHeaderComponent,
-  question: MemoizedQuestionAnswerComponent,
-  table: MemoizedTableComponent,
-  answer: MemoizedAnswerComponent,
 };
 
 /**
@@ -92,12 +85,10 @@ const Template: React.FC = () => {
   /**
    * Отфильтрованные элементы шаблона с использованием useMemo.
    */
-  const filteredElements = useMemo(() => {
-    return template?.elements.filter((element) => {
-      const condition = displayModeFilterConditions[displayModeFilter];
-      return condition ? condition(element) : true;
-    });
-  }, [template?.elements, displayModeFilter]);
+  const filteredElements = template?.elements.filter((element) => {
+    const condition = displayModeFilterConditions[displayModeFilter];
+    return condition ? condition(element) : true;
+  });
 
   const [error, setError] = useState<string>(null);
 
@@ -180,20 +171,29 @@ const Template: React.FC = () => {
     setUpdatedElements({});
   };
 
-  const handleSaveTemplate = async (data: FieldValues) => {
+  const handleSaveTemplate = async (
+    data: FieldValues,
+    event: React.BaseSyntheticEvent
+  ) => {
+    const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
+    const buttonName = (nativeEvent?.submitter as HTMLButtonElement)?.name;
+    const isPublishTemplate = buttonName === "publish";
+
     const templateWithUpdatedData: UpdateTemplateModel = {
-      is_draft: false,
+      is_draft: isPublishTemplate ? false : template.is_draft,
       name: data.name,
       max_score: data.max_score,
       updated_elements: Object.values(updatedElements),
     };
     try {
-      setButtonState({ update: true });
+      setButtonState(isPublishTemplate ? { publish: true } : { update: true });
       await api.patch(
         `/api/v1/templates/${template.template_id}`,
         templateWithUpdatedData
       );
-      setButtonState({ update: false });
+      setButtonState(
+        isPublishTemplate ? { publish: false } : { update: false }
+      );
       navigate("/templates");
     } catch (error) {
       handleError(error);
@@ -211,17 +211,11 @@ const Template: React.FC = () => {
     }
   };
 
-  /**
-   * Рендерит элемент шаблона на основе его типа.
-   * Использует useCallback для мемоизации функции.
-   */
-  const memoizedRenderElement = useCallback(renderElement, [componentMap]);
-
   return (
     <>
       <form onReset={handleReset} onSubmit={handleSubmit(handleSaveTemplate)}>
         <BackButtonComponent positionClasses="" />
-        {template.teacher_interface && template.is_draft ? (
+        {template.can_edit && template.is_draft ? (
           <input
             className="text-3xl font-medium text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
@@ -236,7 +230,7 @@ const Template: React.FC = () => {
         )}
         <p className="opacity-60 mb-4">
           Максимальное количество баллов:
-          {template.teacher_interface && template.is_draft ? (
+          {template.can_edit && template.is_draft ? (
             <input
               type="number"
               min="0"
@@ -248,7 +242,7 @@ const Template: React.FC = () => {
             ` ${template.max_score}`
           )}
         </p>
-        {template.teacher_interface && (
+        {template.can_edit && (
           <div className="flex gap-3 items-center mb-3">
             Режим просмотра:
             <Button
@@ -276,10 +270,10 @@ const Template: React.FC = () => {
         <AnswerContext.Provider
           value={{ handleSelectAnswerForEdit: handleSelectAnswer }}
         >
-          {filteredElements?.map(memoizedRenderElement)}
+          {filteredElements?.map(renderElement)}
         </AnswerContext.Provider>
         <div className="flex justify-end gap-5 mt-10">
-          {template.teacher_interface ? (
+          {template.can_edit ? (
             <>
               <Button
                 text={buttonState?.delete ? "Удаляю..." : "Удалить"}
@@ -295,9 +289,19 @@ const Template: React.FC = () => {
           <Button
             text={buttonState?.update ? "Сохраняю..." : "Сохранить"}
             type="submit"
+            name="update"
             disable={buttonState?.update}
             classes="disabled:border-zinc-500 disabled:text-zinc-500"
           />
+          {template.can_edit && template.is_draft && (
+            <Button
+              text={buttonState?.publish ? "Публикую..." : "Опубликовать"}
+              type="submit"
+              name="publish"
+              disable={buttonState?.publish}
+              classes="disabled:border-zinc-500 disabled:text-zinc-500"
+            />
+          )}
         </div>
 
         {/* Ни в коем случае не удаляйте этот элемент, так как не будут сгенерированы нужные классы отступов и размеров заголовков*/}

@@ -9,7 +9,7 @@ export interface TemplateModel {
   name: string;
   is_draft: boolean;
   max_score: number;
-  teacher_interface: boolean;
+  can_edit: boolean;
   elements: TemplateElementModel[];
 }
 
@@ -27,7 +27,8 @@ export interface MinimalTemplateInfo {
 }
 
 export interface AllTemplatesInfo {
-  teacher_interface: boolean;
+  can_upload: boolean;
+  can_grade: boolean;
   course_name: string;
   templates: MinimalTemplateInfo[];
   drafts?: MinimalTemplateInfo[];

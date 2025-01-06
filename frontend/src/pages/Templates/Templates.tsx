@@ -83,7 +83,7 @@ const Templates = () => {
       <h2 className="text-3xl font-medium text-center mb-10">
         {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
-      {data.teacher_interface && (
+      {data.can_upload && (
         <Button
           text="+ Добавить новый шаблон"
           onClick={handleOpen}

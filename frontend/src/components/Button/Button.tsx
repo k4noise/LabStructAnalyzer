@@ -1,6 +1,7 @@
 interface ButtonProps {
   text: string;
   type?: "button" | "submit" | "reset";
+  name?: string;
   classes?: string;
   onClick?: () => void;
   disable?: boolean;
@@ -9,6 +10,7 @@ interface ButtonProps {
 const Button = ({
   text,
   type = "button",
+  name,
   classes,
   onClick,
   disable,
@@ -20,6 +22,7 @@ const Button = ({
         classes ? `${classes}` : ""
       }`}
     type={type}
+    name={name}
     onClick={onClick}
     disabled={disable}
   >

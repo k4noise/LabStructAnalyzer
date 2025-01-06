@@ -5,7 +5,7 @@ const BackButtonComponent = ({ positionClasses }) => {
 
   const handleGoBack = () => {
     if (window.history.length > 1) navigate(-1);
-    navigate("/templates");
+    else navigate("/templates");
   };
 
   return (
