@@ -14,10 +14,11 @@ from starlette.responses import JSONResponse
 from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
 from labstructanalyzer.core.database import get_session
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
-from labstructanalyzer.models.dto.template import TemplateDto, TemplateWithElementsDto, AllTemplatesDto, \
+from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
 from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.ags import AgsService
+from labstructanalyzer.services.lti.ags import AgsService
+from labstructanalyzer.services.lti.course import Course
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
@@ -239,21 +240,23 @@ async def get_templates(request: Request,
     launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
                                                      launch_data_storage=launch_data_storage)
-    course_name = message_launch.get_nrps() \
-        .get_context() \
-        .get("title")
 
-    has_teacher_access = "teacher" in raw_jwt.get("role")
+    course_name = Course(message_launch).get_name()
+
+    user_roles = raw_jwt.get("roles")
+    has_full_access = "teacher" in user_roles
+    has_partial_access = "assistant" in user_roles
     templates_with_base_properties = await template_service.get_all_by_course(course_id)
 
     data = AllTemplatesDto(
-        teacher_interface=has_teacher_access,
+        can_upload=has_full_access,
+        can_grade=has_full_access or has_partial_access,
         course_name=course_name,
         templates=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
                    templates_with_base_properties],
 
     )
-    if has_teacher_access:
+    if has_full_access:
         drafts_with_base_properties = await template_service.get_all_by_course(course_id, True)
         data.drafts=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
                 drafts_with_base_properties]
@@ -311,7 +314,7 @@ async def get_template(
                 name=template.name,
                 is_draft=template.is_draft,
                 max_score=template.max_score,
-                teacher_interface="teacher" in authorize.get_raw_jwt().get("role"),
+                can_edit="teacher" in authorize.get_raw_jwt().get("roles"),
                 elements=elements
             )
         return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)

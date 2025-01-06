@@ -110,7 +110,7 @@ class TemplateService:
         await self.session.delete(template)
         await self.session.commit()
 
-    @lru_cache()
+    @lru_cache
     async def get_all_by_course(self, course_id: str, is_draft: bool = False):
         """
         Возвращает id и имена всех шаблонов по course_id, которые не являются черновиками.
