@@ -1,10 +1,9 @@
-import Nav from "./components/Nav/Nav";
-import { Outlet, createBrowserRouter } from "react-router";
+import { createBrowserRouter } from "react-router";
 import Templates from "./pages/Templates/Templates";
 import ErrorPage from "./pages/ErrorPage/ErrorPage";
-import { lazy, Suspense } from "react";
-import Spinner from "./components/Spinner";
+import { lazy } from "react";
 import { api } from "./utils/sendRequest";
+import BaseLayout from "./components/BaseLayout/BaseLayout";
 
 const Template = lazy(() => import("./pages/Template/Template"));
 
@@ -20,18 +19,7 @@ const router = createBrowserRouter([
     ),
   },
   {
-    element: (
-      <>
-        <Suspense fallback={<Spinner />}>
-          <Nav />
-        </Suspense>
-        <div>
-          <Suspense fallback={<Spinner />}>
-            <Outlet />
-          </Suspense>
-        </div>
-      </>
-    ),
+    element: <BaseLayout delay={300} />,
     loader: async () => await api.get("/api/v1/users/me"),
     errorElement: <ErrorPage />,
     children: [
