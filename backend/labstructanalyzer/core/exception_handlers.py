@@ -15,5 +15,5 @@ async def no_existing_template(request, exc):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message)
 
 
-async def no_ags_service_access(request, exc):
+async def no_lti_service_access(request, exc):
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message)

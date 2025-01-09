@@ -16,6 +16,7 @@ class Report(SQLModel, table=True):
     author_id: str
     status: str
     grader_id: Optional[int]
+    score: Optional[float]
 
     created_at: datetime = Field(
         default=None,

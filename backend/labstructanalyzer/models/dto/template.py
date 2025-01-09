@@ -9,6 +9,8 @@ from labstructanalyzer.models.dto.template_element import TemplateElementDto
 class TemplateMinimalProperties(BaseModel):
     template_id: uuid.UUID
     name: str
+    report_id: Optional[uuid.UUID] = None
+    report_status: Optional[str] = None
 
 class TemplateDto(TemplateMinimalProperties):
     is_draft: bool

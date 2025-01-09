@@ -6,30 +6,28 @@ from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
 from fastapi_another_jwt_auth import AuthJWT
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
-from labstructanalyzer.core.database import get_session
+from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
+from labstructanalyzer.models.dto.report import MinimalReportInfoDto
 from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
 from labstructanalyzer.routers.lti_router import cache
+from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import Course
+from labstructanalyzer.services.lti.nrps import NrpsService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.parser.docx import DocxParser
+from labstructanalyzer.services.report import ReportService
 from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.utils.rbac_decorator import roles_required
-
-
-def get_template_service(session: AsyncSession = Depends(get_session)) -> TemplateService:
-    return TemplateService(session)
-
 
 router = APIRouter()
 template_prefix = "images\\temp"
@@ -212,15 +210,16 @@ async def save_modified_template(
 @router.get(
     "/all",
     response_model=AllTemplatesDto,
-    summary="Получить все доступные шаблоны",
-    description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками",
+    summary="Получить все доступные шаблоны и отчеты",
+    description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками, "
+                "для студентов возвращает id и статус отчета",
     tags=["Template"],
     responses={
         200: {
-            "description": "Данные шаблонов",
+            "description": "Данные шаблонов (и отчетов)",
         },
         401: {
-            "description": "Неавторизованный доступ.",
+            "description": "Неавторизованный доступ",
             "content": {
                 "application/json": {
                     "example": {"detail": "Не авторизован"}
@@ -246,20 +245,29 @@ async def get_templates(request: Request,
     user_roles = raw_jwt.get("roles")
     has_full_access = "teacher" in user_roles
     has_partial_access = "assistant" in user_roles
-    templates_with_base_properties = await template_service.get_all_by_course(course_id)
+    with_reports = not (has_full_access or has_partial_access)
+
+    templates_with_base_properties = await template_service.get_all_by_course(course_id, with_reports=with_reports)
 
     data = AllTemplatesDto(
         can_upload=has_full_access,
         can_grade=has_full_access or has_partial_access,
         course_name=course_name,
-        templates=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
-                   templates_with_base_properties],
+        templates=[
+            TemplateMinimalProperties(
+                template_id=item[0],
+                name=item[1],
+                report_id=item[2] if len(item) > 2 else None,
+                report_status=item[3] if len(item) > 3 else None
+            ) for
+            item in
+            templates_with_base_properties],
 
     )
     if has_full_access:
         drafts_with_base_properties = await template_service.get_all_by_course(course_id, True)
-        data.drafts=[TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
-                drafts_with_base_properties]
+        data.drafts = [TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
+                       drafts_with_base_properties]
     return data
 
 
@@ -402,3 +410,98 @@ async def remove_template(
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при удалении данных"},
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@roles_required(["student"])
+@router.post(
+    "/{template_id}/reports",
+    summary="Создать отчет с ответами на основе шаблона",
+    responses={
+        200: {
+            "description": "Отчет успешно создан",
+            "content": {
+                "application/json": {
+                    "example": {"id": "12345"}
+                }
+            }
+        },
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Ошибка запроса. Шаблон не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Шаблон не найден"}
+                }
+            }
+        },
+        500: {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка при создании отчета"}
+                }
+            }
+        }
+    }
+)
+async def create_report(
+        template_id: uuid.UUID,
+        authorize: AuthJWT = Depends(),
+        report_service: ReportService = Depends(get_report_service),
+        template_service: TemplateService = Depends(get_template_service),
+        answer_service: AnswerService = Depends(get_answer_service)
+):
+    """
+    Создать отчет на основе данных из шаблона
+    """
+    user_id = authorize.get_jwt_subject()
+    report_id = await report_service.create(template_id, user_id)
+    template = await template_service.get_by_id(template_id)
+    await answer_service.create_answers(template, report_id)
+
+    return JSONResponse({"id": report_id})
+
+
+@roles_required(["teacher", "assistant"])
+@router.get("/{template_id}/reports")
+async def get_reports_by_template(
+        template_id: uuid.UUID,
+        request: Request,
+        authorize: AuthJWT = Depends(),
+        template_service: TemplateService = Depends(get_template_service)
+):
+    """
+    Получает краткую информацию о всех доступных версиях отчетов всех обучающихся курса конкретного шаблона,
+    доступных для отображения согласно статусу (отправлен на (повторную) проверку / проверен)
+    """
+    all_reports = template_service.get_all_reports(template_id)
+    launch_data_storage = FastAPICacheDataStorage(cache)
+    message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+                                                     FastAPIRequest(request),
+                                                     tool_conf,
+                                                     launch_data_storage=launch_data_storage)
+    nrps_service = NrpsService(message_launch)
+    return [
+        MinimalReportInfoDto(
+            report_id=report.report_id,
+            date=report.updated_at,
+            status=report.status,
+            author_name=nrps_service.get_user_name(report.author_id),
+            grade=report.grade
+        ) for report in all_reports
+    ]

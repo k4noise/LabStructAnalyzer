@@ -1,5 +1,6 @@
 import requests
 from pylti1p3.exception import LtiException
+from pylti1p3.grade import Grade
 from pylti1p3.message_launch import MessageLaunch
 
 from pylti1p3.lineitem import LineItem
@@ -52,7 +53,8 @@ class AgsService:
         updated_lineitem = self._create_lineitem_object(template)
 
         request_headers = self._create_ags_request_headers()
-        response = requests.Session().put(updated_lineitem.get_id(), data=updated_lineitem.get_value(), headers=request_headers)
+        response = requests.Session().put(updated_lineitem.get_id(), data=updated_lineitem.get_value(),
+                                          headers=request_headers)
 
         if response.status_code != 200:
             raise LtiException("Ошибка LMS")
@@ -76,6 +78,23 @@ class AgsService:
         request_headers = self._create_ags_request_headers()
         requests.Session().delete(lineitem.get_id(), headers=request_headers)
 
+    def set_grade(self, template: Template, user_id: str, grade: float):
+        """
+        Передает оценку в LMS
+        """
+        if not self.message_launch.has_ags():
+            raise AgsNotSupportedException
+
+        ags = self.message_launch.get_ags()
+        lineitem = self._create_lineitem_object(template)
+        grade = Grade() \
+            .set_score_given(grade) \
+            .set_user_id(user_id) \
+            .set_activity_progress('Completed') \
+            .set_grading_progress('FullyGraded')
+
+        ags.put_grade(grade, lineitem)
+
     def _create_lineitem_object(self, template: Template):
         """
         Создает объект линии оценки для последующего сохранения средствами AGS
@@ -92,7 +111,8 @@ class AgsService:
         """
         Описывает все необходимые заголовки, включая токен доступа, для изменения данных AGS
         """
-        service_data = self.message_launch.get_launch_data().get("https://purl.imsglobal.org/spec/lti-ags/claim/endpoint")
+        service_data = self.message_launch.get_launch_data().get(
+            "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint")
         access_token = self.message_launch.get_service_connector().get_access_token(service_data["scope"])
 
         return {

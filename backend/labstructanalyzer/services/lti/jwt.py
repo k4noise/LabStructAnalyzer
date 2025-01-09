@@ -13,7 +13,7 @@ class JWT:
         """
         Создает объект пользовательских данных на основе данных из другого jwt
         """
-        return self.create_user_claims(raw_jwt.get("roles"), raw_jwt.get("launch_id"), raw_jwt.get("course_id"))
+        return self._create_user_claims(raw_jwt.get("roles"), raw_jwt.get("launch_id"), raw_jwt.get("course_id"))
 
     def create_user_claims_at_message_launch(self, message_launch: MessageLaunch) -> dict:
         """
