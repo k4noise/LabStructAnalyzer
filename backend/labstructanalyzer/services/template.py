@@ -194,7 +194,7 @@ class TemplateService:
 
         return build_subtree(None)
 
-    def get_all_reports(self, template_id: uuid.UUID) -> list[Report]:
+    async def get_all_reports(self, template_id: uuid.UUID) -> list[Report]:
         """
         Получить все доступные отчеты - проверенные ранее или ожидающие проверки
         """
@@ -203,14 +203,14 @@ class TemplateService:
             Report.status != ReportStatus.saved.name
         ).order_by(desc(Report.created_at))
 
-        return self.session.exec(statement).all()
+        return (await self.session.exec(statement)).all()
 
     async def get_by_report_id(self, report_id: uuid.UUID):
         """
         Получить объект шаблона по id отчета
         """
         statement = select(Template).where(Template.template_id == Report.template_id, Report.id == report_id)
-        template = self.session.exec(statement).first()
+        template = await self.session.exec(statement).first()
         return template
 
     async def get_all_answer_elements_id(self, report_id: uuid.UUID):

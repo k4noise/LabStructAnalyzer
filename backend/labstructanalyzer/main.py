@@ -14,6 +14,7 @@ from .routers.lti_router import router as lti_router
 from .routers.template_router import router as template_router
 from .routers.file_router import router as file_router
 from .routers.users_router import router as users_router
+from .routers.report_router import router as report_router
 
 from dotenv import load_dotenv
 
@@ -39,6 +40,7 @@ app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')
 app.include_router(template_router, prefix='/api/v1/templates')
 app.include_router(users_router, prefix='/api/v1/users')
+app.include_router(report_router, prefix='/api/v1/reports')
 app.include_router(file_router)
 
 app.add_middleware(

@@ -13,9 +13,10 @@ from starlette.responses import JSONResponse
 from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
 from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
-from labstructanalyzer.models.dto.report import MinimalReportInfoDto
+from labstructanalyzer.models.dto.report import MinimalReportInfoDto, AllReportsDto
 from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
+from labstructanalyzer.models.report import Report
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.lti.ags import AgsService
@@ -25,7 +26,7 @@ from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.parser.docx import DocxParser
-from labstructanalyzer.services.report import ReportService
+from labstructanalyzer.services.report import ReportService, ReportStatus
 from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.utils.rbac_decorator import roles_required
 
@@ -258,7 +259,7 @@ async def get_templates(request: Request,
                 template_id=item[0],
                 name=item[1],
                 report_id=item[2] if len(item) > 2 else None,
-                report_status=item[3] if len(item) > 3 else None
+                report_status=ReportStatus[item[3]] if len(item) > 3 and item[3] is not None else None
             ) for
             item in
             templates_with_base_properties],
@@ -317,12 +318,17 @@ async def get_template(
         template = await template_service.get_by_id(template_id)
         if template:
             elements = template_service.build_hierarchy(template.elements)
+
+            roles = authorize.get_raw_jwt().get("roles")
+            can_edit = "teacher" in roles
+            can_grade = can_edit or "assistant" in roles
             return TemplateWithElementsDto(
                 template_id=template_id,
                 name=template.name,
                 is_draft=template.is_draft,
                 max_score=template.max_score,
-                can_edit="teacher" in authorize.get_raw_jwt().get("roles"),
+                can_edit=can_edit,
+                can_grade=can_grade,
                 elements=elements
             )
         return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)
@@ -412,9 +418,9 @@ async def remove_template(
                             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@roles_required(["student"])
 @router.post(
     "/{template_id}/reports",
+    tags=["Template", "Report"],
     summary="Создать отчет с ответами на основе шаблона",
     responses={
         200: {
@@ -459,6 +465,7 @@ async def remove_template(
         }
     }
 )
+@roles_required(["student"])
 async def create_report(
         template_id: uuid.UUID,
         authorize: AuthJWT = Depends(),
@@ -474,11 +481,14 @@ async def create_report(
     template = await template_service.get_by_id(template_id)
     await answer_service.create_answers(template, report_id)
 
-    return JSONResponse({"id": report_id})
+    return JSONResponse({"id": str(report_id)})
 
 
+@router.get("/{template_id}/reports",
+            tags=["Template", "Report"],
+            summary="Получить все шаблоны по отчету"
+            )
 @roles_required(["teacher", "assistant"])
-@router.get("/{template_id}/reports")
 async def get_reports_by_template(
         template_id: uuid.UUID,
         request: Request,
@@ -489,19 +499,24 @@ async def get_reports_by_template(
     Получает краткую информацию о всех доступных версиях отчетов всех обучающихся курса конкретного шаблона,
     доступных для отображения согласно статусу (отправлен на (повторную) проверку / проверен)
     """
-    all_reports = template_service.get_all_reports(template_id)
+    all_reports = await template_service.get_all_reports(template_id)
+    template = await template_service.get_by_id(template_id)
     launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
                                                      FastAPIRequest(request),
                                                      tool_conf,
                                                      launch_data_storage=launch_data_storage)
     nrps_service = NrpsService(message_launch)
-    return [
-        MinimalReportInfoDto(
-            report_id=report.report_id,
-            date=report.updated_at,
-            status=report.status,
-            author_name=nrps_service.get_user_name(report.author_id),
-            grade=report.grade
-        ) for report in all_reports
-    ]
+    return AllReportsDto(
+        template_name=template.name,
+        max_score=template.max_score,
+        reports=[
+            MinimalReportInfoDto(
+                report_id=report.report_id,
+                date=report.updated_at,
+                status=ReportStatus[report.status].value,
+                author_name=nrps_service.get_user_name(report.author_id),
+                grade=report.grade
+            ) for report in all_reports
+        ]
+    )

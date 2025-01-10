@@ -22,6 +22,7 @@ class TemplateDto(TemplateMinimalProperties):
 
 class TemplateWithElementsDto(TemplateDto):
     can_edit: Optional[bool] = False
+    can_grade: Optional[bool] = False
     elements: list[TemplateElementDto]
 
     class Config:

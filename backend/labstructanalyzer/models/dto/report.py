@@ -5,11 +5,10 @@ from typing import Optional
 from pydantic import BaseModel
 
 from labstructanalyzer.models.dto.answer import AnswerDto
-from labstructanalyzer.models.dto.template import TemplateDto
 
 
 class ReportDto(BaseModel):
-    template: TemplateDto
+    template_id: uuid.UUID
     report_id: uuid.UUID
     status: str
     grader_name: Optional[str] = None
@@ -23,3 +22,9 @@ class MinimalReportInfoDto(BaseModel):
     status: str
     author_name: str
     grade: Optional[float] = None
+
+
+class AllReportsDto(BaseModel):
+    template_name: str
+    max_score: float
+    reports: list[MinimalReportInfoDto]

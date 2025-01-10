@@ -8,8 +8,8 @@ from labstructanalyzer.models.report import Report
 
 
 class ReportStatus(enum.Enum):
-    saved = "Сохранен",
-    submitted = "Отправлен на проверку",
+    saved = "Сохранен"
+    submitted = "Отправлен на проверку"
     graded = "Проверен"
 
 
@@ -65,7 +65,7 @@ class ReportService:
             .limit(1)
         )
 
-        return await self.session.exec(statement).first()
+        return (await self.session.exec(statement)).first()
 
     async def set_grade(self, report_id: uuid.UUID, score: float):
         """

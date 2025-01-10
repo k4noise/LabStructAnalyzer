@@ -1,14 +1,14 @@
 import uuid
-from urllib.request import Request
 
 from fastapi import APIRouter, Depends
 from fastapi_another_jwt_auth import AuthJWT
 from starlette import status
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import tool_conf
 from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_template_service
-from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto
+from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto
 from labstructanalyzer.models.dto.report import ReportDto
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
@@ -24,8 +24,8 @@ from labstructanalyzer.utils.rbac_decorator import roles_required
 router = APIRouter()
 
 
+@router.patch("/{report_id}", tags=["Report"], summary="Обновить ответы в отчете")
 @roles_required(["student"])
-@router.patch("/{report_id}")
 async def update_answers(
         report_id: uuid.UUID,
         answers: list[UpdateAnswerDto],
@@ -38,7 +38,7 @@ async def update_answers(
     await answers_service.update_answers(report_id, answers)
 
 
-@router.get("/{report_id}")
+@router.get("/{report_id}", tags=["Report"], summary="Получить отчет")
 async def get_report(
         report_id: uuid.UUID,
         request: Request,
@@ -53,6 +53,7 @@ async def get_report(
     для студента производится проверка, он ли автор
     преподавателю и ассистенту доступ свободный
     """
+    authorize.jwt_required()
     roles = authorize.get_raw_jwt().get("roles")
     if len(roles) == 1 and "student" in roles:
         is_author = await report_service.check_is_author(report_id, authorize.get_jwt_subject())
@@ -72,17 +73,31 @@ async def get_report(
                                                      launch_data_storage=launch_data_storage)
     nrps_service = NrpsService(message_launch)
     return ReportDto(
-        template=current_report.template,
+        template_id=current_report.template_id,
         report_id=current_report.report_id,
         status=current_report.status,
         grader_name=nrps_service.get_user_name(current_report.grader_id) if current_report.grader_id else None,
-        current_answers=current_report.answers,
-        prev_answers=prev_report.answers if prev_report else None
+        current_answers=[
+            AnswerDto(
+                answer_id=answer.answer_id,
+                element_id=answer.element_id,
+                data=answer.data,
+                score=answer.score
+            ) for answer in
+            current_report.answers],
+        prev_answers=[
+            AnswerDto(
+                answer_id=answer.answer_id,
+                element_id=answer.element_id,
+                data=answer.data,
+                score=answer.score
+            ) for answer in
+            prev_report.answers] if prev_report else None
     )
 
 
+@router.post("/{report_id}/grade", tags=["Report"], summary="Оценить отчет")
 @roles_required(['teacher', 'assistant'])
-@router.post("/{report_id}/grade")
 async def save_grades(
         report_id: uuid.UUID,
         score_data: list[UpdateScoreAnswerDto],
