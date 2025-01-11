@@ -1,11 +1,20 @@
 interface ButtonProps {
   text: string;
   type?: "button" | "submit" | "reset";
+  name?: string;
   classes?: string;
   onClick?: () => void;
+  disable?: boolean;
 }
 
-const Button = ({ text, type = "button", classes, onClick }: ButtonProps) => (
+const Button = ({
+  text,
+  type = "button",
+  name,
+  classes,
+  onClick,
+  disable,
+}: ButtonProps) => (
   <button
     className={`px-2 py-1 border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950
       transition-colors duration-300
@@ -13,7 +22,9 @@ const Button = ({ text, type = "button", classes, onClick }: ButtonProps) => (
         classes ? `${classes}` : ""
       }`}
     type={type}
+    name={name}
     onClick={onClick}
+    disabled={disable}
   >
     {text}
   </button>

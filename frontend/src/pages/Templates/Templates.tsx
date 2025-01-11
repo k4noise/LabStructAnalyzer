@@ -5,6 +5,23 @@ import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 import { AllTemplatesInfo } from "../../model/template";
 
+const getStatusClass = (status: string | null): string => {
+  switch (status) {
+    case "Новый":
+      return "border-blue-600 text-blue-600";
+    case "Создан":
+      return "border-indigo-600 text-indigo-600";
+    case "Сохранен":
+      return "border-cyan-600 text-cyan-600";
+    case "Отправлен на проверку":
+      return "border-yellow-600 text-yellow-600";
+    case "Проверен":
+      return "border-green-600 text-green-600";
+    default:
+      return "dark:border-zinc-200 border-zinc-950";
+  }
+};
+
 /**
  * Компонент для управления шаблонами курса
  *
@@ -25,6 +42,12 @@ const Templates = () => {
    * @type {boolean}
    */
   const [isOpen, setIsOpen] = useState(false);
+
+  /**
+   * Состояние загрузки нового шаблона (в процессе загрузки/не загружается)
+   * @type {boolean}
+   */
+  const [isTemplateUpload, setIsTemplateUpload] = useState(false);
 
   /**
    * Состояние сообщения об ошибке при загрузке шаблона
@@ -62,7 +85,9 @@ const Templates = () => {
     const template = formData.get("template");
     if (template && template["name"] == "") return;
     try {
+      setIsTemplateUpload(true);
       const { data } = await api.post("/api/v1/templates", formData);
+      setIsTemplateUpload(false);
       setErrorInUpload(null);
       navigate(`/template/${data.template_id}`);
     } catch (error) {
@@ -75,17 +100,18 @@ const Templates = () => {
       <h2 className="text-3xl font-medium text-center mb-10">
         {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
-      {data.teacher_interface && (
+      {data.can_upload && (
         <Button
           text="+ Добавить новый шаблон"
           onClick={handleOpen}
           classes="mb-6"
         />
       )}
-      <div className="flex flex-col gap-4">
-        {data.templates ? (
-          <>
-            {data.templates.map((templateProperties) => (
+      {!!data?.drafts?.length && (
+        <div>
+          <p className="font-bold">Черновики шаблонов:</p>
+          <div className="ml-4 flex flex-col gap-4 my-4">
+            {data.drafts.map((templateProperties) => (
               <Link
                 to={`/template/${templateProperties.template_id}`}
                 key={templateProperties.template_id}
@@ -94,9 +120,51 @@ const Templates = () => {
                 {templateProperties.name}
               </Link>
             ))}
-          </>
+          </div>
+        </div>
+      )}
+      <div>
+        <p className="font-bold">
+          {data.can_upload ? "Опубликованные" : "Доступные"} шаблоны:
+        </p>
+        {data.templates.length ? (
+          <div className="flex flex-col gap-4 my-4 ml-4">
+            {data.templates.map((templateProperties) => (
+              <span key={`${templateProperties.template_id}-items`}>
+                <Link
+                  to={
+                    data.can_upload
+                      ? `/template/${templateProperties.template_id}`
+                      : templateProperties.report_id
+                      ? `/report/${templateProperties.report_id}`
+                      : `/report/new/${templateProperties.template_id}`
+                  }
+                  key={templateProperties.template_id}
+                  className="underline mr-4"
+                >
+                  {templateProperties.name}
+                </Link>
+                {data.can_grade ? (
+                  <Link
+                    to={`/template/${templateProperties.template_id}/reports`}
+                    className="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2"
+                  >
+                    Заполненные отчеты
+                  </Link>
+                ) : (
+                  <span
+                    className={`text-base border px-2 py-1 border-solid rounded-xl border-2 select-none ${getStatusClass(
+                      templateProperties.report_status ?? "Новый"
+                    )}`}
+                  >
+                    {templateProperties.report_status ?? "Новый"}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
         ) : (
-          <p className="text-l">Шаблоны отсутствуют</p>
+          <p className="text-l mt-4">Шаблоны отсутствуют</p>
         )}
       </div>
       <Modal isOpen={isOpen} onClose={handleClose}>
@@ -118,7 +186,11 @@ const Templates = () => {
               {errorInUpload}
             </p>
           )}
-          <Button text="Загрузить" classes="block ml-auto" type="submit" />
+          <Button
+            text={isTemplateUpload ? "Загружаю..." : "Загрузить"}
+            classes="block ml-auto disabled:border-zinc-500 disabled:text-zinc-500"
+            type="submit"
+          />
         </form>
       </Modal>
     </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi_another_jwt_auth import AuthJWT
 from starlette.requests import Request
 
@@ -8,6 +8,7 @@ from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
+from labstructanalyzer.services.lti.user import User
 
 router = APIRouter()
 
@@ -33,14 +34,6 @@ router = APIRouter()
                 }
             },
         },
-        404: {
-            "description": "Пользователь не найден",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Пользователь не найден"}
-                }
-            },
-        },
     },
     summary="Получение информации о пользователе и курсе",
     description="""Получение имени (ФИО, имени и фамилии отдельно), URL аватара и роли для аутентифицированного пользователя через данные LTI-запуска.
@@ -60,24 +53,16 @@ async def get_user_data(request: Request, authorize: AuthJWT = Depends()):
 
     authorize.jwt_required()
     raw_jwt = authorize.get_raw_jwt()
-    user_id = raw_jwt.get("sub")
 
     launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
                                                      launch_data_storage=launch_data_storage)
 
-    lms_url = message_launch.get_iss()
-    avatar_url = f"{lms_url}/user/pix.php/{user_id}/f1.jpg"
-    members = message_launch.get_nrps().get_members()
-
-    current_user = next((user for user in members if str(user.get('user_id')) == str(user_id)), None)
-    if not current_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
-
+    user_data = User(message_launch)
     return UserInfo(
-        fullName=current_user.get("name"),
-        name=current_user.get("given_name"),
-        surname=current_user.get("family_name"),
-        role=raw_jwt.get("role"),
-        avatarUrl=avatar_url
+        fullName=user_data.get_full_name(),
+        name=user_data.get_name(),
+        surname=user_data.get_surname(),
+        role=user_data.get_roles(),
+        avatarUrl=user_data.get_avatar_url()
     )

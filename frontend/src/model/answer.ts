@@ -11,3 +11,10 @@ export interface AnswerEdit {
    */
   simple: boolean;
 }
+
+export interface AnswerModel {
+  element_id: string;
+  answer_id?: string;
+  data?: object;
+  score?: number;
+}

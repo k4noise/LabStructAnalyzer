@@ -8,6 +8,8 @@ interface TextareaProps {
   minRowsCount?: number;
   max?: number;
   validationOptions?: UseFormRegisterReturn;
+  disabled?: boolean;
+  onChange?;
 }
 
 const Textarea = ({
@@ -18,6 +20,8 @@ const Textarea = ({
   minRowsCount,
   max,
   validationOptions,
+  disabled,
+  onChange,
 }: TextareaProps) => {
   const resize = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const textarea = event.currentTarget;
@@ -35,6 +39,8 @@ const Textarea = ({
       readOnly={readonly}
       maxLength={max}
       defaultValue={value}
+      onChange={onChange}
+      disabled={disabled}
     ></textarea>
   );
 };

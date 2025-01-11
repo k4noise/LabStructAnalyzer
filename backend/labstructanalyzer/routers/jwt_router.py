@@ -3,6 +3,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME
+from labstructanalyzer.services.lti.jwt import JWT
 
 router = APIRouter()
 
@@ -44,14 +45,9 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
 
     current_user = authorize.get_jwt_subject()
     raw_jwt = authorize.get_raw_jwt()
-    role = raw_jwt.get("role")
-    launch_id = raw_jwt.get("launch_id")
-    course_id = raw_jwt.get("course_id")
+    user_claims = JWT().create_user_claims_at_jwt_object(raw_jwt)
 
-    new_access_token = authorize.create_access_token(
-        subject=current_user,
-        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id},
-    )
+    new_access_token = authorize.create_access_token(subject=current_user, user_claims=user_claims)
     response = JSONResponse({"detail": "Обновлен токен доступа"})
     authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
     return response

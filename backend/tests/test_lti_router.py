@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
 from labstructanalyzer.routers.lti_router import router as lti_router
-from labstructanalyzer.services.roles import LTIRoles
+from labstructanalyzer.services.lti.user import User
 
 
 class TestLoginRoute(unittest.TestCase):
@@ -103,7 +103,7 @@ class TestLaunchRoute(unittest.TestCase):
                     create_access_token=MagicMock(return_value="access"),
                     create_refresh_token=MagicMock(return_value="refresh"),
                     )
-    @patch.object(LTIRoles, 'get_role', return_value=["student"])
+    @patch.object(User, 'get_role', return_value=["student"])
     def test_launch_right(self, mock_get_role):
         """
         Тестирует успешный запуск LTI-запроса к маршруту /lti/launch.
@@ -118,8 +118,8 @@ class TestLaunchRoute(unittest.TestCase):
         FastAPIMessageLaunch.validate_registration.assert_called_once()
         FastAPIMessageLaunch.get_launch_data.assert_called_once()
         FastAPIMessageLaunch.get_launch_id.assert_called_once()
-        AuthJWT.create_access_token.assert_called_once_with(subject="localhost", user_claims={"role": ["student"], "launch_id": 123})
-        AuthJWT.create_refresh_token.assert_called_once_with(subject="localhost", user_claims={"role": ["student"], "launch_id": 123})
+        AuthJWT.create_access_token.assert_called_once_with(subject="localhost", user_claims={"roles": ["student"], "launch_id": 123})
+        AuthJWT.create_refresh_token.assert_called_once_with(subject="localhost", user_claims={"roles": ["student"], "launch_id": 123})
         mock_get_role.assert_called_once()
 
 
