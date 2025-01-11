@@ -203,15 +203,14 @@ class TemplateService:
             Report.status != ReportStatus.saved.name
         ).order_by(desc(Report.created_at))
 
-        return (await self.session.exec(statement)).all()
+        return (await self.session.exec(statement)).unique().all()
 
     async def get_by_report_id(self, report_id: uuid.UUID):
         """
         Получить объект шаблона по id отчета
         """
-        statement = select(Template).where(Template.template_id == Report.template_id, Report.id == report_id)
-        template = await self.session.exec(statement).first()
-        return template
+        report = await self.session.get(Report, report_id)
+        return report.template
 
     async def get_all_answer_elements_id(self, report_id: uuid.UUID):
         template = self.get_by_report_id(report_id)

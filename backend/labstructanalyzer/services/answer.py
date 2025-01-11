@@ -28,6 +28,7 @@ class AnswerService:
                 template_id=template.template_id,
                 report_id=report_id,
                 element_id=element.element_id,
+                score=None,
                 data=None
             )
             for element in template.elements if element.element_type == 'answer'
@@ -68,20 +69,20 @@ class AnswerService:
         """
         query = (
             select(Answer.score, TemplateElement.properties)
+            .select_from(Answer)
             .join(TemplateElement, Answer.element_id == TemplateElement.element_id)
             .where(Answer.report_id == report_id)
         )
-        results = await self.session.exec(query).all()
+        results = await self.session.exec(query)
 
         weight_sum = 0
         score_with_weight_sum = 0
 
-        for score, properties in results:
-            weight = json.loads(properties).get("weight")
+        for score, properties in results.all():
+            weight = properties.get("weight")
             weight_sum += weight
             score_with_weight_sum += score * weight
 
         if score_with_weight_sum == 0:
             return 0
-
-        return (score_with_weight_sum / weight_sum) / max_score
+        return (score_with_weight_sum / weight_sum) * max_score

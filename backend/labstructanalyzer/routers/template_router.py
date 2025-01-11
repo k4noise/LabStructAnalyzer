@@ -16,7 +16,6 @@ from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.models.dto.report import MinimalReportInfoDto, AllReportsDto
 from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
-from labstructanalyzer.models.report import Report
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.lti.ags import AgsService
@@ -31,7 +30,7 @@ from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.utils.rbac_decorator import roles_required
 
 router = APIRouter()
-template_prefix = "images\\temp"
+template_prefix = "images\\template"
 
 
 @router.post(
@@ -516,7 +515,7 @@ async def get_reports_by_template(
                 date=report.updated_at,
                 status=ReportStatus[report.status].value,
                 author_name=nrps_service.get_user_name(report.author_id),
-                grade=report.grade
+                score=report.score
             ) for report in all_reports
         ]
     )

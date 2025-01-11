@@ -12,7 +12,7 @@ router = APIRouter(
 
 
 @router.get(
-    "/temp/{filename}",
+    "/template/{filename}",
     summary="Получить изображение из шаблона",
     description="Возвращает изображение из шаблона по имени файла",
     responses={

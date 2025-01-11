@@ -20,8 +20,9 @@ class NrpsService:
         Получить имя пользователя по идентификатору.
         Если данные курса отсутствуют в кеше, то они сохраняются в кеш.
         """
-        if course_users := cache.get(self.course_id) is not None:
-            return course_users.get(user_id)
+        course_users = cache.get(self.course_id)
+        if course_users is not None:
+            return course_users.get(str(user_id))
 
         self._cache_users()
         return self.get_user_name(user_id)

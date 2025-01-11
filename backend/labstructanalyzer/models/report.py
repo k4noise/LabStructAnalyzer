@@ -6,6 +6,7 @@ from sqlalchemy import Column, TIMESTAMP, text, FetchedValue, Index
 from sqlmodel import SQLModel, Field, Relationship
 
 from labstructanalyzer.models.answer import Answer
+from labstructanalyzer.models.template import Template
 
 
 class Report(SQLModel, table=True):
@@ -39,6 +40,10 @@ class Report(SQLModel, table=True):
 
     answers: list[Answer] = Relationship(
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "joined"}
+    )
+
+    template: "Template" = Relationship(
+        sa_relationship_kwargs={"lazy": "joined"}
     )
 
     __table_args__ = (

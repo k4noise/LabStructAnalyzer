@@ -4,7 +4,6 @@ from datetime import datetime
 from sqlalchemy import Column, TIMESTAMP, text, FetchedValue, Index
 from sqlmodel import SQLModel, Field, Relationship, asc
 
-from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template_element import TemplateElement
 
 
@@ -43,8 +42,6 @@ class Template(SQLModel, table=True):
             "order_by": asc(TemplateElement.order)
         }
     )
-
-    reports: list[Report] = Relationship(sa_relationship_kwargs={"lazy": "dynamic"})
 
     __table_args__ = (
         Index("templates_course_id_is_draft_idx", "course_id", "is_draft"),

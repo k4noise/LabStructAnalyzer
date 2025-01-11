@@ -8,6 +8,7 @@ from labstructanalyzer.models.report import Report
 
 
 class ReportStatus(enum.Enum):
+    created = "Создан"
     saved = "Сохранен"
     submitted = "Отправлен на проверку"
     graded = "Проверен"
@@ -24,6 +25,34 @@ class ReportService:
         result = await self.session.get(Report, report_id)
         return result and result.author_id == user_id
 
+    async def save(self, report_id: uuid.UUID):
+        """
+        Отправляет отчет на проверку
+        """
+        report = await self.session.get(Report, report_id)
+        report.status = ReportStatus.saved.name
+        self.session.add(report)
+        await self.session.commit()
+
+
+    async def send_to_grade(self, report_id: uuid.UUID):
+        """
+        Отправляет отчет на проверку
+        """
+        report = await self.session.get(Report, report_id)
+        report.status = ReportStatus.submitted.name
+        self.session.add(report)
+        await self.session.commit()
+
+    async def cancel_send_to_grade(self, report_id: uuid.UUID):
+        """
+        Отменяет отправку отчета на проверку
+        """
+        report = await self.session.get(Report, report_id)
+        report.status = ReportStatus.saved.name
+        self.session.add(report)
+        await self.session.commit()
+
     async def create(self, template_id: uuid.UUID, user_id: str) -> uuid.UUID:
         """
         Создает новый отчет, возвращая его id.
@@ -31,7 +60,7 @@ class ReportService:
         report = Report(
             template_id=template_id,
             author_id=user_id,
-            status=ReportStatus.saved.name,
+            status=ReportStatus.created.name,
         )
         self.session.add(report)
         await self.session.commit()
@@ -67,12 +96,13 @@ class ReportService:
 
         return (await self.session.exec(statement)).first()
 
-    async def set_grade(self, report_id: uuid.UUID, score: float):
+    async def set_grade(self, report_id: uuid.UUID, grader_id: str, score: float):
         """
         Сохраняет оценку в отчете и изменяет его статус
         """
         report = await self.session.get(Report, report_id)
         report.score = score
+        report.grader_id = grader_id
         report.status = ReportStatus.graded.name
         self.session.add(report)
         await self.session.commit()

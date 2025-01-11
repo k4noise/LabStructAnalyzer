@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import requests
 from pylti1p3.exception import LtiException
 from pylti1p3.grade import Grade
@@ -86,10 +88,12 @@ class AgsService:
             raise AgsNotSupportedException
 
         ags = self.message_launch.get_ags()
-        lineitem = self._create_lineitem_object(template)
+        lineitem = ags.find_lineitem_by_resource_id(str(template.template_id))
         grade = Grade() \
             .set_score_given(grade) \
+            .set_score_maximum(template.max_score) \
             .set_user_id(user_id) \
+            .set_timestamp(datetime.now().strftime('%Y-%m-%dT%H:%M:%S+0000')) \
             .set_activity_progress('Completed') \
             .set_grading_progress('FullyGraded')
 

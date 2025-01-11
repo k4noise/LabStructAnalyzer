@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 
 class CreateAnswerDto(BaseModel):
@@ -11,7 +11,7 @@ class CreateAnswerDto(BaseModel):
 
 class UpdateAnswerDto(BaseModel):
     answer_id: uuid.UUID
-    data: dict
+    data: Optional[dict] = None
 
 
 class UpdateScoreAnswerDto(BaseModel):
