@@ -5,6 +5,23 @@ import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 import { AllTemplatesInfo } from "../../model/template";
 
+const getStatusClass = (status: string | null): string => {
+  switch (status) {
+    case "Новый":
+      return "border-blue-600 text-blue-600";
+    case "Создан":
+      return "border-indigo-600 text-indigo-600";
+    case "Сохранен":
+      return "border-cyan-600 text-cyan-600";
+    case "Отправлен на проверку":
+      return "border-yellow-600 text-yellow-600";
+    case "Проверен":
+      return "border-green-600 text-green-600";
+    default:
+      return "dark:border-zinc-200 border-zinc-950";
+  }
+};
+
 /**
  * Компонент для управления шаблонами курса
  *
@@ -107,17 +124,43 @@ const Templates = () => {
         </div>
       )}
       <div>
-        <p className="font-bold">Доступные шаблоны:</p>
+        <p className="font-bold">
+          {data.can_upload ? "Опубликованные" : "Доступные"} шаблоны:
+        </p>
         {data.templates.length ? (
           <div className="flex flex-col gap-4 my-4 ml-4">
             {data.templates.map((templateProperties) => (
-              <Link
-                to={`/template/${templateProperties.template_id}`}
-                key={templateProperties.template_id}
-                className="underline"
-              >
-                {templateProperties.name}
-              </Link>
+              <span key={`${templateProperties.template_id}-items`}>
+                <Link
+                  to={
+                    data.can_upload
+                      ? `/template/${templateProperties.template_id}`
+                      : templateProperties.report_id
+                      ? `/report/${templateProperties.report_id}`
+                      : `/report/new/${templateProperties.template_id}`
+                  }
+                  key={templateProperties.template_id}
+                  className="underline mr-4"
+                >
+                  {templateProperties.name}
+                </Link>
+                {data.can_grade ? (
+                  <Link
+                    to={`/template/${templateProperties.template_id}/reports`}
+                    className="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2"
+                  >
+                    Заполненные отчеты
+                  </Link>
+                ) : (
+                  <span
+                    className={`text-base border px-2 py-1 border-solid rounded-xl border-2 select-none ${getStatusClass(
+                      templateProperties.report_status ?? "Новый"
+                    )}`}
+                  >
+                    {templateProperties.report_status ?? "Новый"}
+                  </span>
+                )}
+              </span>
             ))}
           </div>
         ) : (

@@ -10,6 +10,7 @@ export interface TemplateModel {
   is_draft: boolean;
   max_score: number;
   can_edit: boolean;
+  can_grade: boolean;
   elements: TemplateElementModel[];
 }
 
@@ -24,6 +25,8 @@ export interface UpdateTemplateModel {
 export interface MinimalTemplateInfo {
   template_id: string;
   name: string;
+  report_status?: string;
+  report_id?: string;
 }
 
 export interface AllTemplatesInfo {

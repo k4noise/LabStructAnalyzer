@@ -1,4 +1,4 @@
-import React, { useState, memo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { FieldValues, useForm } from "react-hook-form";
 import { TemplateModel, UpdateTemplateModel } from "../../model/template";
@@ -6,57 +6,12 @@ import {
   TemplateElementModel,
   AnswerElement,
 } from "../../model/templateElement";
-import TextComponent from "../../components/Template/TextComponent";
-import ImageComponent from "../../components/Template/ImageComponent";
-import HeaderComponent from "../../components/Template/HeaderComponent";
-import TableComponent from "../../components/Template/TableComponent";
-import { getMarginLeftStyle } from "../../utils/templateStyle";
-import AnswerComponent from "../../components/Template/AnswerComponent";
 import BackButtonComponent from "../../components/BackButtonComponent";
-import QuestionAnswerComponent from "../../components/Template/QuestionAnswerComponent";
 import Modal from "../../components/Modal/Modal";
-import AnswerContext from "../../context/AnswerContext";
 import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
 import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
-
-/**
- * Карта соответствий типов элементов и компонентов для рендеринга.
- *
- * @constant
- * @type {Record<string, React.FC<any>>}
- */
-const componentMap: Record<
-  string,
-  React.FC<{ element: TemplateElementModel }>
-> = {
-  text: memo(TextComponent),
-  image: memo(ImageComponent),
-  header: memo(HeaderComponent),
-  question: memo(QuestionAnswerComponent),
-  table: memo(TableComponent),
-  answer: memo(AnswerComponent),
-};
-
-const renderElement = (element: TemplateElementModel): React.ReactNode => {
-  const Component = componentMap[element.element_type] || null;
-
-  const marginLeftStyle = getMarginLeftStyle(element.properties.nestingLevel);
-
-  if (Component) {
-    return <Component element={element} key={element.element_id} />;
-  }
-
-  if (Array.isArray(element.properties.data)) {
-    return (
-      <div className={`my-5 ${marginLeftStyle}`} key={element.element_id}>
-        {element.properties.data.map(renderElement)}
-      </div>
-    );
-  }
-
-  return null;
-};
+import TemplateElements from "../../components/Template/TemplateElements";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -83,7 +38,7 @@ const Template: React.FC = () => {
   const { data: template } = useLoaderData<{ data: TemplateModel }>();
 
   /**
-   * Отфильтрованные элементы шаблона с использованием useMemo.
+   * Отфильтрованные элементы шаблона
    */
   const filteredElements = template?.elements.filter((element) => {
     const condition = displayModeFilterConditions[displayModeFilter];
@@ -266,12 +221,13 @@ const Template: React.FC = () => {
             />
           </div>
         )}
-
-        <AnswerContext.Provider
-          value={{ handleSelectAnswerForEdit: handleSelectAnswer }}
-        >
-          {filteredElements?.map(renderElement)}
-        </AnswerContext.Provider>
+        <TemplateElements
+          elements={filteredElements}
+          answerContextProps={{
+            handleSelectAnswerForEdit: handleSelectAnswer,
+            editAnswerPropsMode: template.can_edit,
+          }}
+        />
         <div className="flex justify-end gap-5 mt-10">
           {template.can_edit ? (
             <>
@@ -303,9 +259,6 @@ const Template: React.FC = () => {
             />
           )}
         </div>
-
-        {/* Ни в коем случае не удаляйте этот элемент, так как не будут сгенерированы нужные классы отступов и размеров заголовков*/}
-        <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36 ml-40 text-3xl text-2xl"></span>
       </form>
       <Modal isOpen={isOpen} onClose={handleClose}>
         <div className="w-80">
@@ -330,4 +283,3 @@ const Template: React.FC = () => {
 };
 
 export default Template;
-export { renderElement };
