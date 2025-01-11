@@ -8,11 +8,11 @@ from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, tool_conf
+from labstructanalyzer.services.lti.jwt import JWT
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
-from labstructanalyzer.services.roles import LTIRoles
 from labstructanalyzer.utils.ttl_cache import TTLCache
 
 router = APIRouter()
@@ -120,24 +120,11 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
     message_launch.validate_registration()
 
-    roles = LTIRoles(message_launch)
-    role = roles.get_role()
+    user_id = message_launch.get_launch_data().get('sub')
+    user_claims = JWT().create_user_claims_at_message_launch(message_launch)
 
-    launch_data = message_launch.get_launch_data()
-    user_id = launch_data.get('sub')
-    launch_id = message_launch.get_launch_id()
-    course_id = message_launch.get_nrps() \
-        .get_context() \
-        .get("id")
-
-    access_token = authorize.create_access_token(
-        subject=user_id,
-        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
-    )
-    refresh_token = authorize.create_refresh_token(
-        subject=user_id,
-        user_claims={"role": role, "launch_id": launch_id, "course_id": course_id}
-    )
+    access_token = authorize.create_access_token(subject=user_id, user_claims=user_claims)
+    refresh_token = authorize.create_refresh_token(subject=user_id, user_claims=user_claims)
 
     base_url = urljoin(os.getenv('FRONTEND_URL'), '/templates')
     response = RedirectResponse(url=base_url, status_code=302)

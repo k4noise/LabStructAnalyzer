@@ -12,3 +12,8 @@ class AgsNotSupportedException(Exception):
     """Исключение, возникающее при отсутствии доступа к службе оценок LTI 1.3"""
     def __init__(self):
         super.__init__("Нет доступа к службе оценок")
+
+class NrpsNotSupportedException(Exception):
+    """Исключение, возникающее при отсутствии доступа к службе имен и ролей LTI 1.3"""
+    def __init__(self):
+        super.__init__("Нет доступа к службе имен и ролей")

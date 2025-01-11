@@ -8,12 +8,12 @@ async def invalid_jwt_state(request, exc):
 
 async def invalid_lti_state(request, exc):
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Ошибка внешнего инструмента, необходим повторный вход через LMS")
+                        detail="Ошибка внешнего инструмента")
 
 
 async def no_existing_template(request, exc):
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message)
 
 
-async def no_ags_service_access(request, exc):
+async def no_lti_service_access(request, exc):
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message)

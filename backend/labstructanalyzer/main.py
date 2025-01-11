@@ -7,14 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from pylti1p3.exception import LtiException
 
-from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_existing_template, no_ags_service_access
-from .core.exceptions import TemplateNotFoundException, AgsNotSupportedException
+from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_existing_template, no_lti_service_access
+from .core.exceptions import TemplateNotFoundException, AgsNotSupportedException, NrpsNotSupportedException
 from .routers.jwt_router import router as jwt_router
 from .routers.lti_router import router as lti_router
 from .routers.template_router import router as template_router
 from .routers.file_router import router as file_router
 from .routers.users_router import router as users_router
-from .routers.courses_router import router as courses_router
+from .routers.report_router import router as report_router
 
 from dotenv import load_dotenv
 
@@ -33,13 +33,14 @@ app = FastAPI(lifespan=lifespan)
 app.add_exception_handler(AuthJWTException, invalid_jwt_state)
 app.add_exception_handler(LtiException, invalid_lti_state)
 app.add_exception_handler(TemplateNotFoundException, no_existing_template)
-app.add_exception_handler(AgsNotSupportedException, no_ags_service_access)
+app.add_exception_handler(AgsNotSupportedException, no_lti_service_access)
+app.add_exception_handler(NrpsNotSupportedException, no_lti_service_access)
 
 app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')
 app.include_router(template_router, prefix='/api/v1/templates')
 app.include_router(users_router, prefix='/api/v1/users')
-app.include_router(courses_router, prefix='/api/v1/courses')
+app.include_router(report_router, prefix='/api/v1/reports')
 app.include_router(file_router)
 
 app.add_middleware(

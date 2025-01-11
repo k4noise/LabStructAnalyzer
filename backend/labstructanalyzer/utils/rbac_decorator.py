@@ -20,7 +20,7 @@ def roles_required(roles: List[str]) -> Callable:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Не авторизован")
             try:
                 authorize.jwt_required()
-                user_roles = authorize.get_raw_jwt().get("role")
+                user_roles = authorize.get_raw_jwt().get("roles")
                 if not any(item in roles for item in user_roles):
                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещён")
                 return await func(*args, **kwargs)

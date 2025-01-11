@@ -30,7 +30,7 @@ class TestUserRouter(unittest.TestCase):
         mock_auth_jwt_get_raw_jwt.return_value = {
             "sub": "test_user_id",
             "launch_id": "test_launch_id",
-            "role": ["test"]
+            "roles": ["test"]
         }
 
         mock_message_launch_instance = MagicMock()

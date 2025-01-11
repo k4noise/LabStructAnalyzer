@@ -1,17 +1,19 @@
 import copy
 import uuid
-from functools import lru_cache
-from typing import List, Optional
+from typing import Optional
 from urllib.parse import urlparse
 
+from sqlalchemy import func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, and_, desc
 
 from labstructanalyzer.core.exceptions import TemplateNotFoundException
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
+from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
+from labstructanalyzer.services.report import ReportStatus
 from labstructanalyzer.utils.file_utils import FileUtils
 
 
@@ -49,7 +51,6 @@ class TemplateService:
         await self.session.refresh(template)
         return template
 
-    @lru_cache
     async def get_by_id(self, template_id: uuid.UUID) -> Optional[Template]:
         """
         Возвращает шаблон по ID.
@@ -60,12 +61,12 @@ class TemplateService:
         Returns:
             Модель шаблона, если шаблон с переданным id существует, иначе None
         """
-        template = await self.session.get(Template, template_id)
-        return template
+        return await self.session.get(Template, template_id)
 
     async def update(self, template_id: uuid.UUID, data_to_modify: TemplateToModify):
         """
         Обновляет данные сохраненного шаблона - изменяет только те параметры, которые были переданы пользователем.
+        Для опубликованного шаблона нельзя изменять имя и максимальный балл
 
         Args:
             template_id: id шаблона
@@ -78,8 +79,10 @@ class TemplateService:
         if template is None:
             raise TemplateNotFoundException(template_id)
 
-        template.name = data_to_modify.name
-        template.max_score = data_to_modify.max_score
+        if template.is_draft:
+            template.name = data_to_modify.name
+            template.max_score = data_to_modify.max_score
+
         template.is_draft = data_to_modify.is_draft
 
         if data_to_modify.updated_elements:
@@ -107,17 +110,61 @@ class TemplateService:
         await self.session.delete(template)
         await self.session.commit()
 
-    async def get_all_by_course(self, course_id: str):
+    async def get_all_by_course(
+            self,
+            course_id: str,
+            is_draft: bool = False,
+            with_reports: bool = False
+    ):
         """
         Возвращает id и имена всех шаблонов по course_id, которые не являются черновиками.
-        Может вернуть пустой лист
+        Если with_reports=True, то также возвращает информацию об отчетах.
+        Может вернуть пустой список.
         """
-        statement = select(Template.template_id, Template.name).where(
-            Template.course_id == course_id,
-            Template.is_draft == False
-        )
+        if with_reports:
+            report_subquery = (
+                select(
+                    Report.template_id,
+                    Report.author_id,
+                    func.max(Report.created_at).label("latest_created_at")
+                )
+                .group_by(Report.template_id, Report.author_id)
+                .subquery()
+            )
+
+            statement = (
+                select(
+                    Template.template_id,
+                    Template.name,
+                    Report.report_id,
+                    Report.status
+                )
+                .select_from(Template)
+                .outerjoin(report_subquery, Template.template_id == report_subquery.c.template_id)
+                .outerjoin(Report, and_(
+                    Report.template_id == report_subquery.c.template_id,
+                    Report.author_id == report_subquery.c.author_id,
+                    Report.created_at == report_subquery.c.latest_created_at
+                ))
+                .where(
+                    Template.course_id == course_id,
+                    Template.is_draft == is_draft
+                )
+            )
+        else:
+            statement = (
+                select(
+                    Template.template_id,
+                    Template.name
+                )
+                .where(
+                    Template.course_id == course_id,
+                    Template.is_draft == is_draft
+                )
+            )
+
         result = await self.session.exec(statement)
-        return result.unique().all()
+        return result.all()
 
     def build_hierarchy(self, elements: list[TemplateElement]):
         """
@@ -129,6 +176,7 @@ class TemplateService:
         Returns:
             list[dict]: Иерархическая структура элементов.
         """
+
         def build_subtree(parent_id):
             subtree = []
             for element in elements:
@@ -145,6 +193,29 @@ class TemplateService:
             return subtree
 
         return build_subtree(None)
+
+    async def get_all_reports(self, template_id: uuid.UUID) -> list[Report]:
+        """
+        Получить все доступные отчеты - проверенные ранее или ожидающие проверки
+        """
+        statement = select(Report).where(
+            Report.template_id == template_id,
+            Report.status != ReportStatus.saved.name
+        ).order_by(desc(Report.created_at))
+
+        return (await self.session.exec(statement)).unique().all()
+
+    async def get_by_report_id(self, report_id: uuid.UUID):
+        """
+        Получить объект шаблона по id отчета
+        """
+        report = await self.session.get(Report, report_id)
+        return report.template
+
+    async def get_all_answer_elements_id(self, report_id: uuid.UUID):
+        template = self.get_by_report_id(report_id)
+        return self.elements_service.get_all_answer_elements_id(template.id)
+
 
 class TemplateElementService:
     """
@@ -251,3 +322,13 @@ class TemplateElementService:
                     FileUtils.remove("", urlparse(image_path).path)
                 finally:
                     continue
+
+    async def get_all_answer_elements_id(self, template_id: uuid.UUID):
+        """
+        Получает id всех элементов ответов
+        """
+        elements_query = select(TemplateElement.element_id).where(
+            TemplateElement.template_id == template_id,
+            TemplateElement.element_type == 'answer'
+        )
+        return await self.session.exec(elements_query).all()

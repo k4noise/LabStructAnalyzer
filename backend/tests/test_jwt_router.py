@@ -32,7 +32,7 @@ class TestJWTEndpoints(unittest.TestCase):
         """Тестирование успешного обновления токена доступа."""
         mock_jwt_refresh_token_required.return_value = None
         mock_get_jwt_subject.return_value = "test_user"
-        mock_get_raw_jwt.return_value = {"role": "user", "launch_id": "123"}
+        mock_get_raw_jwt.return_value = {"roles": "user", "launch_id": "123"}
         mock_create_access_token.return_value = "new_access_token"
 
         response = client.post("/refresh")
@@ -45,7 +45,7 @@ class TestJWTEndpoints(unittest.TestCase):
         mock_get_raw_jwt.assert_called_once()
         mock_create_access_token.assert_called_once_with(
             subject="test_user",
-            user_claims={"role": "user", "launch_id": "123"},
+            user_claims={"roles": "user", "launch_id": "123"},
         )
 
     @patch.object(AuthJWT, 'jwt_refresh_token_required')

@@ -1,7 +1,7 @@
 import React from "react";
 import { TableElement } from "../../model/templateElement";
-import { renderElement } from "../../pages/Template/Template";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
+import { renderElement } from "./TemplateElements";
 
 interface TableProps {
   element: TableElement;

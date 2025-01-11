@@ -22,6 +22,8 @@ if config.config_file_name is not None:
 
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
+from labstructanalyzer.models.report import Report
+from labstructanalyzer.models.answer import Answer
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
