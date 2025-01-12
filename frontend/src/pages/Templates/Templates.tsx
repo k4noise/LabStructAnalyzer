@@ -1,7 +1,26 @@
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useLoaderData, useNavigate } from "react-router";
 import Modal from "../../components/Modal/Modal";
 import { useState } from "react";
-import { sendTemplate } from "../../actions/sendTemplate";
+import { api, extractMessage } from "../../utils/sendRequest";
+import Button from "../../components/Button/Button";
+import { AllTemplatesInfo } from "../../model/template";
+
+const getStatusClass = (status: string | null): string => {
+  switch (status) {
+    case "Новый":
+      return "border-blue-600 text-blue-600";
+    case "Создан":
+      return "border-indigo-600 text-indigo-600";
+    case "Сохранен":
+      return "border-cyan-600 text-cyan-600";
+    case "Отправлен на проверку":
+      return "border-yellow-600 text-yellow-600";
+    case "Проверен":
+      return "border-green-600 text-green-600";
+    default:
+      return "dark:border-zinc-200 border-zinc-950";
+  }
+};
 
 /**
  * Компонент для управления шаблонами курса
@@ -10,6 +29,8 @@ import { sendTemplate } from "../../actions/sendTemplate";
  * @returns {JSX.Element} Страница шаблонов с возможностью загрузки нового шаблона
  */
 const Templates = () => {
+  const { data } = useLoaderData<{ data: AllTemplatesInfo }>();
+  const courseName = data.course_name;
   /**
    * Хук навигации для перемещения между страницами
    * @type {Function}
@@ -17,22 +38,22 @@ const Templates = () => {
   const navigate = useNavigate();
 
   /**
-   * Параметры поиска из URL
-   * @type {URLSearchParams}
-   */
-  const [searchParams] = useSearchParams();
-
-  /**
-   * Название курса, полученное из параметров URL
-   * @type {string|null}
-   */
-  const courseName = searchParams.get("course");
-
-  /**
    * Состояние модального окна (открыто/закрыто)
    * @type {boolean}
    */
   const [isOpen, setIsOpen] = useState(false);
+
+  /**
+   * Состояние загрузки нового шаблона (в процессе загрузки/не загружается)
+   * @type {boolean}
+   */
+  const [isTemplateUpload, setIsTemplateUpload] = useState(false);
+
+  /**
+   * Состояние сообщения об ошибке при загрузке шаблона
+   * @type {string | null}
+   */
+  const [errorInUpload, setErrorInUpload] = useState<string | null>(null);
 
   /**
    * Открывает модальное окно
@@ -63,27 +84,89 @@ const Templates = () => {
     const formData = new FormData(event.target);
     const template = formData.get("template");
     if (template && template["name"] == "") return;
-    const { data, error, description } = await sendTemplate(formData);
-    if (error) {
-      navigate(`/error?code=${error}&description=${description}`);
-    }
-    if (data) {
-      localStorage.setItem("pageData", JSON.stringify(data));
-      navigate("/template");
+    try {
+      setIsTemplateUpload(true);
+      const { data } = await api.post("/api/v1/templates", formData);
+      setIsTemplateUpload(false);
+      setErrorInUpload(null);
+      navigate(`/template/${data.template_id}`);
+    } catch (error) {
+      setErrorInUpload(extractMessage(error.response));
     }
   };
 
   return (
-    <div>
+    <div className="mt-8">
       <h2 className="text-3xl font-medium text-center mb-10">
-        Отчеты лабораторных работ курса "{courseName}"
+        {courseName && `Отчеты лабораторных работ курса ${courseName}`}
       </h2>
-      <button
-        className="text-l p-4 rounded-xl underline mb-5"
-        onClick={handleOpen}
-      >
-        + Добавить новый шаблон
-      </button>
+      {data.can_upload && (
+        <Button
+          text="+ Добавить новый шаблон"
+          onClick={handleOpen}
+          classes="mb-6"
+        />
+      )}
+      {!!data?.drafts?.length && (
+        <div>
+          <p className="font-bold">Черновики шаблонов:</p>
+          <div className="ml-4 flex flex-col gap-4 my-4">
+            {data.drafts.map((templateProperties) => (
+              <Link
+                to={`/template/${templateProperties.template_id}`}
+                key={templateProperties.template_id}
+                className="underline"
+              >
+                {templateProperties.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <div>
+        <p className="font-bold">
+          {data.can_upload ? "Опубликованные" : "Доступные"} шаблоны:
+        </p>
+        {data.templates.length ? (
+          <div className="flex flex-col gap-4 my-4 ml-4">
+            {data.templates.map((templateProperties) => (
+              <span key={`${templateProperties.template_id}-items`}>
+                <Link
+                  to={
+                    data.can_upload
+                      ? `/template/${templateProperties.template_id}`
+                      : templateProperties.report_id
+                      ? `/report/${templateProperties.report_id}`
+                      : `/report/new/${templateProperties.template_id}`
+                  }
+                  key={templateProperties.template_id}
+                  className="underline mr-4"
+                >
+                  {templateProperties.name}
+                </Link>
+                {data.can_grade ? (
+                  <Link
+                    to={`/template/${templateProperties.template_id}/reports`}
+                    className="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2"
+                  >
+                    Заполненные отчеты
+                  </Link>
+                ) : (
+                  <span
+                    className={`text-base border px-2 py-1 border-solid rounded-xl border-2 select-none ${getStatusClass(
+                      templateProperties.report_status ?? "Новый"
+                    )}`}
+                  >
+                    {templateProperties.report_status ?? "Новый"}
+                  </span>
+                )}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-l mt-4">Шаблоны отсутствуют</p>
+        )}
+      </div>
       <Modal isOpen={isOpen} onClose={handleClose}>
         <form onSubmit={handleUploadTemplate}>
           <h3 className="text-xl font-medium text-center mb-3">
@@ -92,13 +175,24 @@ const Templates = () => {
           <p className="text-l text-center mb-8">
             Поддерживаемые форматы: docx
           </p>
-          <input type="file" name="template" className="mb-8" />
-          <button className="block px-2 py-1 ml-auto border-solid rounded-xl border-2 dark:border-zinc-200 border-zinc-950">
-            Загрузить
-          </button>
+          <input
+            type="file"
+            name="template"
+            className="mb-8 block"
+            data-testid="template"
+          />
+          {errorInUpload && (
+            <p className="text-center mb-3 bg-gradient-to-r from-transparent via-red-400/50 to-transparent">
+              {errorInUpload}
+            </p>
+          )}
+          <Button
+            text={isTemplateUpload ? "Загружаю..." : "Загрузить"}
+            classes="block ml-auto disabled:border-zinc-500 disabled:text-zinc-500"
+            type="submit"
+          />
         </form>
       </Modal>
-      <p className="text-l">Нет шаблонов</p>
     </div>
   );
 };
