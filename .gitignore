@@ -9,6 +9,7 @@ out/
 # Сертификаты
 cert.pem
 key.pem
+lti_config.json
 
 # Файлы и директории фронтенда
 /frontend/.env
