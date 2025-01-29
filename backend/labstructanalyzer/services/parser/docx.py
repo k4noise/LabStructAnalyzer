@@ -403,7 +403,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=urljoin(os.getenv("BACKEND_EXTERNAL_URL"), FileUtils.save(self.images_dir, image_data, image_extension))
+                data=FileUtils.save(self.images_dir, image_data, image_extension)
             )
 
         return None

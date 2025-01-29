@@ -20,7 +20,6 @@ class Settings(BaseModel):
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
     authjwt_access_token_expires: int = JWT_ACCESS_TOKEN_LIFETIME
-    authjwt_cookie_secure: bool = True
 
 @AuthJWT.load_config
 def get_config():

@@ -53,12 +53,7 @@ app.add_middleware(
 
 
 def start_dev():
-    uvicorn.run(
-        app="labstructanalyzer.main:app",
-        reload=True,
-        ssl_certfile="../cert.pem",
-        ssl_keyfile="../key.pem"
-    )
+    uvicorn.run(app="labstructanalyzer.main:app", reload=True, host="0.0.0.0")
 
 
 def start_prod():
