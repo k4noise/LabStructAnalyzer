@@ -8,7 +8,7 @@
 0. Перейти в папку `backend`
 1. Переименовать `.env.example` в `.env`, изменить необходимые значения
 2. В папке `labstructanalyzer/configs` переименовать `lti_config.json.example` в `lti_config.json` и изменить `http://moodle_external_lms_url` на URL развернутой Moodle. <br>
-После создания в LMS внешнего инструмента LTI v1.3 укажите `client_id` и `deployment_ids`
+После [создания](CREATE_EXTERNAL_TOOL.md) в LMS внешнего инструмента LTI v1.3 укажите `client_id` и `deployment_ids`
 3. В папке `labstructanalyzer/configs` сгенерируйте ключи самостоятельно:
 
 ```
