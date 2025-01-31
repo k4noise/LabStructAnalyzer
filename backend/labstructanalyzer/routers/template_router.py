@@ -4,14 +4,16 @@ import uuid
 
 from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
-from fastapi_another_jwt_auth import AuthJWT
 from sqlalchemy.exc import SQLAlchemyError
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
-from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service
+from labstructanalyzer.configs.config import CONFIG_DIR, TOOL_CONF, TEMPLATE_IMAGE_PREFIX
+from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service, \
+    get_user_with_any_role, get_user
+from labstructanalyzer.models.user_model import User, UserRole
+
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.models.dto.report import MinimalReportInfoDto, AllReportsDto
 from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
@@ -27,10 +29,8 @@ from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.parser.docx import DocxParser
 from labstructanalyzer.services.report import ReportService, ReportStatus
 from labstructanalyzer.services.template import TemplateService
-from labstructanalyzer.utils.rbac_decorator import roles_required
 
 router = APIRouter()
-template_prefix = "images\\template"
 
 
 @router.post(
@@ -81,17 +81,15 @@ template_prefix = "images\\template"
         },
     },
 )
-@roles_required(["teacher"])
 async def parse_template(
-        authorize: AuthJWT = Depends(),
         template: UploadFile = File(..., description="DOCX файл для обработки"),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     """
-    Преобразовать шаблон из docx в json, применяя структуру.
+    Преобразовать шаблон из docx в json, применяя структуру
 
-    - **template**: Файл формата `.docx` для обработки.
-    - Требуется роль **teacher**.
+    - template: Файл формата `.docx` для обработки
     """
     if not template:
         raise HTTPException(
@@ -110,15 +108,12 @@ async def parse_template(
     file_path = os.path.join(CONFIG_DIR, "structure.json")
     with open(file_path, 'r', encoding='utf-8') as file:
         data_dict = json.load(file)
-    docx_parser = DocxParser(await template.read(), data_dict, template_prefix)
+    docx_parser = DocxParser(await template.read(), data_dict, TEMPLATE_IMAGE_PREFIX)
     template_components = docx_parser.get_structure_components()
 
-    raw_jwt = authorize.get_raw_jwt()
-    course_id = raw_jwt.get("course_id")
-    user_id = raw_jwt.get("sub")
-
     try:
-        template_model = await template_service.create(user_id, course_id, file_name_parts[0], template_components)
+        template_model = await template_service.create(user.sub, user.course_id, file_name_parts[0],
+                                                       template_components)
         return JSONResponse({"template_id": str(template_model.template_id)})
     except SQLAlchemyError:
         return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
@@ -181,12 +176,11 @@ async def parse_template(
         },
     },
 )
-@roles_required(["teacher"])
 async def save_modified_template(
         request: Request,
         template_id: uuid.UUID,
         modified_template: TemplateToModify,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     try:
@@ -194,9 +188,9 @@ async def save_modified_template(
 
         if not modified_template.is_draft:
             launch_data_storage = FastAPICacheDataStorage(cache)
-            message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+            message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                              FastAPIRequest(request),
-                                                             tool_conf,
+                                                             TOOL_CONF,
                                                              launch_data_storage=launch_data_storage)
             ags_service = AgsService(message_launch)
             ags_service.create_lineitem(template)
@@ -229,25 +223,21 @@ async def save_modified_template(
     },
 )
 async def get_templates(request: Request,
-                        authorize: AuthJWT = Depends(),
+                        user: User = Depends(get_user),
                         template_service: TemplateService = Depends(get_template_service)
                         ):
-    authorize.jwt_required()
-    raw_jwt = authorize.get_raw_jwt()
-    course_id = raw_jwt.get("course_id")
-
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 
     course_name = Course(message_launch).get_name()
 
-    user_roles = raw_jwt.get("roles")
-    has_full_access = "teacher" in user_roles
-    has_partial_access = "assistant" in user_roles
+    has_full_access = UserRole.TEACHER in user.roles
+    has_partial_access = UserRole.ASSISTANT in user.roles
     with_reports = not (has_full_access or has_partial_access)
 
-    templates_with_base_properties = await template_service.get_all_by_course(course_id, with_reports=with_reports)
+    templates_with_base_properties = await template_service.get_all_by_course(user.course_id, user.sub,
+                                                                              with_reports=with_reports)
 
     data = AllTemplatesDto(
         can_upload=has_full_access,
@@ -265,7 +255,7 @@ async def get_templates(request: Request,
 
     )
     if has_full_access:
-        drafts_with_base_properties = await template_service.get_all_by_course(course_id, True)
+        drafts_with_base_properties = await template_service.get_all_by_course(user.course_id, user.sub, True)
         data.drafts = [TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
                        drafts_with_base_properties]
     return data
@@ -309,18 +299,16 @@ async def get_templates(request: Request,
 )
 async def get_template(
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user),
         template_service: TemplateService = Depends(get_template_service)
 ):
-    authorize.jwt_required()
     try:
         template = await template_service.get_by_id(template_id)
         if template:
             elements = template_service.build_hierarchy(template.elements)
+            can_edit = UserRole.TEACHER in user.roles
+            can_grade = can_edit or UserRole.ASSISTANT in user.roles
 
-            roles = authorize.get_raw_jwt().get("roles")
-            can_edit = "teacher" in roles
-            can_grade = can_edit or "assistant" in roles
             return TemplateWithElementsDto(
                 template_id=template_id,
                 name=template.name,
@@ -392,19 +380,18 @@ async def get_template(
         },
     },
 )
-@roles_required(["teacher"])
 async def remove_template(
         request: Request,
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     try:
         await template_service.delete(template_id)
         launch_data_storage = FastAPICacheDataStorage(cache)
-        message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+        message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                          FastAPIRequest(request),
-                                                         tool_conf,
+                                                         TOOL_CONF,
                                                          launch_data_storage=launch_data_storage)
 
         ags_service = AgsService(message_launch)
@@ -464,10 +451,9 @@ async def remove_template(
         }
     }
 )
-@roles_required(["student"])
 async def create_report(
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         report_service: ReportService = Depends(get_report_service),
         template_service: TemplateService = Depends(get_template_service),
         answer_service: AnswerService = Depends(get_answer_service)
@@ -475,8 +461,7 @@ async def create_report(
     """
     Создать отчет на основе данных из шаблона
     """
-    user_id = authorize.get_jwt_subject()
-    report_id = await report_service.create(template_id, user_id)
+    report_id = await report_service.create(template_id, user.sub)
     template = await template_service.get_by_id(template_id)
     await answer_service.create_answers(template, report_id)
 
@@ -487,11 +472,10 @@ async def create_report(
             tags=["Template", "Report"],
             summary="Получить все шаблоны по отчету"
             )
-@roles_required(["teacher", "assistant"])
 async def get_reports_by_template(
         template_id: uuid.UUID,
         request: Request,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER, UserRole.ASSISTANT)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     """
@@ -501,9 +485,9 @@ async def get_reports_by_template(
     all_reports = await template_service.get_all_reports(template_id)
     template = await template_service.get_by_id(template_id)
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                      FastAPIRequest(request),
-                                                     tool_conf,
+                                                     TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
     nrps_service = NrpsService(message_launch)
     return AllReportsDto(

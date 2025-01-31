@@ -85,4 +85,4 @@ class AnswerService:
 
         if score_with_weight_sum == 0:
             return 0
-        return (score_with_weight_sum / weight_sum) * max_score
+        return round((score_with_weight_sum / weight_sum) * max_score, 2)

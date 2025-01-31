@@ -6,9 +6,9 @@ from pylti1p3.tool_config import ToolConfJsonFile
 
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
 LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
-tool_conf = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
+TOOL_CONF = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
 
-
+TEMPLATE_IMAGE_PREFIX = "images\\template"
 JWT_ACCESS_TOKEN_LIFETIME = 15 * 60     # 15 минут
 
 
@@ -24,11 +24,3 @@ class Settings(BaseModel):
 @AuthJWT.load_config
 def get_config():
     return Settings()
-
-
-class User(BaseModel):
-    """
-    Базовая модель пользователя
-    """
-    id: str
-    role: str

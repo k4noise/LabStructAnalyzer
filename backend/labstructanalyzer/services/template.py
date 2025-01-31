@@ -113,6 +113,7 @@ class TemplateService:
     async def get_all_by_course(
             self,
             course_id: str,
+            user_id: str,
             is_draft: bool = False,
             with_reports: bool = False
     ):
@@ -126,9 +127,12 @@ class TemplateService:
                 select(
                     Report.template_id,
                     Report.author_id,
+                    Report.report_id,
+                    Report.status,
                     func.max(Report.created_at).label("latest_created_at")
                 )
-                .group_by(Report.template_id, Report.author_id)
+                .where(Report.author_id == user_id)
+                .group_by(Report.template_id, Report.author_id, Report.report_id, Report.status)
                 .subquery()
             )
 
@@ -136,16 +140,14 @@ class TemplateService:
                 select(
                     Template.template_id,
                     Template.name,
-                    Report.report_id,
-                    Report.status
+                    report_subquery.c.report_id,
+                    report_subquery.c.status
                 )
                 .select_from(Template)
-                .outerjoin(report_subquery, Template.template_id == report_subquery.c.template_id)
-                .outerjoin(Report, and_(
-                    Report.template_id == report_subquery.c.template_id,
-                    Report.author_id == report_subquery.c.author_id,
-                    Report.created_at == report_subquery.c.latest_created_at
-                ))
+                .outerjoin(
+                    report_subquery,
+                    Template.template_id == report_subquery.c.template_id
+                )
                 .where(
                     Template.course_id == course_id,
                     Template.is_draft == is_draft

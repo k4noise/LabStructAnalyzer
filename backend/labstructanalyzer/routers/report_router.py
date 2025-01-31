@@ -1,15 +1,16 @@
 import uuid
 
 from fastapi import APIRouter, Depends
-from fastapi_another_jwt_auth import AuthJWT
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from labstructanalyzer.configs.config import tool_conf
-from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_template_service
+from labstructanalyzer.configs.config import TOOL_CONF
+from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_template_service, \
+    get_user_with_any_role, get_user
 from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto
 from labstructanalyzer.models.dto.report import ReportDto
+from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.lti.ags import AgsService
@@ -18,24 +19,28 @@ from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.report import ReportService, ReportStatus
-from labstructanalyzer.services.template import TemplateService
-from labstructanalyzer.utils.rbac_decorator import roles_required
 
 router = APIRouter()
 
 
 @router.patch("/{report_id}", tags=["Report"], summary="Обновить ответы в отчете")
-@roles_required(["student"])
 async def update_answers(
         report_id: uuid.UUID,
         answers: list[UpdateAnswerDto],
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         answers_service: AnswerService = Depends(get_answer_service),
         report_service: ReportService = Depends(get_report_service)
 ):
     """
     Обновить некоторые ответы в отчете.
     """
+    is_author = await report_service.check_is_author(report_id, user.sub)
+    if not is_author:
+        return JSONResponse(
+            {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
+            status_code=status.HTTP_403_FORBIDDEN
+        )
+
     await answers_service.update_answers(report_id, answers)
     await report_service.save(report_id)
 
@@ -44,7 +49,7 @@ async def update_answers(
 async def get_report(
         report_id: uuid.UUID,
         request: Request,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user),
         report_service: ReportService = Depends(get_report_service)
 ):
     """
@@ -55,11 +60,8 @@ async def get_report(
     для студента производится проверка, он ли автор
     преподавателю и ассистенту доступ свободный
     """
-    authorize.jwt_required()
-    roles = authorize.get_raw_jwt().get("roles")
-
-    if len(roles) == 1 and "student" in roles:
-        is_author = await report_service.check_is_author(report_id, authorize.get_jwt_subject())
+    if len(user.roles) == 1 and "student" in user.roles:
+        is_author = await report_service.check_is_author(report_id, user.sub)
         if not is_author:
             return JSONResponse(
                 {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
@@ -69,14 +71,14 @@ async def get_report(
     current_report = await report_service.get_by_id(report_id)
     prev_report = await report_service.get_prev_report(current_report)
 
-    can_grade = "teacher" in roles or "assistant" in roles
+    can_grade = "teacher" in user.roles or "assistant" in user.roles
     can_edit = not can_grade and (
             current_report.status != ReportStatus.submitted.name and current_report.status != ReportStatus.graded.name)
 
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                      FastAPIRequest(request),
-                                                     tool_conf,
+                                                     TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
     nrps_service = NrpsService(message_launch)
 
@@ -109,15 +111,13 @@ async def get_report(
 
 
 @router.patch("/{report_id}/grade", tags=["Report"], summary="Оценить отчет")
-@roles_required(['teacher', 'assistant'])
 async def save_grades(
         report_id: uuid.UUID,
         score_data: list[UpdateScoreAnswerDto],
         request: Request,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER, UserRole.ASSISTANT)),
         answers_service: AnswerService = Depends(get_answer_service),
         report_service: ReportService = Depends(get_report_service),
-        template_service: TemplateService = Depends(get_template_service)
 ):
     """
     Сохранить оценки, подсчитать итоговый балл, перенести в LMS
@@ -126,12 +126,11 @@ async def save_grades(
     report = await report_service.get_by_id(report_id)
     template = report.template
     final_grade = await answers_service.calc_final_score(report_id, template.max_score)
-    grader_id = authorize.get_jwt_subject()
 
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                      FastAPIRequest(request),
-                                                     tool_conf,
+                                                     TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
     ags_service = AgsService(message_launch)
     ags_service.set_grade(
@@ -139,18 +138,16 @@ async def save_grades(
         report.author_id,
         final_grade
     )
-    await report_service.set_grade(report_id, grader_id, final_grade)
-
+    await report_service.set_grade(report_id, user.sub, final_grade)
 
 
 @router.post("/{report_id}/submit")
-@roles_required(["student"])
 async def send_to_grade(
         report_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service)
 ):
-    is_author = await report_service.check_is_author(report_id, authorize.get_jwt_subject())
+    is_author = await report_service.check_is_author(report_id, user.sub)
     if not is_author:
         return JSONResponse(
             {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
@@ -160,13 +157,12 @@ async def send_to_grade(
 
 
 @router.delete("/{report_id}/submit")
-@roles_required(["student"])
 async def cancel_send_to_grade(
         report_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service)
 ):
-    is_author = await report_service.check_is_author(report_id, authorize.get_jwt_subject())
+    is_author = await report_service.check_is_author(report_id, user.sub)
     if not is_author:
         return JSONResponse(
             {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},

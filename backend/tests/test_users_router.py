@@ -46,7 +46,7 @@ class TestUserRouter(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         expected_data = {
             "fullName": "Test User",
-            "avatarUrl": "http://test_lms_url/user/pix.php/test_user_id/f1.jpg",
+            "avatarUrl": "https://test_lms_url/user/pix.php/test_user_id/f1.jpg",
             "name": "User",
             'role': ['test'],
             'surname': 'Test'

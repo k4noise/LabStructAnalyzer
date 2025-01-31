@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from starlette import status
 from starlette.responses import Response
 
-from labstructanalyzer.routers.template_router import template_prefix
+from labstructanalyzer.configs.config import TEMPLATE_IMAGE_PREFIX
 from labstructanalyzer.utils.file_utils import FileUtils
 
 router = APIRouter(
@@ -43,7 +43,7 @@ async def get_temp_image(filename: str):
     Получить изображение из шаблона.
     """
     try:
-        image = FileUtils.get(template_prefix, filename)
+        image = FileUtils.get(TEMPLATE_IMAGE_PREFIX, filename)
         return Response(content=image, media_type="image/png")
     except IOError as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Файл не найден")

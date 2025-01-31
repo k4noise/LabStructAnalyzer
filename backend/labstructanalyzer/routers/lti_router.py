@@ -7,7 +7,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, JSONResponse
 
-from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, tool_conf
+from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, TOOL_CONF
 from labstructanalyzer.services.lti.jwt import JWT
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -81,7 +81,7 @@ async def login(
         if not target_link_uri:
             return JSONResponse({"detail": 'Отсутствует параметр "target_link_uri"'}, 400)
 
-    oidc_login = FastAPIOIDCLogin(fastapi_request, tool_conf, launch_data_storage=launch_data_storage)
+    oidc_login = FastAPIOIDCLogin(fastapi_request, TOOL_CONF, launch_data_storage=launch_data_storage)
     try:
         return oidc_login \
             .disable_check_cookies() \
@@ -117,7 +117,7 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     await request_obj.parse_request()
     launch_data_storage = FastAPICacheDataStorage(cache)
 
-    message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
+    message_launch = FastAPIMessageLaunch(request_obj, TOOL_CONF, launch_data_storage=launch_data_storage)
     message_launch.validate_registration()
 
     user_id = message_launch.get_launch_data().get('sub')
@@ -162,4 +162,4 @@ async def jwks():
     Returns:
         JSON Web Key Set публичного ключа.
     """
-    return JSONResponse(tool_conf.get_jwks())
+    return JSONResponse(TOOL_CONF.get_jwks())
