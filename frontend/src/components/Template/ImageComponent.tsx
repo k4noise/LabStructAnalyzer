@@ -16,7 +16,10 @@ interface ImageComponentProps {
  * @param {ImageComponentProps} props - Свойства компонента.
  */
 const ImageComponent: React.FC<ImageComponentProps> = ({ element }) => (
-  <img src={element.properties.data} className="mx-auto dark:brightness-75" />
+  <img
+    src={`/${element.properties.data}`}
+    className="mx-auto dark:brightness-75"
+  />
 );
 
 export default ImageComponent;

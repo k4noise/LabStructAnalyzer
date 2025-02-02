@@ -7,7 +7,6 @@ dotenv.config({
   path: path.resolve(__dirname, ".env"),
 });
 
-
 export default defineConfig({
   test: {
     globals: true,
@@ -19,6 +18,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/api": {
+        target: process.env.BACKEND_URL,
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      "/images": {
         target: process.env.BACKEND_URL,
         changeOrigin: true,
         rewrite: (path) => path,
