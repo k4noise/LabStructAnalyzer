@@ -8,6 +8,13 @@
 - Initiate login URL: \<tool url>/api/v1/lti/login
 - Redirection URI(s): \<tool url>/api/v1/lti/launch
 
+Moodle не будет работать с Keyset URL, если система расположена в локальной сети хоста Moodle ИЛИ на отличных от стандартных (80, 443) портах 
+без изменения настроек HTTP_SECURITY - только для администратора, [подробнее](https://moodle.org/mod/forum/discuss.php?d=451130#p1813453).
+
+Альтернативный вариант - использование следующих полей
+- Public key type: RSA key 
+- Public key: содержимое jwtRS256.key.pub (без лишних символов / отступов и так далее)
+
 И включите следующие сервисы:
 - Deep Linking
 - IMS LTI Assignment and Grade Services (AGS) - Use this service for grade sync and column management
@@ -43,5 +50,3 @@
 Для администратора: Site administration - Plugins - External tool - Manage tools - View configuration details.
 
 Для учителя `client_id` можно узнать в настройках инструмента, а `deployment_id` только из параметра `typeid` URL настройки инструмента.
-
-Если при запуске возникает ошибка, вернитесь к настройкам инструмента LTI и замените `Public key type` на `RSA key`, скопируйте в поле `Public key` содержимое jwtRS256.key.pub.
