@@ -15,6 +15,9 @@ export interface AnswerEdit {
 export interface AnswerModel {
   element_id: string;
   answer_id?: string;
-  data?: object;
+  data?: {
+    text?: string;
+    image?: string;
+  };
   score?: number;
 }

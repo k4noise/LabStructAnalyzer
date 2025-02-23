@@ -62,7 +62,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder="Ваш ответ"
-          value={answers[element.element_id]?.data["text"] ?? ""}
+          value={answers[element.element_id]?.data.text ?? ""}
           onChange={onChangeAnswer}
           disabled={!editable}
         />
