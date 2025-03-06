@@ -56,9 +56,10 @@ const Report: React.FC = () => {
   if (report?.current_answers) {
     for (const answer of report.current_answers) {
       answers[answer.element_id] = answer;
-      if (report.can_grade) {
+      if (report.can_grade && report.status != "graded") {
         // значение по умолчанию для позитивного оценивания
-        answers[answer.element_id].score ??= 1;
+        if (answers[answer.element_id].score == 0)
+          answers[answer.element_id].score = 1;
       }
     }
   }
@@ -184,12 +185,19 @@ const Report: React.FC = () => {
           answerContextProps={{
             answers: updatedAnswers,
             updateAnswer: updateAnswers,
-            editable: report.can_edit,
-            graderView: report.can_grade,
+            editable:
+              report.can_edit &&
+              (report.status === "new" || report.status == "created"),
+            graderView: report.can_grade && report.status != "graded",
           }}
         />
         <div className="flex justify-end gap-5 mt-10">
-          <Button text="Закрыть" onClick={() => navigate("/templates")} />
+          <Button
+            text="Закрыть"
+            onClick={() =>
+              navigate(`/template/${template.template_id}/reports`)
+            }
+          />
           {report.can_edit && (
             <>
               <Button
