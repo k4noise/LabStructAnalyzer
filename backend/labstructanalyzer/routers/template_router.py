@@ -471,8 +471,8 @@ async def create_report(
     report_id = await report_service.create(template_id, user.sub)
     await answer_service.create_answers(template, report_id)
 
-    logger.info(
-        f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template.template_id}")
+    # logger.info(
+    #     f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template.template_id}")
     return JSONResponse({"id": str(report_id)})
 
 

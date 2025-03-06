@@ -150,7 +150,7 @@ async def get_report(
     current_report = await report_service.get_by_id(report_id)
     prev_report = await report_service.get_prev_report(current_report)
 
-    can_grade = "teacher" in user.roles or "assistant" in user.roles
+    can_grade = UserRole.TEACHER in user.roles or UserRole.ASSISTANT in user.roles
     can_edit = not can_grade and (
             current_report.status != ReportStatus.submitted.name and current_report.status != ReportStatus.graded.name)
 
