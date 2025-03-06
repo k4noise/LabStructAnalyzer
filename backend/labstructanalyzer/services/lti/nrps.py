@@ -1,7 +1,8 @@
 from pylti1p3.message_launch import MessageLaunch
 
+from labstructanalyzer.exceptions.lis_service_no_access import NrpsNotSupportedException
 from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.lti.course import Course
+from labstructanalyzer.services.lti.course import CourseService
 
 USERS_TTL = 24 * 60 * 60  # сутки
 
@@ -12,8 +13,11 @@ class NrpsService:
     """
 
     def __init__(self, message_launch: MessageLaunch):
+        if not message_launch.has_nrps():
+            raise NrpsNotSupportedException()
+
         self.message_launch = message_launch
-        self.course_id = Course(self.message_launch).get_id()
+        self.course_id = CourseService(self.message_launch).get_id()
 
     def get_user_name(self, user_id):
         """

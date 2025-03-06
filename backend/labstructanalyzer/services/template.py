@@ -1,13 +1,12 @@
 import copy
 import uuid
-from typing import Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select, and_, desc
+from sqlmodel import select, desc
 
-from labstructanalyzer.core.exceptions import TemplateNotFoundException
+from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
@@ -51,7 +50,7 @@ class TemplateService:
         await self.session.refresh(template)
         return template
 
-    async def get_by_id(self, template_id: uuid.UUID) -> Optional[Template]:
+    async def get_by_id(self, template_id: uuid.UUID) -> Template:
         """
         Возвращает шаблон по ID.
 
@@ -60,8 +59,14 @@ class TemplateService:
 
         Returns:
             Модель шаблона, если шаблон с переданным id существует, иначе None
+
+        Raises:
+            TemplateNotFoundError: Шаблон не найден
         """
-        return await self.session.get(Template, template_id)
+        template = await self.session.get(Template, template_id)
+        if template is None:
+            raise TemplateNotFoundException(template_id)
+        return template
 
     async def update(self, template_id: uuid.UUID, data_to_modify: TemplateToModify):
         """
@@ -71,13 +76,8 @@ class TemplateService:
         Args:
             template_id: id шаблона
             data_to_modify: Новые данные шаблона
-
-        Raises:
-            TemplateNotFoundError: Шаблон не найден
         """
         template = await self.get_by_id(template_id)
-        if template is None:
-            raise TemplateNotFoundException(template_id)
 
         if template.is_draft:
             template.name = data_to_modify.name
@@ -102,9 +102,7 @@ class TemplateService:
         Raises:
             TemplateNotFoundError: Шаблон не найден
         """
-        template = await self.session.get(Template, template_id)
-        if template is None:
-            raise TemplateNotFoundException(template_id)
+        template = await self.get_by_id(template_id)
 
         await self.elements_service.remove_all_files_from_data(template.template_id)
         await self.session.delete(template)

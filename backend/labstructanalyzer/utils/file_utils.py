@@ -1,7 +1,6 @@
 import os
 import uuid
 
-
 class FileUtils:
     BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -18,14 +17,11 @@ class FileUtils:
           Относительный путь до сохраненного файла
         """
         file_name = f"{FileUtils.generate_unique_name()}{extension}"
-        try:
-            file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, save_dir, file_name)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "wb") as file:
-                file.write(file_data)
-            return os.path.join(save_dir, file_name)
-        except IOError as error:
-            print(f"Произошла ошибка при сохранении файла {file_name}: {error}")
+        file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, save_dir, file_name)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb") as file:
+            file.write(file_data)
+        return os.path.join(save_dir, file_name)
 
     @staticmethod
     def generate_unique_name() -> str:
@@ -49,11 +45,8 @@ class FileUtils:
         """
         file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, folder, filename)
 
-        if os.path.isfile(file_path):
-            with open(file_path, 'rb') as file:
-                return file.read()
-        else:
-            raise IOError("Файл не найден")
+        with open(file_path, 'rb') as file:
+            return file.read()
 
     @staticmethod
     def remove(folder: str, filename: str):

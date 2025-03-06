@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends
 from starlette.requests import Request
 
 from labstructanalyzer.configs.config import TOOL_CONF
-from labstructanalyzer.core.dependencies import get_user
-from labstructanalyzer.models.user_info import UserInfo
-from labstructanalyzer.models.user_model import User as UserModel
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.lti.user import User
+from labstructanalyzer.core.dependencies import get_user
+
+from labstructanalyzer.models.user_info import UserInfo
+from labstructanalyzer.models.user_model import User as UserModel
+
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
@@ -45,10 +47,10 @@ router = APIRouter()
 )
 async def get_user_data(request: Request, user: UserModel = Depends(get_user)):
     """
-    Получает и возвращает данные пользователя из контекста LTI запуска.
+    Получает и возвращает данные пользователя из контекста LTI запуска
 
     Args:
-        request: Объект запроса FastAPI для доступа к данным запроса.
+        request: Объект запроса FastAPI для доступа к данным запроса
         user: Параметры пользователя
     """
 

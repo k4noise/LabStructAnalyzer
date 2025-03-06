@@ -1,29 +1,71 @@
 import uuid
 
 from fastapi import APIRouter, Depends
-from starlette import status
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
+from labstructanalyzer.core.logger import Logger
+from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.configs.config import TOOL_CONF
+from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_template_service, \
     get_user_with_any_role, get_user
+
 from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto
 from labstructanalyzer.models.dto.report import ReportDto
-from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.answer import AnswerService
+
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.nrps import NrpsService
+
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
+
+from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.report import ReportService, ReportStatus
 
 router = APIRouter()
+logger = Logger(__name__)
 
 
-@router.patch("/{report_id}", tags=["Report"], summary="Обновить ответы в отчете")
+@router.patch(
+    "/{report_id}",
+    tags=["Report"],
+    summary="Обновить ответы в отчете",
+    responses={
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Отчет не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не найдено"}
+                }
+            }
+        },
+        500: {
+            "description": "Ошибка со стороны БД",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка доступа к данным"}
+                }
+            }
+        },
+    }
+)
 async def update_answers(
         report_id: uuid.UUID,
         answers: list[UpdateAnswerDto],
@@ -34,18 +76,60 @@ async def update_answers(
     """
     Обновить некоторые ответы в отчете.
     """
-    is_author = await report_service.check_is_author(report_id, user.sub)
-    if not is_author:
-        return JSONResponse(
-            {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
-            status_code=status.HTTP_403_FORBIDDEN
-        )
-
+    await report_service.check_is_author(report_id, user.sub)
     await answers_service.update_answers(report_id, answers)
-    await report_service.save(report_id)
+    await report_service.send_to_save(report_id)
+    logger.info(f"Обновлены ответы в отчете: id {report_id}")
 
 
-@router.get("/{report_id}", tags=["Report"], summary="Получить отчет")
+@router.get(
+    "/{report_id}",
+    tags=["Report"],
+    summary="Получить отчет",
+    responses={
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Отчет не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не найдено"}
+                }
+            }
+        },
+        500: {
+            "description": "Служба NRPS недоступна со стороны LMS или ошибка БД",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "lis_service_error": {
+                            "summary": "Отсутствует доступ к службе имен и ролей",
+                            "value": {"detail": "Нет доступа к службе имен и ролей"}
+                        },
+                        "bd_error": {
+                            "summary": "Ошибка со стороны БД",
+                            "value": {"detail": "Ошибка доступа к данным"}
+                        },
+                    }
+                }
+            }
+        }
+    }
+)
 async def get_report(
         report_id: uuid.UUID,
         request: Request,
@@ -60,13 +144,8 @@ async def get_report(
     для студента производится проверка, он ли автор
     преподавателю и ассистенту доступ свободный
     """
-    if len(user.roles) == 1 and "student" in user.roles:
-        is_author = await report_service.check_is_author(report_id, user.sub)
-        if not is_author:
-            return JSONResponse(
-                {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
-                status_code=status.HTTP_403_FORBIDDEN
-            )
+    if len(user.roles) == 1 and UserRole.STUDENT in user.roles:
+        await report_service.check_is_author(report_id, user.sub)
 
     current_report = await report_service.get_by_id(report_id)
     prev_report = await report_service.get_prev_report(current_report)
@@ -89,7 +168,8 @@ async def get_report(
         report_id=current_report.report_id,
         status=current_report.status,
         author_name=nrps_service.get_user_name(current_report.author_id),
-        grader_name=nrps_service.get_user_name(current_report.grader_id) if current_report.grader_id is not None else None,
+        grader_name=nrps_service.get_user_name(
+            current_report.grader_id) if current_report.grader_id is not None else None,
         score=current_report.score,
         current_answers=[
             AnswerDto(
@@ -110,7 +190,54 @@ async def get_report(
     )
 
 
-@router.patch("/{report_id}/grade", tags=["Report"], summary="Оценить отчет")
+@router.patch(
+    "/{report_id}/grade",
+    tags=["Report"],
+    summary="Оценить отчет",
+    responses={
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Отчет не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не найдено"}
+                }
+            }
+        },
+        500: {
+            "description": "Служба AGS недоступна со стороны LMS или ошибка БД",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "lis_service_error": {
+                            "summary": "Отсутствует доступ к службе оценок",
+                            "value": {"detail": "Нет доступа к службе оценок"}
+                        },
+                        "bd_error": {
+                            "summary": "Ошибка со стороны БД",
+                            "value": {"detail": "Ошибка доступа к данным"}
+                        },
+                    }
+                }
+            }
+        },
+    }
+)
 async def save_grades(
         report_id: uuid.UUID,
         score_data: list[UpdateScoreAnswerDto],
@@ -139,33 +266,102 @@ async def save_grades(
         final_grade
     )
     await report_service.set_grade(report_id, user.sub, final_grade)
+    logger.info(f"Оценен отчет: id {report_id}")
 
 
-@router.post("/{report_id}/submit")
+@router.post(
+    "/{report_id}/submit",
+    tags=["Report"],
+    summary="Отправить отчет на проверку",
+    responses={
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Отчет не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не найдено"}
+                }
+            }
+        },
+        500: {
+            "description": "Ошибка со стороны БД",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка доступа к данным"}
+                }
+            }
+        }
+    }
+)
 async def send_to_grade(
         report_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service)
 ):
-    is_author = await report_service.check_is_author(report_id, user.sub)
-    if not is_author:
-        return JSONResponse(
-            {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
-            status_code=status.HTTP_403_FORBIDDEN
-        )
+    await report_service.check_is_author(report_id, user.sub)
     await report_service.send_to_grade(report_id)
+    logger.info(f"Отчет отправлен на проверку: id {report_id}")
 
 
-@router.delete("/{report_id}/submit")
+@router.delete(
+    "/{report_id}/submit",
+    tags=["Report"],
+    summary="Убрать отчет с проверки",
+    responses={
+        401: {
+            "description": "Неавторизованный доступ",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не авторизован"}
+                }
+            }
+        },
+        403: {
+            "description": "Доступ запрещен. Требуется роль студента",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Доступ запрещен"}
+                }
+            }
+        },
+        404: {
+            "description": "Отчет не найден",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Не найдено"}
+                }
+            }
+        },
+        500: {
+            "description": "Ошибка со стороны БД",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка доступа к данным"}
+                }
+            }
+        }
+    }
+)
 async def cancel_send_to_grade(
         report_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service)
 ):
-    is_author = await report_service.check_is_author(report_id, user.sub)
-    if not is_author:
-        return JSONResponse(
-            {"detail": "Доступ запрещен: Вы не являетесь автором отчета"},
-            status_code=status.HTTP_403_FORBIDDEN
-        )
+    await report_service.check_is_author(report_id, user.sub)
     await report_service.cancel_send_to_grade(report_id)
+    logger.info(f"Отчет снят с проверки: id {report_id}")
