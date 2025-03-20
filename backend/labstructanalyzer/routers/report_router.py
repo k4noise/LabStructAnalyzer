@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from starlette.requests import Request
 
-from labstructanalyzer.core.logger import Logger
+from labstructanalyzer.main import global_logger
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.configs.config import TOOL_CONF
 from labstructanalyzer.models.user_model import User, UserRole
@@ -24,7 +24,7 @@ from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.report import ReportService, ReportStatus
 
 router = APIRouter()
-logger = Logger(__name__)
+logger = global_logger.get_logger(__name__)
 
 
 @router.patch(

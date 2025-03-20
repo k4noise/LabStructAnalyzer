@@ -7,6 +7,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.responses import RedirectResponse, JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, TOOL_CONF
+from labstructanalyzer.main import global_logger
 from labstructanalyzer.services.lti.jwt import JWT
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -61,6 +62,7 @@ async def login(
     target_link_uri = target_link_uri or fastapi_request.get_param("target_link_uri")
 
     oidc_login = FastAPIOIDCLogin(fastapi_request, TOOL_CONF, launch_data_storage=launch_data_storage)
+    global_logger.get_logger("root_endpoint").error("test error", request)
     return oidc_login \
         .disable_check_cookies() \
         .redirect(target_link_uri)

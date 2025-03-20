@@ -2,9 +2,9 @@ from fastapi import HTTPException
 from starlette import status
 from starlette.requests import Request
 
-from labstructanalyzer.core.logger import Logger
+from labstructanalyzer.main import global_logger
 
-logger = Logger(__name__)
+logger = global_logger.get_logger(__name__)
 
 
 async def invalid_oidc_state(request: Request, exception: Exception):

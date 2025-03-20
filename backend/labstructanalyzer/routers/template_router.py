@@ -7,7 +7,7 @@ from fastapi.params import File
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from labstructanalyzer.core.logger import Logger
+from labstructanalyzer.main import global_logger
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.configs.config import CONFIG_DIR, TOOL_CONF, TEMPLATE_IMAGE_PREFIX
 from labstructanalyzer.models.user_model import User, UserRole
@@ -33,7 +33,7 @@ from labstructanalyzer.services.report import ReportService, ReportStatus
 from labstructanalyzer.services.answer import AnswerService
 
 router = APIRouter()
-logger = Logger(__name__)
+logger = global_logger.get_logger(__name__)
 
 
 @router.post(
@@ -471,8 +471,8 @@ async def create_report(
     report_id = await report_service.create(template_id, user.sub)
     await answer_service.create_answers(template, report_id)
 
-    # logger.info(
-    #     f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template.template_id}")
+    logger.info(
+        f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template_id}")
     return JSONResponse({"id": str(report_id)})
 
 

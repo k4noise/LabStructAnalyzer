@@ -8,6 +8,10 @@ from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
 
+from .core.logger import GlobalLogger
+
+global_logger = GlobalLogger()
+
 from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_lis_service_access, \
     invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied
 from pylti1p3.oidc_login import OIDCException
