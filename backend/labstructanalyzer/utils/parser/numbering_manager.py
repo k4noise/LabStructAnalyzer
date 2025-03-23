@@ -137,8 +137,10 @@ class NumberingManager:
                 point_value = self._convert_point_value_text(self.numberings[id][ilvl]) if ilvl in self.numberings[
                     id] else ""
                 text = text.replace(match.group(0), str(point_value))
+        elif self.numberings[id][ilvl]["format"] == 'bullet':
+            return self.numberings[id][ilvl]["format"]
         else:
-            return self._convert_point_value_text(self.numberings[id][ilvl])
+            return ""
         return text
 
     def _convert_point_value_text(self, numbering_data: NumberingItem) -> str:
