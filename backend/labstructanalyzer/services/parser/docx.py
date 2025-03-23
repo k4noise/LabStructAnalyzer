@@ -559,7 +559,6 @@ class TableParser:
                 current_cell_index += self._get_cell_width(cell_element)
                 if current_cell_index != col_index:
                     continue
-
                 vertical_merge_element = cell_element.find(
                     ".//w:tcPr/w:vMerge", namespaces=self.xml_manager.NAMESPACES
                 )
@@ -569,7 +568,9 @@ class TableParser:
                 vertical_merged = vertical_merge_element.get(
                     f'{{{self.xml_manager.NAMESPACES["w"]}}}val'
                 )
-                if not vertical_merged or vertical_merged == "continue":
+                if vertical_merged == 'restart':
+                    return cell_height
+                elif not vertical_merged or vertical_merged == "continue":
                     cell_height += 1
 
         return cell_height
