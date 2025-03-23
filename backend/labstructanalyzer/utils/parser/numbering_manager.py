@@ -3,7 +3,6 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-
 NumberingProps = namedtuple("NumberingProps", ["id", "ilvl"])
 
 
@@ -54,7 +53,7 @@ class NumberingManager:
         self.numberings = {}
 
     def add_numbering_data(
-        self, id: str, ilvl: int, numbering_data: NumberingItem
+            self, id: str, ilvl: int, numbering_data: NumberingItem
     ) -> None:
         """Сохраняет данные элемента нумерации, если ранее не сохранялись
 
@@ -89,7 +88,6 @@ class NumberingManager:
         """
         if not self.has_numbering(id, ilvl):
             return None
-
         self.numberings[id][ilvl]["value"] += 1
         self._reset_deeper_levels_values(id, ilvl)
         return self._insert_values_into_point_text(
@@ -120,7 +118,7 @@ class NumberingManager:
             if numbering_level <= ilvl:
                 continue
             self.numberings[id][numbering_level]["value"] = (
-                self.numberings[id][numbering_level]["startValue"] - 1
+                    self.numberings[id][numbering_level]["startValue"] - 1
             )
 
     def _insert_values_into_point_text(self, text: str, id: int, ilvl: int) -> str:
@@ -136,7 +134,8 @@ class NumberingManager:
         if "%" in text:
             for match in re.finditer(r"%(\d+)", text):
                 ilvl = int(match.group(1)) - 1
-                point_value = self._convert_point_value_text(self.numberings[id][ilvl])
+                point_value = self._convert_point_value_text(self.numberings[id][ilvl]) if ilvl in self.numberings[
+                    id] else ""
                 text = text.replace(match.group(0), str(point_value))
         else:
             return self._convert_point_value_text(self.numberings[id][ilvl])

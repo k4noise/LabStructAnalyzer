@@ -237,6 +237,8 @@ class DocxParser:
         Returns:
             Данные нумерации при существовании нумерации
         """
+        if not numbering_props:
+            return None
         numbering_element = self.xml_manager.numberings_root.xpath(
             f'.//w:num[@w:numId="{numbering_props.id}"]',
             namespaces=self.xml_manager.NAMESPACES,
@@ -258,10 +260,10 @@ class DocxParser:
                 True,
             )
             numbering_data = NumberingItem(
-                format=overrided_numbering_data.format or numbering_data.format,
+                format=overrided_numbering_data.format if overrided_numbering_data else numbering_data.format,
                 startValue=overrided_numbering_data.startValue
-                           or numbering_data.startValue,
-                text=overrided_numbering_data.text or numbering_data.text,
+                if overrided_numbering_data else numbering_data.startValue,
+                text=overrided_numbering_data.text if overrided_numbering_data else numbering_data.text,
             )
         return numbering_data
 
@@ -274,15 +276,14 @@ class DocxParser:
         Returns:
           Свойства нумерации
         """
-
         numbering_id = element.xpath(
             "./w:numId/@w:val", namespaces=self.xml_manager.NAMESPACES
-        )[0]
+        )
         numbering_level = element.xpath(
             "./w:ilvl/@w:val", namespaces=self.xml_manager.NAMESPACES
         )
         numbering_level = int(numbering_level[0]) if numbering_level else 0
-        return NumberingProps(id=numbering_id, ilvl=numbering_level)
+        return NumberingProps(id=numbering_id[0] if numbering_id else None, ilvl=numbering_level)
 
     def _parse_numbering_data(
             self,
