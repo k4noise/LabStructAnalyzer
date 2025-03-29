@@ -8,8 +8,8 @@ CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
 LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
 TOOL_CONF = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
 
-TEMPLATE_IMAGE_PREFIX = "images\\template"
-JWT_ACCESS_TOKEN_LIFETIME = 15 * 60     # 15 минут
+TEMPLATE_IMAGE_PREFIX = "images/template"
+JWT_ACCESS_TOKEN_LIFETIME = 15 * 60  # 15 минут
 
 
 class Settings(BaseModel):
@@ -20,6 +20,7 @@ class Settings(BaseModel):
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
     authjwt_access_token_expires: int = JWT_ACCESS_TOKEN_LIFETIME
+
 
 @AuthJWT.load_config
 def get_config():
