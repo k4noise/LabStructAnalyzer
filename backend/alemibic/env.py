@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -5,6 +6,10 @@ from sqlalchemy import pool
 
 from alembic import context
 from sqlmodel import SQLModel
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -15,6 +20,24 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
+def convert_async_to_sync_connection_string(url: str):
+    """
+    Универсальное преобразование асинхронной строки подключения
+    в синхронную с использованием регулярных выражений.
+    Да здравствуют костыли :)
+    """
+    plus_index = url.find('+')
+    colon_index = url.find('://')
+
+    if plus_index > 0 and plus_index < colon_index:
+        return url[:plus_index] + url[colon_index:]
+    return url
+
+
+bd_url = os.environ.get("DATABASE_URL")
+config.set_main_option("sqlalchemy.url", convert_async_to_sync_connection_string(bd_url))
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
@@ -24,7 +47,9 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.answer import Answer
+
 target_metadata = SQLModel.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

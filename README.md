@@ -24,7 +24,6 @@ openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
 
 4. Установить `poetry`, если не установлен: `pip install poetry`
 5. Установить зависимости проекта: `poetry install`
-4. Для запуска миграций переименовать `alembic.ini.example` в `alembic.ini` и указать для свойства `sqlalchemy.url` путь к БД (должен совпадать с указанным в `.env`) и запустить `poetry run alembic upgrade head`
 6. Запустить проект: `poetry run dev`
 
 ### Фронтенд
