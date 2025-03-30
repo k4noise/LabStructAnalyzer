@@ -7,7 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.staticfiles import StaticFiles
 
+from .configs.config import IMAGE_DIR
 from .core.logger import GlobalLogger
 
 global_logger = GlobalLogger()
@@ -22,7 +24,6 @@ from .exceptions.lis_service_no_access import AgsNotSupportedException, NrpsNotS
 from .routers.jwt_router import router as jwt_router
 from .routers.lti_router import router as lti_router
 from .routers.template_router import router as template_router
-from .routers.file_router import router as file_router
 from .routers.users_router import router as users_router
 from .routers.report_router import router as report_router
 from dotenv import load_dotenv
@@ -54,7 +55,6 @@ app.include_router(lti_router, prefix='/api/v1/lti')
 app.include_router(template_router, prefix='/api/v1/templates')
 app.include_router(users_router, prefix='/api/v1/users')
 app.include_router(report_router, prefix='/api/v1/reports')
-app.include_router(file_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -63,6 +63,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR)
+
+app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
 
 def start_dev():

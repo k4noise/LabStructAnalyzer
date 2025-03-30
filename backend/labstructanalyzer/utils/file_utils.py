@@ -1,8 +1,9 @@
 import os
 import uuid
 
+
 class FileUtils:
-    BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     @staticmethod
     def save(save_dir: str, file_data: bytes, extension: str) -> str:
