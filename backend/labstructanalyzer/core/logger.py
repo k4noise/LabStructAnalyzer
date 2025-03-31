@@ -1,7 +1,13 @@
 import asyncio
 import logging
 import json
+import os
+from logging.handlers import TimedRotatingFileHandler
 from typing import Optional, Dict, Any
+
+from labstructanalyzer.configs.config import BASE_PROJECT_DIR
+
+LOG_DIR = os.path.join(BASE_PROJECT_DIR, 'logs')
 
 
 class JsonLogFormatter(logging.Formatter):
@@ -96,7 +102,7 @@ class GlobalLogger:
         self._async_log_queue: asyncio.Queue[tuple[str, str, Optional[Any], Optional[Exception]]] = asyncio.Queue()
         self._async_log_task: Optional[asyncio.Task] = None
         self._shutdown_event = asyncio.Event()
-        self._logger_instances: Dict[str, Logger] = {}  # Хранилище именованных логгеров
+        self._logger_instances: Dict[str, Logger] = {}
 
     async def _extract_request_info(self, request: Any, level: str) -> Dict[str, Any]:
         """
@@ -156,18 +162,15 @@ class GlobalLogger:
         """
         while not self._shutdown_event.is_set():
             try:
-                # Ожидаем элемент из очереди с таймаутом, чтобы периодически проверять shutdown_event
                 logger, level, message, request, exc = await asyncio.wait_for(self._async_log_queue.get(), timeout=1.0)
                 await self._log_request_details(logger, level, message, request, exc)
                 self._async_log_queue.task_done()
             except asyncio.TimeoutError:
-                continue  # Проверяем shutdown_event
+                continue
             except Exception as e:
-                # Логируем ошибку в глобальный логгер
                 global_logger = logging.getLogger("global_logger")
                 global_logger.error(f"Error in async log worker: {e}")
 
-        # После получения сигнала о завершении, обрабатываем оставшиеся элементы в очереди
         while not self._async_log_queue.empty():
             logger, level, message, request, exc = self._async_log_queue.get_nowait()
             await self._log_request_details(logger, level, message, request, exc)
@@ -195,10 +198,10 @@ class GlobalLogger:
         """
         global_logger = logging.getLogger("global_logger")
         global_logger.info("Shutting down global logger...")
-        self._shutdown_event.set()  # Сигнализируем о завершении
+        self._shutdown_event.set()
         if self._async_log_task:
-            await self._async_log_queue.join()  # Ждем завершения обработки очереди
-            await self._async_log_task  # Ждем завершения фоновой задачи
+            await self._async_log_queue.join()
+            await self._async_log_task
         global_logger.info("Global logger shutdown complete.")
 
     def get_logger(self, name: str) -> 'Logger':
@@ -243,7 +246,14 @@ class Logger:
         console_handler.setLevel(logging.INFO)
         self._logger.addHandler(console_handler)
 
-        file_handler = logging.FileHandler("app.log")
+        os.makedirs(LOG_DIR, exist_ok=True)
+
+        file_handler = TimedRotatingFileHandler(
+            filename=os.path.join(LOG_DIR, 'lsa.log'),
+            when='D',
+            interval=1,
+            backupCount=14,
+        )
         file_handler.setFormatter(json_formatter)
         file_handler.setLevel(logging.WARNING)
         self._logger.addHandler(file_handler)

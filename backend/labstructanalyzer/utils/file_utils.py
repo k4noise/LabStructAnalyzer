@@ -1,9 +1,10 @@
 import os
 import uuid
 
+from labstructanalyzer.configs.config import BASE_PROJECT_DIR
+
 
 class FileUtils:
-    BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     @staticmethod
     def save(save_dir: str, file_data: bytes, extension: str) -> str:
@@ -18,7 +19,7 @@ class FileUtils:
           Относительный путь до сохраненного файла
         """
         file_name = f"{FileUtils.generate_unique_name()}{extension}"
-        file_path = os.path.join(FileUtils.BASE_PROJECT_DIR, save_dir, file_name)
+        file_path = os.path.join(BASE_PROJECT_DIR, save_dir, file_name)
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as file:
             file.write(file_data)
