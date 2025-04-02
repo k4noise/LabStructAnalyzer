@@ -138,7 +138,7 @@ class NumberingManager:
                     id] else ""
                 text = text.replace(match.group(0), str(point_value))
         elif self.numberings[id][ilvl]["format"] == 'bullet':
-            return self.numberings[id][ilvl]["format"]
+            return self._get_printable_bullet(text)
         else:
             return ""
         return text
