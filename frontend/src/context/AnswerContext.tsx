@@ -11,7 +11,7 @@ interface AnswerContextProps {
    * Коллбек, вызываемый при выборе ответа для редактирования.
    * @param {AnswerElement} element - элемент ответа, который был выбран для редактирования его свойств
    */
-  handleSelectAnswerForEdit?: (element: AnswerElement) => void;
+  handleSelectAnswerForEdit?: (event, element: AnswerElement) => void;
   editAnswerPropsMode?: boolean;
   answers?: {
     [id: string]: AnswerModel;

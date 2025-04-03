@@ -45,7 +45,9 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       <Button
         text="⚙️ Настройка ответа"
         classes="ml-2 mb-2"
-        onClick={() => handleSelectAnswerForEdit(element)}
+        onClick={(event) => {
+          handleSelectAnswerForEdit(event, element);
+        }}
       />
       <br />
     </>

@@ -8,10 +8,11 @@ import {
 } from "../../model/templateElement";
 import BackButtonComponent from "../../components/BackButtonComponent";
 import Modal from "../../components/Modal/Modal";
-import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
 import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 import TemplateElements from "../../components/Template/TemplateElements";
+import EditAnswer from "../../components/EditAnswer/EditAnswer";
+import DraggablePopover from "../../components/DraggablePopover/DraggablePopover";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -60,6 +61,9 @@ const Template: React.FC = () => {
     null
   );
 
+  const [editButtonClientRect, setEditButtonClientRect] =
+    useState<DOMRect | null>(null);
+
   const [updatedElements, setUpdatedElements] = useState<{
     [id: string]: Partial<TemplateElementModel>;
   }>({});
@@ -78,6 +82,7 @@ const Template: React.FC = () => {
           properties: { ...prevItems[id]?.properties, ...updatedProperties },
         },
       }));
+      setSelectedElement(null);
     },
     []
   );
@@ -91,28 +96,22 @@ const Template: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   /**
-   * Открывает модальное окно
-   * @function
-   */
-  const handleOpen = () => {
-    setIsOpen(true);
-  };
-
-  /**
    * Закрывает модальное окно
    * @function
    */
   const handleClose = () => {
     setIsOpen(false);
     setError(null);
-    setSelectedElement(null);
   };
 
   const handleSelectAnswer = useCallback(
-    (element: AnswerElement) => {
-      const updatedElement = updatedElements[element.element_id];
-      setSelectedElement((updatedElement as AnswerElement) ?? element);
-      handleOpen();
+    (event, element: AnswerElement) => {
+      const updatedElement = updatedElements[
+        element.element_id
+      ] as AnswerElement;
+
+      setSelectedElement(updatedElement ?? element);
+      setEditButtonClientRect(event.target.getBoundingClientRect());
     },
     [updatedElements]
   );
@@ -270,14 +269,15 @@ const Template: React.FC = () => {
               {error}
             </p>
           )}
-          {!error && selectedElement && (
-            <EditAnswerModal
-              element={selectedElement}
-              onSave={updateElements}
-            />
-          )}
         </div>
       </Modal>
+      <DraggablePopover
+        isOpen={!!selectedElement}
+        onClose={() => setSelectedElement(null)}
+        anchorElementRect={editButtonClientRect}
+      >
+        <EditAnswer element={selectedElement} onSave={updateElements} />
+      </DraggablePopover>
     </>
   );
 };
