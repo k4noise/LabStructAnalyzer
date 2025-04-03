@@ -22,7 +22,7 @@ const componentMap: Record<
   text: memo(TextComponent),
   image: memo(ImageComponent),
   header: memo(HeaderComponent),
-  question: memo(QuestionAnswerComponent),
+  question: QuestionAnswerComponent,
   table: memo(TableComponent),
   answer: memo(AnswerComponent),
 };

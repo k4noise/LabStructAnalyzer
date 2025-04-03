@@ -82,6 +82,7 @@ const Template: React.FC = () => {
           properties: { ...prevItems[id]?.properties, ...updatedProperties },
         },
       }));
+      selectedElement.properties.editNow = false;
       setSelectedElement(null);
     },
     []
@@ -106,14 +107,18 @@ const Template: React.FC = () => {
 
   const handleSelectAnswer = useCallback(
     (event, element: AnswerElement) => {
-      const updatedElement = updatedElements[
-        element.element_id
-      ] as AnswerElement;
+      if (selectedElement) {
+        selectedElement.properties.editNow = false;
+      }
+      const updatedElement = updatedElements[element.element_id];
+      const elementForEdit: AnswerElement =
+        (updatedElement as AnswerElement) ?? element;
+      elementForEdit.properties.editNow = true;
 
-      setSelectedElement(updatedElement ?? element);
+      setSelectedElement(elementForEdit);
       setEditButtonClientRect(event.target.getBoundingClientRect());
     },
-    [updatedElements]
+    [selectedElement, updatedElements]
   );
 
   const [buttonState, setButtonState] = useState<{
@@ -121,6 +126,7 @@ const Template: React.FC = () => {
   }>({});
 
   const handleReset = () => {
+    selectedElement.properties.editNow = false;
     setSelectedElement(null);
     setUpdatedElements({});
   };
@@ -273,7 +279,10 @@ const Template: React.FC = () => {
       </Modal>
       <DraggablePopover
         isOpen={!!selectedElement}
-        onClose={() => setSelectedElement(null)}
+        onClose={() => {
+          selectedElement.properties.editNow = false;
+          setSelectedElement(null);
+        }}
         anchorElementRect={editButtonClientRect}
       >
         <EditAnswer element={selectedElement} onSave={updateElements} />

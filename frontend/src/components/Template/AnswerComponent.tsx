@@ -44,7 +44,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     <>
       <Button
         text="⚙️ Настройка ответа"
-        classes="ml-2 mb-2"
+        classes={`ml-2 mb-2 ${
+          element.properties.editNow
+            ? "!border-blue-500 dark:!text-blue-300 text-blue-600"
+            : ""
+        }`}
         onClick={(event) => {
           handleSelectAnswerForEdit(event, element);
         }}
