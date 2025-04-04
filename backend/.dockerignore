@@ -33,3 +33,4 @@ docs/build/
 .git/
 
 .dockerignore
+.env

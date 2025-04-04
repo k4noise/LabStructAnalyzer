@@ -5,6 +5,7 @@ WORKDIR /app
 COPY pyproject.toml .
 RUN pip install --no-cache-dir poetry && poetry install --no-root
 
+ARG DATABASE_URL
 COPY . .
 RUN poetry run alembic upgrade head
 
