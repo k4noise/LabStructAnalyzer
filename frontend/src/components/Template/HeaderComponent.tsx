@@ -22,12 +22,14 @@ const HeaderComponent: React.FC<HeaderComponentProps> = ({ element }) => {
   const numberingText = element.properties.numberingBulletText;
   return (
     <Tag
-      className={`font-medium mb-5 ${getMarginLeftStyle(
+      className={`font-bold ${getMarginLeftStyle(
         element.properties.nestingLevel
       )} ${
         4 - element.properties.headerLevel > 0
-          ? `text-${4 - element.properties.headerLevel}xl`
-          : ""
+          ? `text-${4 - element.properties.headerLevel}xl my-${
+              4 * (4 - element.properties.headerLevel)
+            }`
+          : "my-4"
       }`}
     >
       {numberingText

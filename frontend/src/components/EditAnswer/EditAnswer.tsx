@@ -1,4 +1,7 @@
-import { AnswerElement, TemplateElementModel } from "../../model/templateElement";
+import {
+  AnswerElement,
+  TemplateElementModel,
+} from "../../model/templateElement";
 import Textarea from "../Textarea/TextareaComponent";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldValues, useForm } from "react-hook-form";
@@ -32,7 +35,7 @@ const EditAnswer = ({
 
   return (
     <form onSubmit={handleSubmit(onFormSend)}>
-      <h3 className="text-xl font-medium text-center mb-4">Настройка ответа</h3>
+      <h3 className="text-xl font-bold text-center mb-4">Настройка ответа</h3>
       <label className="block mb-3">
         id:
         <Textarea

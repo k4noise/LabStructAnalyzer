@@ -135,7 +135,7 @@ const Report: React.FC = () => {
     <>
       <form onSubmit={(e) => handleSaveReport(e)}>
         <BackButtonComponent positionClasses="" />
-        <h1 className="inline-block text-3xl font-medium text-center mt-12 mb-10 w-full bg-transparent">
+        <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
           {template.name}
         </h1>
         {report.can_grade ? (

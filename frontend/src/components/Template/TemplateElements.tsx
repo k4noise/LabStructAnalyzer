@@ -60,7 +60,7 @@ const TemplateElements: React.FC<TemplateElementsProps> = ({
     <AnswerContext.Provider value={answerContextProps}>
       {elements.map(renderElement)}
       {/* Ни в коем случае не удаляйте этот элемент, так как не будут сгенерированы нужные классы отступов и размеров заголовков*/}
-      <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36 ml-40 text-3xl text-2xl"></span>
+      <span className="ml-4 ml-8 ml-12 ml-16 ml-20 ml-24 ml-28 ml-32 ml-36 ml-40 my-4 my-8 my-12 my-16 my-20 text-3xl text-2xl"></span>
     </AnswerContext.Provider>
   );
 };

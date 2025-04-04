@@ -177,14 +177,14 @@ const Template: React.FC = () => {
         <BackButtonComponent positionClasses="" />
         {template.can_edit && template.is_draft ? (
           <input
-            className="text-3xl font-medium text-center mt-12 mb-10 w-full
+            className="text-3xl font-bold text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
         focus:outline-none focus:border-zinc-950 dark:focus:border-zinc-200"
             defaultValue={template.name}
             {...register("name")}
           />
         ) : (
-          <h1 className="inline-block text-3xl font-medium text-center mt-12 mb-10 w-full bg-transparent">
+          <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
             {template.name}
           </h1>
         )}
