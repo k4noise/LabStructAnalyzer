@@ -35,7 +35,7 @@ def convert_async_to_sync_connection_string(url: str):
     return url
 
 
-bd_url = os.environ.get("DATABASE_URL")
+bd_url = os.environ.get("DATABASE_URL").replace("%", "%%")
 config.set_main_option("sqlalchemy.url", convert_async_to_sync_connection_string(bd_url))
 
 # add your model's MetaData object here
