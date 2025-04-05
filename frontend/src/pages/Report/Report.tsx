@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { TemplateModel } from "../../model/template";
 import { TemplateElementModel } from "../../model/templateElement";
@@ -99,6 +99,25 @@ const Report: React.FC = () => {
     [buttonName: string]: boolean;
   }>({});
 
+  const saveReportAnswers = useCallback(async () => {
+    try {
+      await api.patch(
+        `/api/v1/reports/${report.report_id}`,
+        Object.values(updatedAnswers)
+      );
+    } catch (error) {
+      handleError(error);
+    }
+  }, [report.report_id, updatedAnswers]);
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      await saveReportAnswers();
+    }, 300000); // каждые 5 минут
+
+    return () => clearInterval(intervalId);
+  }, [report.report_id, saveReportAnswers]);
+
   const handleSaveReport = async (event: React.BaseSyntheticEvent) => {
     event.preventDefault();
     const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
@@ -109,10 +128,7 @@ const Report: React.FC = () => {
     try {
       setButtonState({ [buttonName]: true });
       if (isGradeTemplate) {
-        await api.patch(
-          `/api/v1/reports/${report.report_id}/grade`,
-          Object.values(updatedAnswers)
-        );
+        await saveReportAnswers();
         navigate(-1);
       } else {
         await api.patch(
