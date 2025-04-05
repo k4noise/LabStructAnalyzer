@@ -128,13 +128,13 @@ const Report: React.FC = () => {
     try {
       setButtonState({ [buttonName]: true });
       if (isGradeTemplate) {
-        await saveReportAnswers();
-        navigate(-1);
-      } else {
         await api.patch(
-          `/api/v1/reports/${report.report_id}`,
+          `/api/v1/reports/${report.report_id}/grade`,
           Object.values(updatedAnswers)
         );
+        navigate(-1);
+      } else {
+        await saveReportAnswers();
         if (isSendTemplate) {
           report.can_edit
             ? await api.post(`/api/v1/reports/${report.report_id}/submit`)

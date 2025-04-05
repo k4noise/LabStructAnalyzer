@@ -86,7 +86,7 @@ const Template: React.FC = () => {
       selectedElement.properties.editNow = false;
       setSelectedElement(null);
     },
-    []
+    [selectedElement]
   );
 
   const { register, handleSubmit } = useForm();
@@ -155,7 +155,6 @@ const Template: React.FC = () => {
       setButtonState(
         isPublishTemplate ? { publish: false } : { update: false }
       );
-      navigate("/templates");
     } catch (error) {
       handleError(error);
     }
