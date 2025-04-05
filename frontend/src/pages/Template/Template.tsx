@@ -13,6 +13,7 @@ import Button from "../../components/Button/Button";
 import TemplateElements from "../../components/Template/TemplateElements";
 import EditAnswer from "../../components/EditAnswer/EditAnswer";
 import DraggablePopover from "../../components/DraggablePopover/DraggablePopover";
+import { Helmet } from "react-helmet";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -173,6 +174,11 @@ const Template: React.FC = () => {
 
   return (
     <>
+      <Helmet>
+        <title>
+          {(template.is_draft ? "Черновик " : "Шаблон ") + template.name}
+        </title>
+      </Helmet>
       <form onReset={handleReset} onSubmit={handleSubmit(handleSaveTemplate)}>
         <BackButtonComponent positionClasses="" />
         {template.can_edit && template.is_draft ? (

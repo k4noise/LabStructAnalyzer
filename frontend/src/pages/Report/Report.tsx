@@ -9,6 +9,7 @@ import Button from "../../components/Button/Button";
 import { AnswerModel } from "../../model/answer";
 import { ReportInfoDto } from "../../model/reports";
 import TemplateElements from "../../components/Template/TemplateElements";
+import { Helmet } from "react-helmet";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -133,6 +134,9 @@ const Report: React.FC = () => {
 
   return (
     <>
+      <Helmet>
+        <title>{`Отчет ${template.name}`}</title>
+      </Helmet>
       <form onSubmit={(e) => handleSaveReport(e)}>
         <BackButtonComponent positionClasses="" />
         <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">

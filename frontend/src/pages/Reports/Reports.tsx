@@ -3,11 +3,15 @@ import { AllReportsInfo } from "../../model/reports";
 import BackButtonComponent from "../../components/BackButtonComponent";
 import { formatDate } from "../../utils/timestampFormatter";
 import { Link } from "react-router";
+import { Helmet } from "react-helmet";
 
 export const Reports = () => {
   const { data: reportsInfo } = useLoaderData<{ data: AllReportsInfo }>();
   return (
     <div className="p-6">
+      <Helmet>
+        <title>{`Отчеты ${reportsInfo.template_name}`}</title>
+      </Helmet>
       <BackButtonComponent positionClasses={"relative"} />
       <h1 className="text-3xl font-bold text-center mb-10">{`Отчеты "${reportsInfo.template_name}"`}</h1>
 
@@ -28,7 +32,12 @@ export const Reports = () => {
                 <td className="p-3">{formatDate(report.date)}</td>
                 <td className="p-3">{report.author_name}</td>
                 <td className="p-3">
-                  <Link to={`/report/${report.report_id}`} className="underline">Открыть</Link>
+                  <Link
+                    to={`/report/${report.report_id}`}
+                    className="underline"
+                  >
+                    Открыть
+                  </Link>
                 </td>
                 <td className="p-3">
                   <span
