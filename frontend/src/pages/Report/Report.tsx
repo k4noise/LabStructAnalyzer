@@ -27,9 +27,6 @@ const displayModeFilterConditions = {
  */
 const Report: React.FC = () => {
   const navigate = useNavigate();
-
-  const [displayModeFilter, setDisplayModeFilter] = useState<string>("always");
-
   /**
    * Предварительно загруженные данные шаблона и отчета
    */
@@ -37,6 +34,10 @@ const Report: React.FC = () => {
     template: TemplateModel;
     report: ReportInfoDto;
   }>();
+
+  const [displayModeFilter, setDisplayModeFilter] = useState<string>(
+    report.status === "graded" ? "all" : "always"
+  );
 
   /**
    * Отфильтрованные элементы шаблона
@@ -59,7 +60,7 @@ const Report: React.FC = () => {
       answers[answer.element_id] = answer;
       if (report.can_grade && report.status != "graded") {
         // значение по умолчанию для позитивного оценивания
-        if (answers[answer.element_id].score == 0)
+        if (answers[answer.element_id].score == null)
           answers[answer.element_id].score = 1;
       }
     }
@@ -111,12 +112,14 @@ const Report: React.FC = () => {
   }, [report.report_id, updatedAnswers]);
 
   useEffect(() => {
-    const intervalId = setInterval(async () => {
-      await saveReportAnswers();
-    }, 300000); // каждые 5 минут
+    if (!report.can_grade) {
+      const intervalId = setInterval(async () => {
+        await saveReportAnswers();
+      }, 300000); // каждые 5 минут
 
-    return () => clearInterval(intervalId);
-  }, [report.report_id, saveReportAnswers]);
+      return () => clearInterval(intervalId);
+    }
+  }, [report.report_id, report.can_grade, saveReportAnswers]);
 
   const handleSaveReport = async (event: React.BaseSyntheticEvent) => {
     event.preventDefault();
@@ -208,7 +211,7 @@ const Report: React.FC = () => {
             editable:
               report.can_edit &&
               (report.status === "new" || report.status == "created"),
-            graderView: report.can_grade && report.status != "graded",
+            graderView: report.can_grade,
           }}
         />
         <div className="flex justify-end gap-5 mt-10">

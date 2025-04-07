@@ -26,6 +26,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     editable,
     graderView,
   } = useContext(AnswerContext);
+  const score = answers[element.element_id]?.score;
   const onChangeAnswer = (e) =>
     updateAnswer({
       element_id: element.element_id,
@@ -33,6 +34,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     });
 
   const changeScore = (score: number) => {
+    if (answers[element.element_id]?.score === score) return;
     setIsRight(score != 0);
     updateAnswer({
       element_id: element.element_id,
@@ -62,11 +64,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       {element.properties.simple ? (
         <input
           type="text"
-          className={`inline-block bg-transparent ml-4 border-b w-full max-w-sm ${
+          className={`inline-block bg-transparent border-b w-full max-w-sm ${
             isRight
-              ? "border-green-500"
+              ? "border-green-500 bg-green-500 bg-opacity-25"
               : isRight == false
-              ? "border-red-500"
+              ? "border-red-500 bg-red-500 bg-opacity-25"
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder="Ваш ответ"
@@ -80,7 +82,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
             isRight
               ? "border-green-500"
               : isRight == false
-              ? "border-red-500"
+              ? "border-red-500 bg-red-500 bg-opacity-25"
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder="Ваш ответ"
@@ -90,8 +92,23 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           disabled={!editable}
         />
       )}
+      {editable && (
+        <span className=""> {`(max: ${element.properties.weight})`}</span>
+      )}
+      {!editable && score != null && (
+        <span>
+          {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
+            element.properties.weight
+          }`}
+        </span>
+      )}
       {graderView && (
         <>
+          {score != null && (
+            <span>
+              <br></br>Новая оценка:
+            </span>
+          )}
           <button
             type="button"
             className="text-3xl opacity-80"
@@ -107,13 +124,6 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
             ❌
           </button>
         </>
-      )}
-      {!graderView && !editable && answers[element.element_id].score >= 0 && (
-        <span>
-          {`${answers[element.element_id].score > 0 ? "✔️" : "❌"}${
-            answers[element.element_id].score * element.properties.weight
-          }/${element.properties.weight}`}
-        </span>
       )}
     </>
   );

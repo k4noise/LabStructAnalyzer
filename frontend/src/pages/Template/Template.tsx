@@ -155,6 +155,9 @@ const Template: React.FC = () => {
       setButtonState(
         isPublishTemplate ? { publish: false } : { update: false }
       );
+      if (isPublishTemplate) {
+        navigate("/templates");
+      }
     } catch (error) {
       handleError(error);
     }
