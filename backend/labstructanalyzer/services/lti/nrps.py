@@ -23,13 +23,16 @@ class NrpsService:
         """
         Получить имя пользователя по идентификатору.
         Если данные курса отсутствуют в кеше, то они сохраняются в кеш.
+        Если пользователь отсутствует в кеше, выполняется обновление кеша.
         """
         course_users = cache.get(self.course_id)
-        if course_users is not None:
-            return course_users.get(str(user_id))
+        if course_users is None:
+            course_users = self._cache_users()
 
-        self._cache_users()
-        return self.get_user_name(user_id)
+        if user_id not in course_users:
+            course_users = self._cache_users()
+
+        return course_users.get(user_id, None)
 
     def _cache_users(self):
         """
@@ -41,3 +44,4 @@ class NrpsService:
 
         users_dict = {user['user_id']: user['name'] for user in users}
         cache.set(self.course_id, users_dict, USERS_TTL)
+        return users_dict
