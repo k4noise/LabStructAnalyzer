@@ -39,12 +39,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       score,
     });
   };
-
   return editAnswerPropsMode ? (
     <>
       <Button
         text="⚙️ Настройка ответа"
-        classes={`ml-2 mb-2 ${
+        classes={`mb-2 ${
           element.properties.editNow
             ? "!border-blue-500 dark:!text-blue-300 text-blue-600"
             : ""
@@ -54,13 +53,16 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         }}
       />
       <br />
+      {(element.properties.customId ? `#${element.properties.customId} ` : "") +
+        `(вес: ${element.properties.weight}, итого: ${1123123})`}
+      <br />
     </>
   ) : (
     <>
       {element.properties.simple ? (
         <input
           type="text"
-          className={`inline-block bg-transparent ml-4 border-b  w-full max-w-sm ${
+          className={`inline-block bg-transparent ml-4 border-b w-full max-w-sm ${
             isRight
               ? "border-green-500"
               : isRight == false

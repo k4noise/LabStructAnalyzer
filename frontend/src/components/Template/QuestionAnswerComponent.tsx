@@ -34,7 +34,9 @@ const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
           <span>{question.properties.numberingBulletText + " "}</span>
         )}
         {question.properties.data}
-        <AnswerComponent element={answer} />
+        <span className="ml-4 inline-table">
+          <AnswerComponent element={answer} />
+        </span>
       </p>
     </div>
   );

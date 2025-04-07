@@ -150,6 +150,7 @@ class TemplateService:
                     Template.course_id == course_id,
                     Template.is_draft == is_draft
                 )
+                .order_by(Template.created_at.desc())
             )
         else:
             statement = (
@@ -161,6 +162,7 @@ class TemplateService:
                     Template.course_id == course_id,
                     Template.is_draft == is_draft
                 )
+                .order_by(Template.created_at.desc())
             )
 
         result = await self.session.exec(statement)
