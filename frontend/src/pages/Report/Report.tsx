@@ -28,7 +28,7 @@ const displayModeFilterConditions = {
 const Report: React.FC = () => {
   const navigate = useNavigate();
 
-  const [displayModeFilter, setDisplayModeFilter] = useState<string>("all");
+  const [displayModeFilter, setDisplayModeFilter] = useState<string>("always");
 
   /**
    * Предварительно загруженные данные шаблона и отчета
