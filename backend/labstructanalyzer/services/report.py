@@ -1,5 +1,6 @@
 import enum
 import uuid
+from datetime import datetime
 
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -127,5 +128,6 @@ class ReportService:
         report.score = score
         report.grader_id = grader_id
         report.status = ReportStatus.graded.name
+        report.updated_at = datetime.now()
         self.session.add(report)
         await self.session.commit()
