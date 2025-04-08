@@ -202,7 +202,8 @@ class TemplateService:
         """
         statement = select(Report).where(
             Report.template_id == template_id,
-            Report.status != ReportStatus.saved.name
+            Report.status != ReportStatus.saved.name,
+            Report.status != ReportStatus.created.name
         ).order_by(asc(Report.updated_at))
 
         return (await self.session.exec(statement)).unique().all()
