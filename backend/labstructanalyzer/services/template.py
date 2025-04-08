@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from sqlalchemy import func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select, desc
+from sqlmodel import select, asc
 
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
@@ -203,7 +203,7 @@ class TemplateService:
         statement = select(Report).where(
             Report.template_id == template_id,
             Report.status != ReportStatus.saved.name
-        ).order_by(desc(Report.updated_at))
+        ).order_by(asc(Report.updated_at))
 
         return (await self.session.exec(statement)).unique().all()
 
