@@ -1,6 +1,7 @@
 import { createContext } from "react";
 import { AnswerElement } from "../model/templateElement";
 import { AnswerModel } from "../model/answer";
+import WeightToScoreManager from "../manager/WeightToScoreManager";
 
 /**
  * Интерфейс для контекста ответов.
@@ -16,6 +17,7 @@ interface AnswerContextProps {
   answers?: {
     [id: string]: AnswerModel;
   };
+  weightToScoreManager?: WeightToScoreManager;
   updateAnswer?: (answer: AnswerModel) => void;
   editable?: boolean;
   graderView?: boolean;

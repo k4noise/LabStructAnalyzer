@@ -22,6 +22,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     handleSelectAnswerForEdit,
     editAnswerPropsMode,
     answers,
+    weightToScoreManager,
     updateAnswer,
     editable,
     graderView,
@@ -55,8 +56,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       />
       <br />
       {(element.properties.customId ? `#${element.properties.customId} ` : "") +
-        `(вес: ${element.properties.weight}, итого: ${1123123})`}
-      {/* todo сделать динамический рассчет балла */}
+        `(вес: ${
+          element.properties.weight
+        }, итого: ${weightToScoreManager.calcFinalScore(
+          element.properties.weight
+        )})`}
       <br />
     </>
   ) : (

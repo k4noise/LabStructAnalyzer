@@ -24,7 +24,7 @@ const componentMap: Record<
   header: memo(HeaderComponent),
   question: QuestionAnswerComponent,
   table: memo(TableComponent),
-  answer: memo(AnswerComponent),
+  answer: AnswerComponent,
 };
 
 const renderElement = (element: TemplateElementModel): React.ReactNode => {

@@ -14,6 +14,7 @@ import TemplateElements from "../../components/Template/TemplateElements";
 import EditAnswer from "../../components/EditAnswer/EditAnswer";
 import DraggablePopover from "../../components/DraggablePopover/DraggablePopover";
 import { Helmet } from "react-helmet";
+import WeightToScoreManager from "../../manager/WeightToScoreManager";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -38,6 +39,11 @@ const Template: React.FC = () => {
    * Предварительно загруженные данные шаблона
    */
   const { data: template } = useLoaderData<{ data: TemplateModel }>();
+
+  const weightToScoreManager = new WeightToScoreManager(
+    template.elements,
+    template.max_score
+  );
 
   /**
    * Отфильтрованные элементы шаблона
@@ -75,6 +81,9 @@ const Template: React.FC = () => {
   const updateElements = useCallback(
     (id: string, updatedProperties: Partial<AnswerElement["properties"]>) => {
       setIsOpen(false);
+      weightToScoreManager.changeWeightsSum(
+        selectedElement.properties.weight - updatedProperties.weight
+      );
       setUpdatedElements((prevItems) => ({
         ...prevItems,
         [id]: {
@@ -83,10 +92,11 @@ const Template: React.FC = () => {
           properties: { ...prevItems[id]?.properties, ...updatedProperties },
         },
       }));
+      selectedElement.properties.weight = updatedProperties.weight;
       selectedElement.properties.editNow = false;
       setSelectedElement(null);
     },
-    [selectedElement]
+    [selectedElement, weightToScoreManager]
   );
 
   const { register, handleSubmit } = useForm();
@@ -127,7 +137,8 @@ const Template: React.FC = () => {
   }>({});
 
   const handleReset = () => {
-    selectedElement.properties.editNow = false;
+    if (selectedElement) selectedElement.properties.editNow = false;
+    weightToScoreManager.reset();
     setSelectedElement(null);
     setUpdatedElements({});
   };
@@ -239,6 +250,7 @@ const Template: React.FC = () => {
           answerContextProps={{
             handleSelectAnswerForEdit: handleSelectAnswer,
             editAnswerPropsMode: template.can_edit,
+            weightToScoreManager: weightToScoreManager,
           }}
         />
         <div className="flex justify-end gap-5 mt-10">
