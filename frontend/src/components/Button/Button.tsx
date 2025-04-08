@@ -3,7 +3,7 @@ interface ButtonProps {
   type?: "button" | "submit" | "reset";
   name?: string;
   classes?: string;
-  onClick?: () => void;
+  onClick?: (event) => void;
   disable?: boolean;
 }
 

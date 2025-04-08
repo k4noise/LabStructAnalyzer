@@ -1,6 +1,6 @@
 import { createBrowserRouter, redirect } from "react-router";
 import Templates from "./pages/Templates/Templates";
-import ErrorPage from "./pages/ErrorPage/ErrorPage";
+import ErrorPage from "./pages/Error/Error";
 import { lazy } from "react";
 import { api } from "./utils/sendRequest";
 import BaseLayout from "./components/BaseLayout/BaseLayout";

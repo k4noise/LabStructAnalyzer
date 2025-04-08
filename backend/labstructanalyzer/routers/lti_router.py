@@ -4,10 +4,9 @@ from urllib.parse import urljoin
 from fastapi import APIRouter, Request
 from fastapi.params import Depends, Query
 from fastapi_another_jwt_auth import AuthJWT
-from pylti1p3.oidc_login import OIDCException
 from starlette.responses import RedirectResponse, JSONResponse
 
-from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, tool_conf
+from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, TOOL_CONF
 from labstructanalyzer.services.lti.jwt import JWT
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -22,14 +21,7 @@ cache = TTLCache()
 @router.get("/login", tags=["LTI"], summary="Начало входа LTI 1.3",
             response_description="Перенаправляет на провайдера LTI",
             responses={
-                400: {"description": "Отсутствует target_link_uri",
-                      "content": {
-                          "application/json": {
-                              "example": {"detail": 'Отсутствует параметр "target_link_uri"'}
-                          }
-                      }
-                      },
-                500: {"description": "Ошибка при входе",
+                500: {"description": "Отсутствуют необходимые для OIDC параметры",
                       "content": {
                           "application/json": {
                               "example": {"detail": 'Вход не выполнен, попробуйте ещё раз'}
@@ -40,14 +32,7 @@ cache = TTLCache()
 @router.post("/login", tags=["LTI"], summary="Начало входа LTI 1.3",
              response_description="Перенаправляет на провайдера LTI",
              responses={
-                 400: {"description": "Отсутствует target_link_uri",
-                       "content": {
-                           "application/json": {
-                               "example": {"detail": 'Отсутствует параметр "target_link_uri"'}
-                           }
-                       }
-                       },
-                 500: {"description": "Ошибка при входе",
+                 500: {"description": "Отсутствуют необходимые для OIDC параметры",
                        "content": {
                            "application/json": {
                                "example": {"detail": 'Вход не выполнен, попробуйте ещё раз'}
@@ -64,60 +49,51 @@ async def login(
     Обрабатывает аутентификацию LTI 1.3 через OIDC.
 
     Args:
-        request: Запрос, содержащий данные провайдера для начала аутентификации.
-        target_link_uri: URI целевой ссылки для перенаправления после успешной аутентификации.
+        request: Запрос, содержащий данные провайдера для начала аутентификации
+        target_link_uri: URI целевой ссылки для перенаправления после успешной аутентификации
 
     Returns:
-        - Перенаправляет на сервис аутентификации провайдера в случае успеха.
-        - Возвращает ответ 500, если аутентификация не удалась.
-        - Возвращает ответ 400, если отсутствует target_link_uri.
+        Перенаправляет на сервис аутентификации провайдера
     """
     launch_data_storage = FastAPICacheDataStorage(cache)
     fastapi_request = FastAPIRequest(request)
     await fastapi_request.parse_request()
+    target_link_uri = target_link_uri or fastapi_request.get_param("target_link_uri")
 
-    if not target_link_uri:
-        target_link_uri = fastapi_request.get_param("target_link_uri")
-        if not target_link_uri:
-            return JSONResponse({"detail": 'Отсутствует параметр "target_link_uri"'}, 400)
-
-    oidc_login = FastAPIOIDCLogin(fastapi_request, tool_conf, launch_data_storage=launch_data_storage)
-    try:
-        return oidc_login \
-            .disable_check_cookies() \
-            .redirect(target_link_uri)
-    except OIDCException:
-        return JSONResponse({"detail": 'Вход не выполнен, попробуйте ещё раз'}, 500)
+    oidc_login = FastAPIOIDCLogin(fastapi_request, TOOL_CONF, launch_data_storage=launch_data_storage)
+    return oidc_login \
+        .disable_check_cookies() \
+        .redirect(target_link_uri)
 
 
 @router.post("/launch", tags=["LTI"], summary="Запуск LTI",
              status_code=302,
              response_description="Перенаправляет на фронтенд после успешного запуска",
              responses={
-                 500: {"description": "LTI ошибка данных регистрации внешнего инструмента",
+                 500: {"description": "Ошибка LTI регистрации",
                        "content": {
                            "application/json": {
-                               "example": {"detail": 'Ошибка внешнего инструмента, необходим повторный вход через LMS"'}
+                               "example": {"detail": 'Ошибка внешнего инструмента'}
                            }
                        }
                        }
              })
 async def launch(request: Request, authorize: AuthJWT = Depends()):
     """
-    Запускает систему через LTI после успешной аутентификации.
+    Запускает систему через LTI после успешной аутентификации
 
     Args:
-        request: Запрос, содержащий id_token от потребителя.
-        authorize: Объект для управления JWT токенами.
+        request: Запрос, содержащий id_token от потребителя
+        authorize: Объект для управления JWT токенами
 
     Returns:
-        Перенаправляет на фронтенд системы.
+        Перенаправляет на фронтенд системы
     """
     request_obj = FastAPIRequest(request)
     await request_obj.parse_request()
     launch_data_storage = FastAPICacheDataStorage(cache)
 
-    message_launch = FastAPIMessageLaunch(request_obj, tool_conf, launch_data_storage=launch_data_storage)
+    message_launch = FastAPIMessageLaunch(request_obj, TOOL_CONF, launch_data_storage=launch_data_storage)
     message_launch.validate_registration()
 
     user_id = message_launch.get_launch_data().get('sub')
@@ -162,4 +138,4 @@ async def jwks():
     Returns:
         JSON Web Key Set публичного ключа.
     """
-    return JSONResponse(tool_conf.get_jwks())
+    return JSONResponse(TOOL_CONF.get_jwks())

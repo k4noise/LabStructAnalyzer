@@ -1,4 +1,4 @@
-import json
+import enum
 import uuid
 
 from sqlalchemy import update
@@ -9,6 +9,12 @@ from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
+
+
+class AnswerType(enum.Enum):
+    simple = "Фиксированный"
+    param = "Параметризованный"
+    arg = "Рассуждение"
 
 
 class AnswerService:
@@ -45,7 +51,7 @@ class AnswerService:
             statement = (
                 update(Answer)
                 .where(Answer.report_id == report_id, Answer.answer_id == update_answer.answer_id)
-                .values(data=update_answer.data, score=0)
+                .values(data=update_answer.data, score=None)
             )
             await self.session.exec(statement)
         await self.session.commit()
@@ -85,4 +91,4 @@ class AnswerService:
 
         if score_with_weight_sum == 0:
             return 0
-        return (score_with_weight_sum / weight_sum) * max_score
+        return round((score_with_weight_sum / weight_sum) * max_score, 2)

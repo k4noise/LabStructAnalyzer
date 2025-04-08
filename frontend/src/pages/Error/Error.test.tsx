@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { useRouteError, MemoryRouter } from "react-router";
-import ErrorPage from "./ErrorPage";
+import ErrorPage from "./Error";
 import { extractMessage } from "../../utils/sendRequest";
 import { AxiosError } from "axios";
 import React from "react";

@@ -16,7 +16,7 @@ class Report(SQLModel, table=True):
     template_id: uuid.UUID = Field(foreign_key="templates.template_id")
     author_id: str
     status: str
-    grader_id: Optional[int]
+    grader_id: Optional[str]
     score: Optional[float]
 
     created_at: datetime = Field(

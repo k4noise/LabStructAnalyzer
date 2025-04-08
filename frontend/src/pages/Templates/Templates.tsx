@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 import { AllTemplatesInfo } from "../../model/template";
+import { Helmet } from "react-helmet";
 
 const getStatusClass = (status: string | null): string => {
   switch (status) {
@@ -31,6 +32,10 @@ const getStatusClass = (status: string | null): string => {
 const Templates = () => {
   const { data } = useLoaderData<{ data: AllTemplatesInfo }>();
   const courseName = data.course_name;
+  const title =
+    (data.can_upload ? "Шаблоны и отчеты" : "Отчеты") +
+    ` курса ${data.course_name}`;
+
   /**
    * Хук навигации для перемещения между страницами
    * @type {Function}
@@ -97,8 +102,13 @@ const Templates = () => {
 
   return (
     <div className="mt-8">
-      <h2 className="text-3xl font-medium text-center mb-10">
-        {courseName && `Отчеты лабораторных работ курса ${courseName}`}
+      <Helmet>
+        <title>{title}</title>
+      </Helmet>
+      <h2 className="text-3xl font-bold text-center mb-10">
+        {courseName &&
+          (data.can_upload ? "Шаблоны и отчеты" : "Отчеты") +
+            ` лабораторных работ курса ${courseName}`}
       </h2>
       {data.can_upload && (
         <Button
@@ -169,7 +179,7 @@ const Templates = () => {
       </div>
       <Modal isOpen={isOpen} onClose={handleClose}>
         <form onSubmit={handleUploadTemplate}>
-          <h3 className="text-xl font-medium text-center mb-3">
+          <h3 className="text-xl font-bold text-center mb-3">
             Шаблон для импорта
           </h3>
           <p className="text-l text-center mb-8">

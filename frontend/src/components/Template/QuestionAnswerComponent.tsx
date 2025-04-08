@@ -25,14 +25,18 @@ const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
     <div
       className={`italic my-3 ${getMarginLeftStyle(
         element.properties.nestingLevel
-      )}`}
+      )} ${
+        answer.properties.editNow ? "dark:text-blue-300 text-blue-600" : ""
+      }`}
     >
       <p>
         {question.properties.numberingBulletText && (
           <span>{question.properties.numberingBulletText + " "}</span>
         )}
         {question.properties.data}
-        <AnswerComponent element={answer} />
+        <span className="ml-4 inline">
+          <AnswerComponent element={answer} />
+        </span>
       </p>
     </div>
   );

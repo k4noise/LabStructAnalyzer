@@ -8,10 +8,13 @@ import {
 } from "../../model/templateElement";
 import BackButtonComponent from "../../components/BackButtonComponent";
 import Modal from "../../components/Modal/Modal";
-import EditAnswerModal from "../../components/EditAnswer/EditAnswer";
 import { api, extractMessage } from "../../utils/sendRequest";
 import Button from "../../components/Button/Button";
 import TemplateElements from "../../components/Template/TemplateElements";
+import EditAnswer from "../../components/EditAnswer/EditAnswer";
+import DraggablePopover from "../../components/DraggablePopover/DraggablePopover";
+import { Helmet } from "react-helmet";
+import WeightToScoreManager from "../../manager/WeightToScoreManager";
 
 /**
  * Условия фильтрации для различных режимов отображения.
@@ -37,6 +40,11 @@ const Template: React.FC = () => {
    */
   const { data: template } = useLoaderData<{ data: TemplateModel }>();
 
+  const weightToScoreManager = new WeightToScoreManager(
+    template.elements,
+    template.max_score
+  );
+
   /**
    * Отфильтрованные элементы шаблона
    */
@@ -60,6 +68,9 @@ const Template: React.FC = () => {
     null
   );
 
+  const [editButtonClientRect, setEditButtonClientRect] =
+    useState<DOMRect | null>(null);
+
   const [updatedElements, setUpdatedElements] = useState<{
     [id: string]: Partial<TemplateElementModel>;
   }>({});
@@ -70,6 +81,9 @@ const Template: React.FC = () => {
   const updateElements = useCallback(
     (id: string, updatedProperties: Partial<AnswerElement["properties"]>) => {
       setIsOpen(false);
+      weightToScoreManager.changeWeightsSum(
+        selectedElement.properties.weight - updatedProperties.weight
+      );
       setUpdatedElements((prevItems) => ({
         ...prevItems,
         [id]: {
@@ -78,8 +92,11 @@ const Template: React.FC = () => {
           properties: { ...prevItems[id]?.properties, ...updatedProperties },
         },
       }));
+      selectedElement.properties.weight = updatedProperties.weight;
+      selectedElement.properties.editNow = false;
+      setSelectedElement(null);
     },
-    []
+    [selectedElement, weightToScoreManager]
   );
 
   const { register, handleSubmit } = useForm();
@@ -91,30 +108,28 @@ const Template: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   /**
-   * Открывает модальное окно
-   * @function
-   */
-  const handleOpen = () => {
-    setIsOpen(true);
-  };
-
-  /**
    * Закрывает модальное окно
    * @function
    */
   const handleClose = () => {
     setIsOpen(false);
     setError(null);
-    setSelectedElement(null);
   };
 
   const handleSelectAnswer = useCallback(
-    (element: AnswerElement) => {
+    (event, element: AnswerElement) => {
+      if (selectedElement) {
+        selectedElement.properties.editNow = false;
+      }
       const updatedElement = updatedElements[element.element_id];
-      setSelectedElement((updatedElement as AnswerElement) ?? element);
-      handleOpen();
+      const elementForEdit: AnswerElement =
+        (updatedElement as AnswerElement) ?? element;
+      elementForEdit.properties.editNow = true;
+
+      setSelectedElement(elementForEdit);
+      setEditButtonClientRect(event.target.getBoundingClientRect());
     },
-    [updatedElements]
+    [selectedElement, updatedElements]
   );
 
   const [buttonState, setButtonState] = useState<{
@@ -122,6 +137,8 @@ const Template: React.FC = () => {
   }>({});
 
   const handleReset = () => {
+    if (selectedElement) selectedElement.properties.editNow = false;
+    weightToScoreManager.reset();
     setSelectedElement(null);
     setUpdatedElements({});
   };
@@ -149,7 +166,9 @@ const Template: React.FC = () => {
       setButtonState(
         isPublishTemplate ? { publish: false } : { update: false }
       );
-      navigate("/templates");
+      if (isPublishTemplate) {
+        navigate("/templates");
+      }
     } catch (error) {
       handleError(error);
     }
@@ -168,18 +187,23 @@ const Template: React.FC = () => {
 
   return (
     <>
+      <Helmet>
+        <title>
+          {(template.is_draft ? "Черновик " : "Шаблон ") + template.name}
+        </title>
+      </Helmet>
       <form onReset={handleReset} onSubmit={handleSubmit(handleSaveTemplate)}>
         <BackButtonComponent positionClasses="" />
         {template.can_edit && template.is_draft ? (
           <input
-            className="text-3xl font-medium text-center mt-12 mb-10 w-full
+            className="text-3xl font-bold text-center mt-12 mb-10 w-full
         bg-transparent border-b border-zinc-200 dark:border-zinc-950
         focus:outline-none focus:border-zinc-950 dark:focus:border-zinc-200"
             defaultValue={template.name}
             {...register("name")}
           />
         ) : (
-          <h1 className="inline-block text-3xl font-medium text-center mt-12 mb-10 w-full bg-transparent">
+          <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
             {template.name}
           </h1>
         )}
@@ -226,6 +250,7 @@ const Template: React.FC = () => {
           answerContextProps={{
             handleSelectAnswerForEdit: handleSelectAnswer,
             editAnswerPropsMode: template.can_edit,
+            weightToScoreManager: weightToScoreManager,
           }}
         />
         <div className="flex justify-end gap-5 mt-10">
@@ -270,14 +295,18 @@ const Template: React.FC = () => {
               {error}
             </p>
           )}
-          {!error && selectedElement && (
-            <EditAnswerModal
-              element={selectedElement}
-              onSave={updateElements}
-            />
-          )}
         </div>
       </Modal>
+      <DraggablePopover
+        isOpen={!!selectedElement}
+        onClose={() => {
+          selectedElement.properties.editNow = false;
+          setSelectedElement(null);
+        }}
+        anchorElementRect={editButtonClientRect}
+      >
+        <EditAnswer element={selectedElement} onSave={updateElements} />
+      </DraggablePopover>
     </>
   );
 };

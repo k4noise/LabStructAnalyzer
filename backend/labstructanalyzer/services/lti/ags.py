@@ -8,7 +8,7 @@ from pylti1p3.message_launch import MessageLaunch
 from pylti1p3.lineitem import LineItem
 from pylti1p3.service_connector import REQUESTS_USER_AGENT
 
-from labstructanalyzer.core.exceptions import AgsNotSupportedException
+from labstructanalyzer.exceptions.lis_service_no_access import AgsNotSupportedException
 from labstructanalyzer.models.template import Template
 
 
@@ -21,6 +21,9 @@ class AgsService:
     """
 
     def __init__(self, message_launch: MessageLaunch):
+        if not message_launch.has_ags():
+            raise AgsNotSupportedException()
+        
         self.message_launch = message_launch
 
     def create_lineitem(self, template: Template):
@@ -31,9 +34,6 @@ class AgsService:
         Args:
             template: Шаблон, не являющийся черновиком. Создание линии для черновика не приведет к ошибке
         """
-        if not self.message_launch.has_ags():
-            raise AgsNotSupportedException
-
         ags = self.message_launch.get_ags()
         lineitem = self._create_lineitem_object(template)
         ags.find_or_create_lineitem(lineitem, "resource_id")
@@ -44,9 +44,6 @@ class AgsService:
         Использовать метод следует С БОЛЬШОЙ ОСТОРОЖНОСТЬЮ,
         так как в некоторых LMS (например, Moodle) может приводить к временным ошибкам вида `gradesneedregrading`
         """
-        if not self.message_launch.has_ags():
-            raise AgsNotSupportedException
-
         ags = self.message_launch.get_ags()
         existing_lineitem = ags.find_lineitem_by_resource_id(str(template.template_id))
         if not existing_lineitem:
@@ -68,9 +65,6 @@ class AgsService:
         Args:
             template_id: id шаблона
         """
-        if not self.message_launch.has_ags():
-            raise AgsNotSupportedException
-
         ags = self.message_launch.get_ags()
         lineitem = ags.find_lineitem_by_resource_id(str(template_id))
 
@@ -84,9 +78,6 @@ class AgsService:
         """
         Передает оценку в LMS
         """
-        if not self.message_launch.has_ags():
-            raise AgsNotSupportedException
-
         ags = self.message_launch.get_ags()
         lineitem = ags.find_lineitem_by_resource_id(str(template.template_id))
         grade = Grade() \

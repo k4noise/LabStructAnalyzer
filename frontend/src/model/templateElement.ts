@@ -186,6 +186,11 @@ export interface AnswerElement extends TemplateElementModel {
        * @type {string}
        */
       data: string;
+      /**
+       * Находится в режиме редактирования
+       * @type {boolean}
+       */
+      editNow: boolean;
     };
 }
 

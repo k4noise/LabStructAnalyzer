@@ -1,6 +1,6 @@
 from pylti1p3.message_launch import MessageLaunch
 
-from labstructanalyzer.services.lti.course import Course
+from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.lti.user import User
 
 
@@ -21,7 +21,7 @@ class JWT:
         """
         roles = User(message_launch).get_roles()
         launch_id = message_launch.get_launch_id()
-        course_id = Course(message_launch).get_id()
+        course_id = CourseService(message_launch).get_id()
         return self._create_user_claims(roles, launch_id, course_id)
 
     def _create_user_claims(self, roles: list[str], launch_id: str, course_id: str) -> dict:
