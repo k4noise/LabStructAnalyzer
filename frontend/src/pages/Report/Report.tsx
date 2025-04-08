@@ -57,10 +57,17 @@ const Report: React.FC = () => {
   const answers = {};
   if (report?.current_answers) {
     for (const answer of report.current_answers) {
-      answers[answer.element_id] = answer;
+      answers[answer.element_id] = {
+        ...answer,
+        given_score: answer.score,
+      };
       if (report.can_grade && report.status != "graded") {
+        // оценка пустых ответов как неправильных
+        if (answer.data == null) {
+          answers[answer.element_id].score = 0;
+        }
         // значение по умолчанию для позитивного оценивания
-        if (answers[answer.element_id].score == null)
+        else if (answers[answer.element_id].score == null)
           answers[answer.element_id].score = 1;
       }
     }

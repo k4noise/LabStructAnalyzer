@@ -17,6 +17,7 @@ export interface AnswerModel {
   answer_id?: string;
   data?: AnswerDataModel;
   score?: number;
+  given_score?: number;
 }
 
 export interface AnswerDataModel {

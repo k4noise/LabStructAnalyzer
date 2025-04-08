@@ -26,7 +26,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     editable,
     graderView,
   } = useContext(AnswerContext);
-  const score = answers[element.element_id]?.score;
+  const score = answers ? answers[element.element_id]?.score : 0;
   const onChangeAnswer = (e) =>
     updateAnswer({
       element_id: element.element_id,
@@ -34,7 +34,6 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     });
 
   const changeScore = (score: number) => {
-    if (answers[element.element_id]?.score === score) return;
     setIsRight(score != 0);
     updateAnswer({
       element_id: element.element_id,
@@ -57,6 +56,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       <br />
       {(element.properties.customId ? `#${element.properties.customId} ` : "") +
         `(вес: ${element.properties.weight}, итого: ${1123123})`}
+      {/* todo сделать динамический рассчет балла */}
       <br />
     </>
   ) : (
@@ -101,17 +101,19 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           {`(max: ${element.properties.weight})`}
         </span>
       )}
-      {!editable && score != null && (
-        <span>
-          {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
-            element.properties.weight
-          }`}
-        </span>
-      )}
+      {!editable &&
+        answers &&
+        answers[element.element_id]?.given_score != null && (
+          <span>
+            {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
+              element.properties.weight
+            }`}
+          </span>
+        )}
       {graderView && (
         <>
-          {score != null && (
-            <span>
+          {answers[element.element_id]?.given_score != null && (
+            <span className="mr-2">
               <br></br>Новая оценка:
             </span>
           )}
