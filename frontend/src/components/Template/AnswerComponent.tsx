@@ -27,7 +27,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     editable,
     graderView,
   } = useContext(AnswerContext);
-  const score = answers ? answers[element.element_id]?.score : 0;
+  const score = answers ? answers["current"][element.element_id]?.score : 0;
   const onChangeAnswer = (e) =>
     updateAnswer({
       element_id: element.element_id,
@@ -76,7 +76,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder="Ваш ответ"
-          value={answers[element.element_id]?.data?.text ?? ""}
+          value={
+            answers["current"][element.element_id]?.data?.text ??
+            answers["prev"]?.[element.element_id]?.data?.text ??
+            ""
+          }
           onChange={onChangeAnswer}
           disabled={!editable}
         />
@@ -92,7 +96,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           placeholder="Ваш ответ"
           minRowsCount={5}
           onChange={onChangeAnswer}
-          value={answers[element.element_id]?.data?.text ?? ""}
+          value={
+            answers["current"][element.element_id]?.data?.text ??
+            answers["prev"]?.[element.element_id]?.data?.text ??
+            ""
+          }
           disabled={!editable}
         />
       )}
@@ -107,7 +115,8 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       )}
       {!editable &&
         answers &&
-        answers[element.element_id]?.given_score != null && (
+        (answers["current"][element.element_id]?.given_score != null ||
+          (answers["current"]?.data == null && answers["prev"].score)) && (
           <span>
             {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
               element.properties.weight
@@ -116,7 +125,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         )}
       {graderView && (
         <>
-          {answers[element.element_id]?.given_score != null && (
+          {answers["current"][element.element_id]?.given_score != null && (
             <span className="mr-2">
               <br></br>Новая оценка:
             </span>

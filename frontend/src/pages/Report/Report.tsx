@@ -55,9 +55,16 @@ const Report: React.FC = () => {
   };
 
   const answers = {};
+  if (report?.prev_answers) {
+    answers["prev"] = {};
+    for (const answer of report.prev_answers) {
+      answers["prev"][answer.element_id] = { ...answer };
+    }
+  }
   if (report?.current_answers) {
+    answers["current"] = {};
     for (const answer of report.current_answers) {
-      answers[answer.element_id] = {
+      answers["current"][answer.element_id] = {
         ...answer,
         given_score: answer.score,
       };
@@ -80,9 +87,12 @@ const Report: React.FC = () => {
   const updateAnswers = (answer: AnswerModel) => {
     setUpdatedAnswers((prevItems) => ({
       ...prevItems,
-      [answer.element_id]: {
-        ...prevItems[answer.element_id],
-        ...answer,
+      current: {
+        ...prevItems.current,
+        [answer.element_id]: {
+          ...prevItems.current?.[answer.element_id],
+          ...answer,
+        },
       },
     }));
   };
@@ -128,29 +138,35 @@ const Report: React.FC = () => {
     }
   }, [report.report_id, report.can_grade, saveReportAnswers]);
 
-  const handleSaveReport = async (event: React.BaseSyntheticEvent) => {
+  const handleActions = async (event: React.BaseSyntheticEvent) => {
     event.preventDefault();
     const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
     const buttonName = (nativeEvent?.submitter as HTMLButtonElement)?.name;
     const isSendTemplate = buttonName === "send";
     const isGradeTemplate = buttonName === "grade";
+    const isEditTemplate = buttonName === "edit";
 
     try {
       setButtonState({ [buttonName]: true });
       if (isGradeTemplate) {
         await api.patch(
           `/api/v1/reports/${report.report_id}/grade`,
-          Object.values(updatedAnswers)
+          Object.values(updatedAnswers["current"])
         );
         navigate(`/template/${template.template_id}/reports`);
-      } else {
+      } else if (isSendTemplate) {
         await saveReportAnswers();
         if (isSendTemplate) {
           report.can_edit
             ? await api.post(`/api/v1/reports/${report.report_id}/submit`)
             : await api.delete(`/api/v1/reports/${report.report_id}/submit`);
+          navigate("/templates");
         }
-        navigate("/templates");
+      } else if (isEditTemplate) {
+        const data = await api.post(
+          `api/v1/templates/${template.template_id}/reports`
+        );
+        navigate(`/reports/${data["id"]}`);
       }
       setButtonState({ [buttonName]: false });
     } catch (error) {
@@ -163,7 +179,7 @@ const Report: React.FC = () => {
       <Helmet>
         <title>{`Отчет ${template.name}`}</title>
       </Helmet>
-      <form onSubmit={(e) => handleSaveReport(e)}>
+      <form onSubmit={(e) => handleActions(e)}>
         <BackButtonComponent positionClasses="" />
         <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
           {template.name}
@@ -248,13 +264,25 @@ const Report: React.FC = () => {
               />
             </>
           )}
-          {!report.can_grade && !report.can_edit && (
+          {!report.can_grade && report.status === "submitted" && (
             <Button
               text={
                 buttonState?.send ? "Отменяю отправку..." : "Отменить отправку"
               }
               type="submit"
               name="send"
+              disable={buttonState?.send}
+            />
+          )}
+          {!report.can_grade && report.status === "graded" && (
+            <Button
+              text={
+                buttonState?.edit
+                  ? "Перехожу к редактированию"
+                  : "Редактировать"
+              }
+              type="submit"
+              name="edit"
               disable={buttonState?.send}
             />
           )}
