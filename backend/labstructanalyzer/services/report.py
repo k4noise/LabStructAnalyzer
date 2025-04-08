@@ -42,6 +42,7 @@ class ReportService:
         """
         report = await self.get_by_id(report_id)
         report.status = ReportStatus.saved.name
+        report.updated_at = datetime.now()
         self.session.add(report)
         await self.session.commit()
 
@@ -54,6 +55,7 @@ class ReportService:
         """
         report = await self.get_by_id(report_id)
         report.status = ReportStatus.submitted.name
+        report.updated_at = datetime.now()
         self.session.add(report)
         await self.session.commit()
 
@@ -67,6 +69,7 @@ class ReportService:
         report = await self.get_by_id(report_id)
         report.status = ReportStatus.saved.name
         self.session.add(report)
+        report.updated_at = datetime.now()
         await self.session.commit()
 
     async def create(self, template_id: uuid.UUID, user_id: str) -> uuid.UUID:
