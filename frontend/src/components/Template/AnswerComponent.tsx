@@ -66,9 +66,9 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           type="text"
           className={`inline-block bg-transparent border-b w-full max-w-sm ${
             isRight
-              ? "border-green-500 bg-green-500 bg-opacity-25"
+              ? "border-green-500 bg-green-500 bg-opacity-25 dark:bg-green-800 dark:bg-opacity-40"
               : isRight == false
-              ? "border-red-500 bg-red-500 bg-opacity-25"
+              ? "border-red-500 bg-red-500 bg-opacity-25 dark:bg-red-800 dark:bg-opacity-40"
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder="Ваш ответ"
@@ -92,8 +92,14 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           disabled={!editable}
         />
       )}
+      {editable && element.properties.data && (
+        <span>{`Подсказка: ${element.properties.data}`}</span>
+      )}
       {editable && (
-        <span className=""> {`(max: ${element.properties.weight})`}</span>
+        <span className="opacity-60">
+          {" "}
+          {`(max: ${element.properties.weight})`}
+        </span>
       )}
       {!editable && score != null && (
         <span>

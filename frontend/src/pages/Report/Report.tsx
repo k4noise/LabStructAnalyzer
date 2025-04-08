@@ -135,7 +135,7 @@ const Report: React.FC = () => {
           `/api/v1/reports/${report.report_id}/grade`,
           Object.values(updatedAnswers)
         );
-        navigate(-1);
+        navigate(`/template/${template.template_id}/reports`);
       } else {
         await saveReportAnswers();
         if (isSendTemplate) {
@@ -210,7 +210,7 @@ const Report: React.FC = () => {
             updateAnswer: updateAnswers,
             editable:
               report.can_edit &&
-              (report.status === "new" || report.status == "created"),
+              (report.status === "new" || report.status == "saved"),
             graderView: report.can_grade,
           }}
         />
