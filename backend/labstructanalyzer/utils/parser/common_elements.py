@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from labstructanalyzer.services.answer import AnswerType
 from labstructanalyzer.utils.parser.base_definitions import IParserElement, ParserElementType
 
 
@@ -126,13 +127,14 @@ class QuestionElement(IParserElement[list[IParserElement]]):
             **self.collect_common_fields(),
         }
 
+
 @dataclass
 class AnswerElement(IParserElement[str]):
     """Элемент ответа"""
 
     data: str
     weight: int = field(default=1)
-    simple: bool = field(default=True)
+    ansType: AnswerType = field(default=AnswerType.simple)
 
     def __post_init__(self) -> None:
         super().__init__(ParserElementType.ANSWER, self.data)
@@ -142,7 +144,8 @@ class AnswerElement(IParserElement[str]):
             "type": self.element_type.value,
             "data": self.data,
             "weight": self.weight,
-            "simple": self.simple,
+            "simple": self.ansType == AnswerType.simple,  # todo подлежит удалению
+            "type": self.ansType,
             **self.collect_common_fields(),
         }
         return properties
