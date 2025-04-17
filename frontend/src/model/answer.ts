@@ -6,6 +6,10 @@ export interface AnswerEdit {
    */
   weight: number;
   /**
+   * Тип ответа
+   */
+  answerType: "simple" | "param" | "arg";
+  /**
    * Простой ответ - boolean
    * @type {boolean}
    */

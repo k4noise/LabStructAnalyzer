@@ -65,7 +65,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     </>
   ) : (
     <>
-      {element.properties.simple ? (
+      {element.properties.answerType == "simple" ? (
         <input
           type="text"
           className={`inline-block bg-transparent border-b w-full max-w-sm ${
