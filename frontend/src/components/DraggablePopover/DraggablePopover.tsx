@@ -104,6 +104,10 @@ const DraggablePopover: React.FC<DraggablePopoverProps> = ({
     if (event.button !== 0) return;
     event.stopPropagation();
 
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+      return;
+    }
+
     if (popoverRef.current) {
       const rect = popoverRef.current.getBoundingClientRect();
       mouseOffsetRef.current = {
