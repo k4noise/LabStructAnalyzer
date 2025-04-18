@@ -79,6 +79,16 @@ const EditAnswer = ({
           <option value="arg">Рассуждение</option>
         </select>
       </label>
+      <label className="block mb-3">
+        Эталонный ответ:
+        <Textarea
+          className="ml-3 w-60 align-top bg-transparent border-b-2  border-zinc-950 dark:border-zinc-200 overflow-hidden"
+          placeholder="Ответ"
+          value={element?.properties?.refAnswer ?? ""}
+          minRowsCount={1}
+          validationOptions={register("refAnswer")}
+        />
+      </label>
       <Button text="Сохранить" type="submit" classes="block ml-auto" />
     </form>
   );

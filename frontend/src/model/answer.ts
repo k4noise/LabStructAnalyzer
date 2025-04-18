@@ -10,10 +10,10 @@ export interface AnswerEdit {
    */
   answerType: "simple" | "param" | "arg";
   /**
-   * Простой ответ - boolean
+   * Эталонный ответ преподавателя
    * @type {boolean}
    */
-  simple: boolean;
+  refAnswer: string;
 }
 
 export interface AnswerModel {

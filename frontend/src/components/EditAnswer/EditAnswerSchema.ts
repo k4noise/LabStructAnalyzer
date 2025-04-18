@@ -16,6 +16,7 @@ const EditAnswerSchema = zod.object({
     .min(MIN_POSSIBLE_ANSWER_WEIGHT, "Вес не может быть меньше нуля")
     .max(MAX_POSSIBLE_ANSWER_WEIGHT, "Вес не может быть более 20"),
   answerType: zod.string(),
+  refAnswer: zod.string().optional(),
 });
 
 export default EditAnswerSchema;
