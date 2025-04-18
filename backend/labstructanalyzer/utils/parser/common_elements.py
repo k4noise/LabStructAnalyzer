@@ -145,7 +145,7 @@ class AnswerElement(IParserElement[str]):
             "data": self.data,
             "weight": self.weight,
             "simple": self.ansType == AnswerType.simple,  # todo подлежит удалению
-            "type": self.ansType,
+            "answerType": self.ansType.name,
             **self.collect_common_fields(),
         }
         return properties
