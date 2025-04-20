@@ -116,7 +116,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       {!editable &&
         answers &&
         (answers["current"][element.element_id]?.given_score != null ||
-          (answers["current"]?.data == null && answers["prev"].score)) && (
+          (answers["current"]?.data == null && answers["prev"]?.score)) && (
           <span>
             {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
               element.properties.weight
