@@ -233,7 +233,7 @@ const Report: React.FC = () => {
             updateAnswer: updateAnswers,
             editable:
               report.can_edit &&
-              (report.status === "new" || report.status == "saved"),
+              (report.status === "created" || report.status == "saved"),
             graderView: report.can_grade,
           }}
         />
