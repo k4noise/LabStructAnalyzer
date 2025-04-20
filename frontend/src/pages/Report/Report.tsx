@@ -121,7 +121,7 @@ const Report: React.FC = () => {
     try {
       await api.patch(
         `/api/v1/reports/${report.report_id}`,
-        Object.values(updatedAnswers)
+        Object.values(updatedAnswers.current)
       );
     } catch (error) {
       handleError(error);
@@ -143,6 +143,7 @@ const Report: React.FC = () => {
     const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
     const buttonName = (nativeEvent?.submitter as HTMLButtonElement)?.name;
     const isSendTemplate = buttonName === "send";
+    const isSaveTemplate = buttonName === "save";
     const isGradeTemplate = buttonName === "grade";
     const isEditTemplate = buttonName === "edit";
 
@@ -154,14 +155,13 @@ const Report: React.FC = () => {
           Object.values(updatedAnswers["current"])
         );
         navigate(`/template/${template.template_id}/reports`);
-      } else if (isSendTemplate) {
+      } else if (isSaveTemplate) {
         await saveReportAnswers();
-        if (isSendTemplate) {
-          report.can_edit
-            ? await api.post(`/api/v1/reports/${report.report_id}/submit`)
-            : await api.delete(`/api/v1/reports/${report.report_id}/submit`);
-          navigate("/templates");
-        }
+      } else if (isSendTemplate) {
+        report.can_edit
+          ? await api.post(`/api/v1/reports/${report.report_id}/submit`)
+          : await api.delete(`/api/v1/reports/${report.report_id}/submit`);
+        navigate("/templates");
       } else if (isEditTemplate) {
         const data = await api.post(
           `api/v1/templates/${template.template_id}/reports`
@@ -241,7 +241,11 @@ const Report: React.FC = () => {
           <Button
             text="Закрыть"
             onClick={() =>
-              navigate(`/template/${template.template_id}/reports`)
+              navigate(
+                report.can_grade
+                  ? `/template/${template.template_id}/reports`
+                  : "/templates"
+              )
             }
           />
           {report.can_edit && (
