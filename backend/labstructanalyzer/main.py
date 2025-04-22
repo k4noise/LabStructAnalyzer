@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -13,6 +14,7 @@ from .configs.config import IMAGE_DIR
 from .core.logger import GlobalLogger
 
 global_logger = GlobalLogger()
+executor = ProcessPoolExecutor(max_workers=1)
 
 from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_lis_service_access, \
     invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied
@@ -27,7 +29,7 @@ from .routers.template_router import router as template_router
 from .routers.users_router import router as users_router
 from .routers.report_router import router as report_router
 from dotenv import load_dotenv
-from labstructanalyzer.core.database import close_db
+from labstructanalyzer.core.database import close_db, close_sync_db
 
 load_dotenv()
 
@@ -35,6 +37,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
+    close_sync_db()
     await close_db()
 
 

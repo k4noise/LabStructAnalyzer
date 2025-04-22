@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from starlette.requests import Request
 
-from labstructanalyzer.main import global_logger
+from labstructanalyzer.main import global_logger, executor
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.configs.config import TOOL_CONF
 from labstructanalyzer.models.user_model import User, UserRole
@@ -15,6 +15,7 @@ from labstructanalyzer.models.dto.report import ReportDto
 
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.nrps import NrpsService
+from labstructanalyzer.services.pre_grader import PreGraderService
 
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -311,10 +312,12 @@ async def save_grades(
 async def send_to_grade(
         report_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
-        report_service: ReportService = Depends(get_report_service)
-):
+        report_service: ReportService = Depends(get_report_service)):
     await report_service.check_is_author(report_id, user.sub)
     await report_service.send_to_grade(report_id)
+    report = await report_service.get_by_id(report_id)
+    pre_grader_service = PreGraderService(report)
+    executor.submit(pre_grader_service.grade)
     logger.info(f"Отчет отправлен на проверку: id {report_id}")
 
 

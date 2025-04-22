@@ -21,6 +21,7 @@ alembic = "1.14.0"
 mysqlclient = "2.2.7"
 aiomysql = "0.2.0"
 asyncpg = "0.30.0"
+rapidfuzz = "^3.13.0"
 
 [build-system]
 requires = ["poetry-core"]
