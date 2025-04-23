@@ -2,6 +2,7 @@ import re
 
 from rapidfuzz import fuzz
 
+from labstructanalyzer.core.database import get_sync_session
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.services.answer import AnswerType
 
@@ -13,20 +14,28 @@ class PreGraderService:
     def __init__(self, answers: list[Answer], template_elements: dict):
         self.answers_data = answers
         self.answer_elements = template_elements
+        self._strategies = {
+            AnswerType.simple.name: self._grade_fixed
+        }
 
     def grade(self):
-        graded_answers = {}
-
         for answer in self.answers_data:
-            answer_element = self.answer_elements[answer.element_id]
+            answer_element = self.answer_elements.get(answer.element_id)
 
-            if not answer.data or not "refAnswer" in answer_element.properties:
+            if (not answer_element
+                    or answer.data
+                    or not answer_element.properties.get("refAnswer")):
                 continue
 
-            match answer_element.properties["answerType"]:
-                case AnswerType.simple.name:
-                    graded_answers[answer.answer_id] = self._grade_fixed(answer.data["text"],
-                                                                         answer_element.properties["refAnswer"])
+            answer_type_name = answer_element.properties.get("answerType")
+            strategy = self._strategies.get(answer_type_name)
+
+            if not strategy:
+                continue
+
+            answer.data["preGrade"] = strategy(answer.data["text"],
+                                               answer_element.properties.get("refAnswer"))
+        self._save_to_bd(self.answers_data)
 
     def _grade_fixed(self, given_answer: str, reference_answer: str):
         reference_words, reference_digits = self._split_alnum(reference_answer)
@@ -52,5 +61,8 @@ class PreGraderService:
         digits = self._RE_DIGITS.findall(answer)
         return letters, digits
 
-    def _save_to_bd(self):
-        pass
+    def _save_to_bd(self, answers_with_pre_grades: list[Answer]):
+        for session in get_sync_session():
+            for pre_graded_answer in answers_with_pre_grades:
+                session.add(pre_graded_answer)
+            session.commit()
