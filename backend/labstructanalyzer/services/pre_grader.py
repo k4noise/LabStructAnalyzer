@@ -2,7 +2,7 @@ import re
 
 from rapidfuzz import fuzz
 
-from labstructanalyzer.models.report import Report
+from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.services.answer import AnswerType
 
 
@@ -10,11 +10,9 @@ class PreGraderService:
     _RE_WORDS = re.compile(r'[a-zа-яёй]+')
     _RE_DIGITS = re.compile(r'\d+')
 
-    def __init__(self, report: Report):
-        self.answers_data = report.answers
-        self.answer_elements = {template_element.element_id: template_element for template_element in
-                                report.template.elements if
-                                template_element.element_type == 'answer'}
+    def __init__(self, answers: list[Answer], template_elements: dict):
+        self.answers_data = answers
+        self.answer_elements = template_elements
 
     def grade(self):
         graded_answers = {}
@@ -30,29 +28,29 @@ class PreGraderService:
                     graded_answers[answer.answer_id] = self._grade_fixed(answer.data["text"],
                                                                          answer_element.properties["refAnswer"])
 
-    def split_alnum(self, answer: str):
-        answer = answer.lower()
-        letters = self._RE_WORDS.findall(answer)
-        digits = self._RE_DIGITS.findall(answer)
-        return letters, digits
-
     def _grade_fixed(self, given_answer: str, reference_answer: str):
-        reference_words, reference_digits = self.split_alnum(reference_answer)
-        given_words, given_digits = self.split_alnum(given_answer)
+        reference_words, reference_digits = self._split_alnum(reference_answer)
+        given_words, given_digits = self._split_alnum(given_answer)
 
-        if given_words == reference_words and given_digits == reference_digits:
-            return True
-        elif given_digits != reference_digits:
-            return False
+        if given_digits != reference_digits:
+            return 0
+        elif given_words == reference_words:
+            return 1
 
         if len(given_words) <= len(reference_words):
             for offset in range(len(reference_words) - len(given_words) + 1):
                 if all(reference_words[offset + i].startswith(given_words[i])
                        for i in range(len(given_words))):
-                    return True
+                    return 1
 
         score = fuzz.ratio(given_words, reference_words)
-        return score >= 90
+        return 1 if score >= 90 else 0
+
+    def _split_alnum(self, answer: str):
+        answer = answer.lower()
+        letters = self._RE_WORDS.findall(answer)
+        digits = self._RE_DIGITS.findall(answer)
+        return letters, digits
 
     def _save_to_bd(self):
         pass

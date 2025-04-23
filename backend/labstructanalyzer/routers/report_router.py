@@ -315,8 +315,13 @@ async def send_to_grade(
         report_service: ReportService = Depends(get_report_service)):
     await report_service.check_is_author(report_id, user.sub)
     await report_service.send_to_grade(report_id)
+
     report = await report_service.get_by_id(report_id)
-    pre_grader_service = PreGraderService(report)
+    answer_elements = {template_element.element_id: template_element for template_element in
+                       report.template.elements if
+                       template_element.element_type == 'answer'}
+    pre_grader_service = PreGraderService(report.answers, answer_elements)
+
     executor.submit(pre_grader_service.grade)
     logger.info(f"Отчет отправлен на проверку: id {report_id}")
 
