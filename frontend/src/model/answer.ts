@@ -21,6 +21,10 @@ export interface AnswerModel {
   answer_id?: string;
   data?: AnswerDataModel;
   score?: number;
+  pre_grade?: {
+    score: number;
+    comment?: string;
+  }
   given_score?: number;
 }
 

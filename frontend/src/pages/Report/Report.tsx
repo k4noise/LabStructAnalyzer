@@ -71,11 +71,12 @@ const Report: React.FC = () => {
       if (report.can_grade && report.status != "graded") {
         // оценка пустых ответов как неправильных
         if (answer.data == null) {
-          answers[answer.element_id].score = 0;
+          answers["current"][answer.element_id].score = 0;
         }
         // значение по умолчанию для позитивного оценивания
-        else if (answers[answer.element_id].score == null)
-          answers[answer.element_id].score = 1;
+        else if (answers[answer.element_id]?.score == null)
+          answers["current"][answer.element_id].score =
+            answer?.pre_grade?.score ?? 1;
       }
     }
   }
@@ -129,7 +130,7 @@ const Report: React.FC = () => {
   }, [report.report_id, updatedAnswers]);
 
   useEffect(() => {
-    if (!report.can_grade) {
+    if (report.can_edit) {
       const intervalId = setInterval(async () => {
         await saveReportAnswers();
       }, 300000); // каждые 5 минут
@@ -158,6 +159,7 @@ const Report: React.FC = () => {
       } else if (isSaveTemplate) {
         await saveReportAnswers();
       } else if (isSendTemplate) {
+        await saveReportAnswers();
         report.can_edit
           ? await api.post(`/api/v1/reports/${report.report_id}/submit`)
           : await api.delete(`/api/v1/reports/${report.report_id}/submit`);

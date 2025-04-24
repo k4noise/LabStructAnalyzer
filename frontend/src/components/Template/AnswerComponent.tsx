@@ -27,7 +27,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     editable,
     graderView,
   } = useContext(AnswerContext);
-  const score = answers ? answers["current"][element.element_id]?.score : 0;
+  const score = answers ? answers["current"][element.element_id]?.score : null;
   const onChangeAnswer = (e) =>
     updateAnswer({
       element_id: element.element_id,
@@ -65,6 +65,30 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
     </>
   ) : (
     <>
+      {!graderView && element.properties.data && (
+        <details className="inline-grid mr-4">
+          <summary className="text-base select-none">[Подсказка]</summary>
+          <span className="text-base dark:text-blue-300 text-blue-600">
+            {element.properties.data}
+          </span>
+        </details>
+      )}
+      {graderView &&
+        answers["current"][element.element_id]?.pre_grade?.score != null &&
+        isRight == null &&
+        (answers["current"][element.element_id].pre_grade.score > 0 ? (
+          <span className="mr-2 text-base">[Предварительно верно]</span>
+        ) : (
+          <details className="w-full">
+            <summary className="mr-2 text-base select-none">
+              [Предварительно неверно]
+            </summary>
+            <span className="inline-block mb-4 text-base dark:text-red-300 text-red-600">
+              {answers["current"][element.element_id].pre_grade?.comment}
+            </span>
+          </details>
+        ))}
+
       {element.properties.answerType == "simple" ? (
         <input
           type="text"
@@ -75,7 +99,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
               ? "border-red-500 bg-red-500 bg-opacity-25 dark:bg-red-800 dark:bg-opacity-40"
               : "border-zinc-950 dark:border-zinc-200"
           }`}
-          placeholder="Ваш ответ"
+          placeholder={graderView ? "Нет ответа" : "Ваш ответ"}
           value={
             answers["current"][element.element_id]?.data?.text ??
             answers["prev"]?.[element.element_id]?.data?.text ??
@@ -93,7 +117,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
               ? "border-red-500 bg-red-500 bg-opacity-25"
               : "border-zinc-950 dark:border-zinc-200"
           }`}
-          placeholder="Ваш ответ"
+          placeholder={graderView ? "Нет ответа" : "Ваш ответ"}
           minRowsCount={5}
           onChange={onChangeAnswer}
           value={
@@ -103,9 +127,6 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
           }
           disabled={!editable}
         />
-      )}
-      {editable && element.properties.data && (
-        <span>{`Подсказка: ${element.properties.data}`}</span>
       )}
       {editable && (
         <span className="opacity-60">
@@ -127,19 +148,22 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         <>
           {answers["current"][element.element_id]?.given_score != null && (
             <span className="mr-2">
-              <br></br>Новая оценка:
+              <br />
+              Новая оценка:
             </span>
           )}
           <button
             type="button"
-            className="text-3xl opacity-80"
+            className={`text-3xl mr-2 ${isRight ? "opacity-80" : "opacity-20"}`}
+            title="Оценить как верный"
             onClick={() => changeScore(1)}
           >
             ✔️
           </button>
           <button
             type="button"
-            className="text-3xl opacity-80"
+            className={`text-3xl ${!isRight ? "opacity-80" : "opacity-20"}`}
+            title="Оценить как неверный"
             onClick={() => changeScore(0)}
           >
             ❌
