@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -7,11 +8,12 @@ from labstructanalyzer.main import global_logger, executor
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.configs.config import TOOL_CONF
 from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_template_service, \
-    get_user_with_any_role, get_user
+from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_user_with_any_role, \
+    get_user, get_background_task_service
 
-from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto
+from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto, PreGradedAnswerDto
 from labstructanalyzer.models.dto.report import ReportDto
+from labstructanalyzer.services.background_task import BackgroundTaskService
 
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -173,11 +175,12 @@ async def get_report(
             current_report.grader_id) if current_report.grader_id is not None else None,
         score=current_report.score,
         current_answers=[
-            AnswerDto(
+            PreGradedAnswerDto(
                 answer_id=answer.answer_id,
                 element_id=answer.element_id,
                 data=answer.data,
-                score=answer.score
+                score=answer.score,
+                pre_grade=answer.pre_grade
             ) for answer in
             current_report.answers],
         prev_answers=[
@@ -312,7 +315,8 @@ async def save_grades(
 async def send_to_grade(
         report_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
-        report_service: ReportService = Depends(get_report_service)):
+        report_service: ReportService = Depends(get_report_service),
+        background_task_service: BackgroundTaskService = Depends(get_background_task_service)):
     await report_service.check_is_author(report_id, user.sub)
     await report_service.send_to_grade(report_id)
 
@@ -322,7 +326,8 @@ async def send_to_grade(
                        template_element.element_type == 'answer'}
     pre_grader_service = PreGraderService(report.answers, answer_elements)
 
-    executor.submit(pre_grader_service.grade)
+    future = executor.submit(pre_grader_service.grade)
+    asyncio.create_task(background_task_service.handle_task_result(future))
     logger.info(f"Отчет отправлен на проверку: id {report_id}")
 
 

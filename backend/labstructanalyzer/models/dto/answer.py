@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
 
 
 class CreateAnswerDto(BaseModel):
@@ -23,3 +23,6 @@ class AnswerDto(CreateAnswerDto, UpdateAnswerDto):
     score: Optional[float] = None
     data: Optional[dict] = None
 
+
+class PreGradedAnswerDto(AnswerDto):
+    pre_grade: Optional[dict] = None

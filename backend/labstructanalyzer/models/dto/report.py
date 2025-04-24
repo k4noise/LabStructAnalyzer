@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from labstructanalyzer.models.dto.answer import AnswerDto
+from labstructanalyzer.models.dto.answer import AnswerDto, PreGradedAnswerDto
 
 
 class ReportDto(BaseModel):
@@ -16,7 +16,7 @@ class ReportDto(BaseModel):
     author_name: str
     grader_name: Optional[str] = None
     score: Optional[float] = None
-    current_answers: list[AnswerDto]
+    current_answers: list[PreGradedAnswerDto]
     prev_answers: Optional[list[AnswerDto]] = None
 
 

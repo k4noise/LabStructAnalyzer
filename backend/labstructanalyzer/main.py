@@ -29,7 +29,7 @@ from .routers.template_router import router as template_router
 from .routers.users_router import router as users_router
 from .routers.report_router import router as report_router
 from dotenv import load_dotenv
-from labstructanalyzer.core.database import close_db, close_sync_db
+from labstructanalyzer.core.database import close_db
 
 load_dotenv()
 
@@ -37,7 +37,6 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
-    close_sync_db()
     await close_db()
 
 

@@ -6,6 +6,7 @@ from labstructanalyzer.core.database import get_session
 from labstructanalyzer.exceptions.access_denied import RoleAccessDeniedException
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.services.answer import AnswerService
+from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.report import ReportService
 from labstructanalyzer.services.template import TemplateService
 
@@ -20,6 +21,10 @@ def get_report_service(session: AsyncSession = Depends(get_session)) -> ReportSe
 
 def get_answer_service(session: AsyncSession = Depends(get_session)) -> AnswerService:
     return AnswerService(session)
+
+
+def get_background_task_service(session: AsyncSession = Depends(get_session)) -> BackgroundTaskService:
+    return BackgroundTaskService(session)
 
 
 def get_user(authorize: AuthJWT = Depends()) -> User:
