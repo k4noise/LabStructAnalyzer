@@ -85,15 +85,25 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
       )}
       {graderView &&
         answers["current"][element.element_id]?.pre_grade?.score != null &&
-        isRight == null &&
         (answers["current"][element.element_id].pre_grade.score > 0 ? (
-          <span className="mr-2 text-base">[Предварительно верно]</span>
+          answers["current"][element.element_id].pre_grade?.comment ? (
+            <details className="w-full">
+              <summary className="mr-2 text-base select-none">
+                [Предварительно верно]
+              </summary>
+              <span className="inline-block mb-4 text-base dark:text opacity-60">
+                {answers["current"][element.element_id].pre_grade?.comment}
+              </span>
+            </details>
+          ) : (
+            <span className="mr-2 text-base">[Предварительно верно]</span>
+          )
         ) : (
           <details className="w-full">
             <summary className="mr-2 text-base select-none">
               [Предварительно неверно]
             </summary>
-            <span className="inline-block mb-4 text-base dark:text-red-300 text-red-600">
+            <span className="inline-block mb-4 text-base dark:text opacity-60">
               {answers["current"][element.element_id].pre_grade?.comment}
             </span>
           </details>
@@ -102,7 +112,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
       {element.properties.answerType == "simple" ? (
         <input
           type="text"
-          className={`inline-block bg-transparent border-b w-full max-w-sm ${
+          className={`inline-block bg-transparent border-b w-full max-w-sm transition-colors duration-150  ${
             isRight
               ? "border-green-500 bg-green-500 bg-opacity-25 dark:bg-green-800 dark:bg-opacity-40"
               : isRight == false
@@ -120,7 +130,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
         />
       ) : (
         <Textarea
-          className={`block bg-transparent border rounded-xl w-full mt-4 p-4 overflow-hidden ${
+          className={`block bg-transparent border rounded-xl w-full mt-4 p-4 overflow-hidden transition-colors duration-150 ${
             isRight
               ? "border-green-500"
               : isRight == false
@@ -164,7 +174,14 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
           )}
           <button
             type="button"
-            className={`text-3xl mr-2 ${isRight ? "opacity-80" : "opacity-20"}`}
+            className={`text-3xl mr-2 ${
+              isRight == true ||
+              (isRight == null &&
+                (answers["current"][element.element_id]?.pre_grade == null ||
+                  answers["current"][element.element_id]?.pre_grade?.score > 0))
+                ? "opacity-80"
+                : "opacity-20"
+            }`}
             title="Оценить как верный"
             onClick={() => changeScore(1)}
           >
@@ -172,7 +189,15 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
           </button>
           <button
             type="button"
-            className={`text-3xl ${!isRight ? "opacity-80" : "opacity-20"}`}
+            className={`text-3xl ${
+              isRight == false ||
+              (isRight == null &&
+                (answers["current"][element.element_id]?.pre_grade == null ||
+                  answers["current"][element.element_id]?.pre_grade?.score ==
+                    0))
+                ? "opacity-80"
+                : "opacity-20"
+            }`}
             title="Оценить как неверный"
             onClick={() => changeScore(0)}
           >
