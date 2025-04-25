@@ -23,7 +23,7 @@ const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
   const [question, answer] = element.properties.data;
   return (
     <div
-      className={`italic my-6 ${getMarginLeftStyle(
+      className={`italic my-8 ${getMarginLeftStyle(
         element.properties.nestingLevel
       )} ${
         answer.properties.editNow ? "dark:text-blue-300 text-blue-600" : ""
@@ -35,7 +35,7 @@ const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
         )}
         {question.properties.data}
         <span className="ml-4 inline">
-          <AnswerComponent element={answer} />
+          <AnswerComponent element={answer} withQuestion={true} />
         </span>
       </p>
     </div>

@@ -11,12 +11,16 @@ import Textarea from "../Textarea/TextareaComponent";
  */
 interface AnswerComponentProps {
   element: AnswerElement;
+  withQuestion?: boolean;
 }
 
 /**
  * Компонент для отображения настройки ответа.
  */
-const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
+const AnswerComponent: React.FC<AnswerComponentProps> = ({
+  element,
+  withQuestion,
+}) => {
   const [isRight, setIsRight] = useState<boolean | null>(null);
   const {
     handleSelectAnswerForEdit,
@@ -68,7 +72,13 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       {!graderView && element.properties.data && (
         <details className="inline-grid mr-4">
           <summary className="text-base select-none">[Подсказка]</summary>
-          <span className="text-base dark:text-blue-300 text-blue-600">
+          <span
+            className={`ml-4 text-base dark:text-blue-300 text-blue-600 px-2${
+              withQuestion
+                ? " absolute mt-1 max-w-lg truncate bg-zinc-200 dark:bg-zinc-950"
+                : ""
+            }`}
+          >
             {element.properties.data}
           </span>
         </details>
