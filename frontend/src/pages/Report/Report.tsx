@@ -36,7 +36,7 @@ const Report: React.FC = () => {
   }>();
 
   const [displayModeFilter, setDisplayModeFilter] = useState<string>(
-    report.status === "graded" ? "all" : "always"
+    report.status !== "graded" && report.can_grade ? "always" : "all"
   );
 
   /**
