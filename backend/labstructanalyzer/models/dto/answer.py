@@ -3,6 +3,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from labstructanalyzer.models.answer import Answer
+from labstructanalyzer.models.answer_type import AnswerType
+
 
 class CreateAnswerDto(BaseModel):
     element_id: uuid.UUID
@@ -26,3 +29,11 @@ class AnswerDto(CreateAnswerDto, UpdateAnswerDto):
 
 class PreGradedAnswerDto(AnswerDto):
     pre_grade: Optional[dict] = None
+
+
+class FullAnswerData(BaseModel):
+    user_origin: Answer
+    type: AnswerType
+    custom_id: Optional[str] = None
+    reference: Optional[str] = None
+    weight: float = None

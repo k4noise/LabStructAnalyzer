@@ -79,9 +79,9 @@ async def update_answers(
     """
     Обновить некоторые ответы в отчете.
     """
-    await report_service.check_is_author(report_id, user.sub)
+    report = await report_service.get_by_id(report_id)
+    await report_service.send_to_save(report, user.sub)
     await answers_service.update_answers(report_id, answers)
-    await report_service.send_to_save(report_id)
     logger.info(f"Обновлены ответы в отчете: id {report_id}")
 
 
@@ -147,10 +147,10 @@ async def get_report(
     для студента производится проверка, он ли автор
     преподавателю и ассистенту доступ свободный
     """
-    if len(user.roles) == 1 and UserRole.STUDENT in user.roles:
-        await report_service.check_is_author(report_id, user.sub)
-
     current_report = await report_service.get_by_id(report_id)
+    if len(user.roles) == 1 and UserRole.STUDENT in user.roles:
+        report_service.check_is_author(current_report, user.sub)
+
     prev_report = await report_service.get_prev_report(current_report)
 
     can_grade = UserRole.TEACHER in user.roles or UserRole.ASSISTANT in user.roles
@@ -316,15 +316,13 @@ async def send_to_grade(
         report_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service),
+        answer_service: AnswerService = Depends(get_answer_service),
         background_task_service: BackgroundTaskService = Depends(get_background_task_service)):
-    await report_service.check_is_author(report_id, user.sub)
-    await report_service.send_to_grade(report_id)
+    report = await report_service.get_by_id(report_id)
+    await report_service.send_to_grade(report, user.sub)
 
     report = await report_service.get_by_id(report_id)
-    answer_elements = {template_element.element_id: template_element for template_element in
-                       report.template.elements if
-                       template_element.element_type == 'answer'}
-    pre_grader_service = PreGraderService(report.answers, answer_elements)
+    pre_grader_service = PreGraderService(answer_service.collect_full_data(report))
 
     future = executor.submit(pre_grader_service.grade)
     asyncio.create_task(background_task_service.handle_task_result(future))
@@ -375,6 +373,6 @@ async def cancel_send_to_grade(
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service)
 ):
-    await report_service.check_is_author(report_id, user.sub)
-    await report_service.cancel_send_to_grade(report_id)
+    report = await report_service.get_by_id(report_id)
+    await report_service.cancel_send_to_grade(report, user.sub)
     logger.info(f"Отчет снят с проверки: id {report_id}")

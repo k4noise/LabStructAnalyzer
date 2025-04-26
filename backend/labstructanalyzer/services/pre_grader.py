@@ -3,7 +3,8 @@ import re
 from rapidfuzz import fuzz
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.services.answer import AnswerType
+from labstructanalyzer.models.dto.answer import FullAnswerData
+from labstructanalyzer.models.answer_type import AnswerType
 
 
 class PreGraderService:
@@ -11,16 +12,15 @@ class PreGraderService:
     _RE_WORDS = re.compile(r'[a-zа-яёй]+')
     _RE_DIGITS = re.compile(r'\d+')
 
-    def __init__(self, answers: list[Answer], template_elements: dict):
+    def __init__(self, answers: list[FullAnswerData]):
         """
         Инициализирует сервис предварительной оценки
 
         Args:
-            answers: Список ответов для оценки
-            template_elements: Словарь элементов шаблона с эталонами
+            answers: Подготовленный список ответов для оценки
         """
-        self.answers_data = answers
-        self.answer_elements = template_elements
+        self.answers = answers
+        self.parameters = {answer.custom_id: answer for answer in answers}
         self._strategies = {
             AnswerType.simple.name: self._grade_fixed
         }
@@ -33,27 +33,23 @@ class PreGraderService:
         Returns:
             Список объектов Answer с результатами оценки
         """
-        for answer in self.answers_data:
-            answer_element = self.answer_elements.get(answer.element_id)
-            if not answer_element:
+        graded_answers = []
+        for answer in self.answers:
+            answer_text = answer.user_origin.data.get("text") if answer.user_origin.data else None
+
+            if not answer_text or not answer.reference:
                 continue
 
-            reference_answer = answer_element.properties.get("refAnswer")
-            answer_type_name = answer_element.properties.get("answerType")
-            answer_text = answer.data.get("text") if answer.data else None  # Безопасное получение текста
-
-            if not answer_text or not reference_answer or not answer_type_name:
-                continue
-
-            strategy = self._strategies.get(answer_type_name)
+            strategy = self._strategies.get(answer.type.name)
             if not strategy:
                 continue
 
-            score = strategy(answer_text, reference_answer)
-            answer.pre_grade = {"score": score}
+            score = strategy(answer_text, answer.reference)
+            answer.user_origin.pre_grade = {"score": score}
             if score < 1:
-                answer.pre_grade["comment"] = f"Ответ не соответствует эталону {reference_answer}"
-        return self.answers_data
+                answer.user_origin.pre_grade["comment"] = f"Ответ не соответствует эталону {answer.reference}"
+            graded_answers.append(answer.user_origin)
+        return graded_answers
 
     def _grade_fixed(self, given_answer: str, reference_answer: str) -> int:
         """
