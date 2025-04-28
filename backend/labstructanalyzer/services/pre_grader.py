@@ -3,16 +3,19 @@ from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.dto.answer import FullAnswerData
 from labstructanalyzer.models.answer_type import AnswerType
 from labstructanalyzer.services.graders.fixed import FixedAnswerGrader
+from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 
 
 class PreGraderService:
     """Сервис предварительной оценки ответов по эталонным ответам преподавателя"""
 
     def __init__(self, answers: list[FullAnswerData]):
+        parameters = {answer.custom_id: answer for answer in answers}
+
         self.answers = answers
-        self.parameters = {answer.custom_id: answer for answer in answers}
         self._strategies = {
             AnswerType.simple.name: FixedAnswerGrader(),
+            AnswerType.param.name: ParametrizedAnswerGrader(parameters)
         }
 
     def grade(self) -> list[Answer]:
