@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 from typing import Optional
 
 from pydantic import BaseModel
@@ -37,3 +38,9 @@ class FullAnswerData(BaseModel):
     custom_id: Optional[str] = None
     reference: Optional[str] = None
     weight: float = None
+
+
+@dataclass
+class GradeResult:
+    score: int
+    comment: str | None = None
