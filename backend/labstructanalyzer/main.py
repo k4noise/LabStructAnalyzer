@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -13,6 +14,7 @@ from .configs.config import IMAGE_DIR
 from .core.logger import GlobalLogger
 
 global_logger = GlobalLogger()
+executor = ProcessPoolExecutor(max_workers=1)
 
 from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_lis_service_access, \
     invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied

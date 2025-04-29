@@ -12,4 +12,5 @@ class Answer(SQLModel, table=True):
     report_id: uuid.UUID = Field(foreign_key="reports.report_id", index=True)
     element_id: uuid.UUID
     data: dict = Field(sa_column=Column(JSON))
+    pre_grade: Optional[dict] = Field(sa_column=Column(JSON))
     score: Optional[float]

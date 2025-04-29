@@ -68,12 +68,25 @@ const EditAnswer = ({
         </p>
       )}
       <label className="block mb-3">
-        Краткий ответ:
-        <input
-          type="checkbox"
-          className="ml-3"
-          defaultChecked={element?.properties.simple}
-          {...register("simple")}
+        Тип ответа:
+        <select
+          className="ml-3 bg-zinc-200 dark:bg-zinc-950 text-zinc-950 dark:text-zinc-200 border-b-2"
+          {...register("answerType")}
+          defaultValue={element?.properties.answerType ?? "simple"}
+        >
+          <option value="simple">Фиксированный</option>
+          <option value="param">Параметрезированный</option>
+          <option value="arg">Рассуждение</option>
+        </select>
+      </label>
+      <label className="block mb-3">
+        Эталонный ответ:
+        <Textarea
+          className="ml-3 w-60 align-top bg-transparent border-b-2  border-zinc-950 dark:border-zinc-200 overflow-hidden"
+          placeholder="Ответ"
+          value={element?.properties?.refAnswer ?? ""}
+          minRowsCount={1}
+          validationOptions={register("refAnswer")}
         />
       </label>
       <Button text="Сохранить" type="submit" classes="block ml-auto" />

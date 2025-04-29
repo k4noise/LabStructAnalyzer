@@ -21,7 +21,7 @@ class ReportService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def check_is_author(self, report_id: uuid.UUID, user_id: str) -> None:
+    def check_is_author(self, report: Report, user_id: str) -> None:
         """
         Проверяет, является ли пользователь автором шаблона
 
@@ -29,44 +29,43 @@ class ReportService:
             ReportNotFoundException: Отчет не найден
             NotOwnerAccessDeniedException: Доступ запрещен: пользователь не является автором
         """
-        result = await self.get_by_id(report_id)
-        if result.author_id != user_id:
+        if report.author_id != user_id:
             raise NotOwnerAccessDeniedException()
 
-    async def send_to_save(self, report_id: uuid.UUID):
+    async def send_to_save(self, report: Report, user: str):
         """
         Отправляет отчет на проверку
 
         Raises:
             ReportNotFoundException: Отчет не найден
         """
-        report = await self.get_by_id(report_id)
+        self.check_is_author(report, user)
         report.status = ReportStatus.saved.name
         report.updated_at = datetime.now()
         self.session.add(report)
         await self.session.commit()
 
-    async def send_to_grade(self, report_id: uuid.UUID):
+    async def send_to_grade(self, report: Report, user: str):
         """
         Отправляет отчет на проверку
 
         Raises:
             ReportNotFoundException: Отчет не найден
         """
-        report = await self.get_by_id(report_id)
+        self.check_is_author(report, user)
         report.status = ReportStatus.submitted.name
         report.updated_at = datetime.now()
         self.session.add(report)
         await self.session.commit()
 
-    async def cancel_send_to_grade(self, report_id: uuid.UUID):
+    async def cancel_send_to_grade(self, report: Report, user: str):
         """
         Отменяет отправку отчета на проверку
 
         Raises:
             ReportNotFoundException: Отчет не найден
         """
-        report = await self.get_by_id(report_id)
+        self.check_is_author(report, user)
         report.status = ReportStatus.saved.name
         self.session.add(report)
         report.updated_at = datetime.now()

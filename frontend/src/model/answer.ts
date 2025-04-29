@@ -6,10 +6,14 @@ export interface AnswerEdit {
    */
   weight: number;
   /**
-   * Простой ответ - boolean
+   * Тип ответа
+   */
+  answerType: "simple" | "param" | "arg";
+  /**
+   * Эталонный ответ преподавателя
    * @type {boolean}
    */
-  simple: boolean;
+  refAnswer: string;
 }
 
 export interface AnswerModel {
@@ -17,6 +21,10 @@ export interface AnswerModel {
   answer_id?: string;
   data?: AnswerDataModel;
   score?: number;
+  pre_grade?: {
+    score: number;
+    comment?: string;
+  }
   given_score?: number;
 }
 
