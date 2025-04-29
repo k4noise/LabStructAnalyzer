@@ -42,5 +42,5 @@ class FullAnswerData(BaseModel):
 
 @dataclass
 class GradeResult:
-    score: int
+    score: float
     comment: Optional[str] = None

@@ -2,6 +2,7 @@ from dataclasses import asdict
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.dto.answer import FullAnswerData
 from labstructanalyzer.models.answer_type import AnswerType
+from labstructanalyzer.services.graders.complex import ArgumentAnswerGrader
 from labstructanalyzer.services.graders.fixed import FixedAnswerGrader
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 
@@ -14,8 +15,9 @@ class PreGraderService:
 
         self.answers = answers
         self._strategies = {
-            AnswerType.simple.name: FixedAnswerGrader(),
-            AnswerType.param.name: ParametrizedAnswerGrader(parameters)
+            AnswerType.simple.name: FixedAnswerGrader().grade,
+            AnswerType.param.name: ParametrizedAnswerGrader(parameters).grade,
+            AnswerType.arg.name: ArgumentAnswerGrader().grade
         }
 
     def grade(self) -> list[Answer]:
@@ -30,7 +32,7 @@ class PreGraderService:
             if not strategy:
                 continue
 
-            grade_result = strategy.grade(answer_text, answer.reference)
+            grade_result = strategy(answer_text, answer.reference)
             answer.user_origin.pre_grade = asdict(grade_result)
             graded_answers.append(answer.user_origin)
-        return graded_answers
+            return graded_answers
