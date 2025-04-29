@@ -1,124 +1,119 @@
+from __future__ import annotations
+
 import re
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
+
 from labstructanalyzer.models.dto.answer import FullAnswerData, GradeResult
 
 
 class ParametrizedAnswerGrader:
-    _RE_PARAM_PLACEHOLDER = re.compile(r'\{([^}]+)}')
-    _RE_RANGE_PLACEHOLDER = re.compile(r'\[(.*?)]')
-    _RE_SINGLE_SPACE = re.compile(r'\s+')
+    """
+    Проверяет ответы с параметрами {param} и диапазонами/наборами [1-5], [2|3].
+    Если имеются параметры, предварительно оцененные как неверные, то и ответ тоже будет оценен как неверный.
+    Ответ верен, если все проверки пройдены и все тезисы присутствуют
+    """
 
-    def __init__(self, parameters: Dict[str, FullAnswerData]):
+    _RE_PARAM = re.compile(r"\{([^}]+)}")
+    _RE_RANGE = re.compile(r"\[(.*?)\]")
+    _RE_SPACE = re.compile(r"\s+")
+    _RE_DIGITS = re.compile(r"\d+")
+
+    def __init__(self, parameters: Dict[str, FullAnswerData]) -> None:
         self._parameters = parameters
 
-    def grade(self, given_answer: str, reference_answer: str) -> GradeResult:
-        validation_errors: List[str] = []
-        reference_answer_lines = [line.strip() for line in reference_answer.splitlines() if line.strip()]
-        if not reference_answer_lines:
-            return GradeResult(score=1)
+    def grade(self, given: str, reference: str) -> GradeResult:
+        """Оценивает ответ на соответствие эталонному ответу
 
-        normalized_given_answer = self._normalize_text(given_answer)
+        Args:
+            given: Ответ пользователя
+            reference: Эталонный ответ
 
-        for reference_answer_line in reference_answer_lines:
-            substituted_line, parameter_errors = self._replace_parameter_placeholders(reference_answer_line)
-            validation_errors.extend(parameter_errors)
+        Returns:
+            Результат оценки
+        """
+        given_norm = self._normalize(given)
+        reference_theses = [l.strip() for l in reference.splitlines() if l.strip()]
 
-            is_valid, error = self._check_answer_line(substituted_line, normalized_given_answer)
-            if not is_valid:
-                if error:
-                    validation_errors.append(error)
+        if not reference_theses:
+            return GradeResult(score=1, comment="Эталон пуст")
 
-        if validation_errors:
-            error_message = "\n".join(filter(None, validation_errors))
-            return GradeResult(score=0, comment=error_message if error_message else None)
-        return GradeResult(score=1)
-
-    def _replace_parameter_placeholders(self, reference_answer_line: str) -> Tuple[str, List[str]]:
         errors: List[str] = []
-        result = reference_answer_line
+        for thesis in reference_theses:
+            line, sub_errors = self._substitute_params(thesis)
+            errors.extend(sub_errors)
 
-        for parameter_name in self._RE_PARAM_PLACEHOLDER.findall(reference_answer_line):
-            parameter_data = self._parameters.get(parameter_name)
+            error = self._validate_line(line, given_norm)
+            if error:
+                errors.append(error)
 
-            if not parameter_data:
-                continue
+        return GradeResult(score=0, comment="\n".join(errors)) if errors else GradeResult(score=1)
 
-            parameter_text = ""
-            if hasattr(parameter_data, 'user_origin') and parameter_data.user_origin:
-                parameter_text = parameter_data.user_origin.data.get("text", "")
-                pre_grade = getattr(parameter_data.user_origin, 'pre_grade', {})
-                if pre_grade.get("score") != 1:
-                    error_msg = pre_grade.get('comment', 'Неизвестная ошибка')
-                    errors.append(f"Параметр '{parameter_name}' имеет невалидный pre_grade: {error_msg}")
-            elif hasattr(parameter_data, 'data') and parameter_data.data:
-                parameter_text = parameter_data.data.get("text", "")
+    def _substitute_params(self, line: str) -> tuple[str, list[str]]:
+        """Выполняет подстановку параметров в эталон.
+        Ошибкой помечается подстановка параметра, оцененного как неверный
+        """
+        errors: List[str] = []
 
-            if not parameter_text:
-                continue
+        def repl(match: re.Match) -> str:
+            name = match.group(1)
+            param = self._parameters.get(name)
+            if not param:
+                return match.group(0)
 
-            normalized_parameter = self._normalize_text(parameter_text)
-            result = result.replace(f"{{{parameter_name}}}", normalized_parameter)
+            text = ""
+            if getattr(param, "user_origin", None):
+                text = param.user_origin.data.get("text", "")
+                pre = getattr(param.user_origin, "pre_grade", {})
+                if pre.get("score") != 1:
+                    errors.append(
+                        f"Параметр '{name}' предварительно неверен"
+                    )
+            elif getattr(param, "data", None):
+                text = param.data.get("text", "")
 
-        return result, errors
+            return self._normalize(text) if text else match.group(0)
 
-    def _check_answer_line(self, substituted_line: str, normalized_given_answer: str) -> Tuple[bool, Optional[str]]:
-        range_match = self._RE_RANGE_PLACEHOLDER.search(substituted_line)
+        return self._RE_PARAM.sub(repl, line), errors
+
+    def _validate_line(self, line: str, given_norm: str) -> Optional[str]:
+        """
+        Проверяет эталон.
+        None, если всё ок, иначе текст ошибки
+        """
+        range_match = self._RE_RANGE.search(line)
         if not range_match:
-            return self._check_exact_match(substituted_line, normalized_given_answer)
-        return self._check_range_match(substituted_line, normalized_given_answer)
+            ok = self._normalize(line) in given_norm
+            return None if ok else f"Не найден тезис: '{line}'"
 
-    def _check_exact_match(self, substituted_line: str, normalized_given_answer: str) -> Tuple[bool, Optional[str]]:
-        normalized_substituted_line = self._normalize_text(substituted_line)
-        return normalized_substituted_line in normalized_given_answer, None
+        spec = range_match.group(1)
+        start, end = line[: range_match.start()], line[range_match.end():]
+        pattern = re.escape(start) + r"(\d+)" + re.escape(end)
+        regex = re.compile(pattern, re.IGNORECASE)
 
-    def _check_range_match(self, substituted_line: str, normalized_given_answer: str) -> Tuple[bool, Optional[str]]:
-        before_range = substituted_line[:self._RE_RANGE_PLACEHOLDER.search(substituted_line).start()]
-        range_specification = self._RE_RANGE_PLACEHOLDER.search(substituted_line).group(1)
-        after_range = substituted_line[self._RE_RANGE_PLACEHOLDER.search(substituted_line).end():]
+        m = regex.search(given_norm)
+        if not m:
+            return f"Не найдено соответствие для тезиса: '{line}'"
 
-        pattern = re.escape(before_range) + r'(\d+)' + re.escape(after_range)
-        try:
-            regex = re.compile(pattern, re.IGNORECASE)
-        except re.error:
-            return False, f"Ошибка в формате тезиса: {substituted_line}"
+        value = m.group(1)
+        if not self._is_valid_range(value, spec):
+            return f"Значение '{value}' не соответствует диапазону/вариантам '{spec}'"
+        return None
 
-        match = regex.search(normalized_given_answer)
-        if not match:
-            return False, f"Не найдено соответствие для тезиса: {substituted_line}"
+    def _is_valid_range(self, given: str, specification: str) -> bool:
+        """Проверка соответствия значения пользователя описанию (1-5 или 2|4|6)"""
+        if not given.isdigit():
+            return False
+        num = int(given)
 
-        extracted_value = match.group(1).strip()
-        if not extracted_value:
-            return False, f"Пустое значение для диапазона '{range_specification}'"
+        if "|" in specification:
+            return num in {int(x) for x in specification.split("|") if x.isdigit()}
 
-        if self._is_range_specification_valid(range_specification):
-            valid, error = self._check_range_validity(extracted_value, range_specification)
-            if not valid:
-                return False, error or f"Значение '{extracted_value}' не соответствует диапазону '{range_specification}'"
+        if m := re.fullmatch(r"(\d+)-(\d+)", specification):
+            lo, hi = sorted(map(int, m.groups()))
+            return lo <= num <= hi
 
-        return True, None
+        return True
 
-    def _normalize_text(self, text: str) -> str:
-        return self._RE_SINGLE_SPACE.sub(' ', text.lower()).strip()
-
-    def _check_range_validity(self, extracted_value: str, range_specification: str) -> Tuple[bool, Optional[str]]:
-        if not extracted_value.isdigit():
-            return False, f"Значение '{extracted_value}' не является числом"
-
-        num = int(extracted_value)
-
-        if '|' in range_specification:
-            options = {int(opt) for opt in range_specification.split('|') if opt.isdigit()}
-            if num not in options:
-                return False, f"Значение '{extracted_value}' не соответствует вариантам: {options}"
-            return True, None
-
-        if match := re.fullmatch(r'(\d+)-(\d+)', range_specification):
-            min_val, max_val = sorted(map(int, match.groups()))
-            if not (min_val <= num <= max_val):
-                return False, f"Значение '{extracted_value}' не входит в диапазон {min_val}-{max_val}"
-            return True, None
-
-        return True, None
-
-    def _is_range_specification_valid(self, range_specification: str) -> bool:
-        return '|' in range_specification or re.fullmatch(r'\d+-\d+', range_specification)
+    def _normalize(self, text: str) -> str:
+        """Нормализация - нижний регистр + схлопывание пробелов"""
+        return self._RE_SPACE.sub(" ", text.lower()).strip()

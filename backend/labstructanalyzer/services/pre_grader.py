@@ -1,4 +1,5 @@
 from dataclasses import asdict
+
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.dto.answer import FullAnswerData
 from labstructanalyzer.models.answer_type import AnswerType
@@ -10,29 +11,56 @@ from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 class PreGraderService:
     """Сервис предварительной оценки ответов по эталонным ответам преподавателя"""
 
-    def __init__(self, answers: list[FullAnswerData]):
-        parameters = {answer.custom_id: answer for answer in answers}
+    def __init__(self, answers: list[FullAnswerData]) -> None:
+        """Инициализирует сервис PreGraderService
 
-        self.answers = answers
+        Args:
+            answers: Список подготовленных к оценке данных ответов
+                     с эталонными значениями преподавателя.
+        """
+        param_map = {a.custom_id: a for a in answers}
+
+        self._answers: list[FullAnswerData] = answers
         self._strategies = {
-            AnswerType.simple.name: FixedAnswerGrader().grade,
-            AnswerType.param.name: ParametrizedAnswerGrader(parameters).grade,
-            AnswerType.arg.name: ArgumentAnswerGrader().grade
+            AnswerType.simple: FixedAnswerGrader(),
+            AnswerType.param: ParametrizedAnswerGrader(param_map),
+            AnswerType.arg: ArgumentAnswerGrader(),
         }
 
     def grade(self) -> list[Answer]:
-        graded_answers = []
-        for answer in self.answers:
-            answer_text = answer.user_origin.data.get("text") if answer.user_origin.data else None
+        """Проводит предварительную оценку всех доступных непустых ответов
+        при условии существования стратегии проверки
 
-            if not answer_text or not answer.reference:
+        Returns:
+            Список оценённых объектов `Answer` для их последующего сохранения в БД
+        """
+        graded: list[Answer] = []
+
+        for answer in self._answers:
+            if not self._is_processable(answer):
                 continue
 
-            strategy = self._strategies.get(answer.type.name)
-            if not strategy:
+            grader = self._strategies.get(answer.type)
+            if not grader:
                 continue
 
-            grade_result = strategy(answer_text, answer.reference)
-            answer.user_origin.pre_grade = asdict(grade_result)
-            graded_answers.append(answer.user_origin)
-            return graded_answers
+            user_text = answer.user_origin.data["text"]
+            result = grader.grade(user_text, answer.reference)
+
+            answer.user_origin.pre_grade = asdict(result)
+            graded.append(answer.user_origin)
+
+        return graded
+
+    @staticmethod
+    def _is_processable(answer: FullAnswerData) -> bool:
+        """Проверяет, можно ли обработать переданный ответ
+
+        Args:
+            answer: Объект `FullAnswerData`, содержащий данные ответа
+
+        Returns:
+            Возможность обработки ответа - наличие ответа студента и эталонного тезиса
+        """
+        data = answer.user_origin.data or {}
+        return bool(data.get("text") and answer.reference)
