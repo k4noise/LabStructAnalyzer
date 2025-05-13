@@ -1,20 +1,21 @@
 import math
 import re
-from typing import List
+from functools import lru_cache
+from typing import Any, Tuple
 
 from rapidfuzz import fuzz
 from labstructanalyzer.models.dto.answer import GradeResult
+
+RE_WORDS = re.compile(r'\w+')
+RE_DIGITS = re.compile(r'-?\d+')
 
 
 class FixedAnswerGrader:
     """Грейдер для ответов с фиксированным текстом"""
 
-    _RE_WORDS = re.compile(r'\w+')
-    _RE_DIGITS = re.compile(r'\d+')
-
     DEFAULT_SIMILARITY_THRESHOLD = 92
     MIN_SIMILARITY_THRESHOLD = 70
-    REDUCTION_FACTOR = 2
+    REDUCTION_FACTOR = 7
 
     def grade(self, given: str, reference: str) -> GradeResult:
         """
@@ -33,87 +34,96 @@ class FixedAnswerGrader:
         Returns:
             GradeResult: оценка за ответ (1 — верно; 0 — неверно)
         """
-        if not self._digits_match(given, reference):
-            return GradeResult(score=0, comment=f"Цифры не совпадают, эталон '{reference}'")
+        given_digits = self._extract_digits(given)
+        ref_digits = self._extract_digits(reference)
+        given_words = self._extract_words(given)
+        ref_words = self._extract_words(reference)
 
-        if self._exact_match(given, reference):
-            return GradeResult(score=1)
+        if not self._digits_match(given_digits, ref_digits):
+            return GradeResult(
+                score=0,
+                comment=f"Цифры не совпадают, извлечено из ответа: "
+                        f"{'\'' + "; ".join(given_digits) + '\'' if len(given_digits) else "не найдены"}, "
+                        f"из эталона: {'\'' + "; ".join(ref_digits) + '\'' if len(ref_digits) else "не найдены"}"
+            )
 
-        if self._is_valid_prefix(given, reference):
-            return GradeResult(score=1, comment="Верный префикс эталонного ответа")
+        if self._exact_match(given_words, ref_words):
+            return GradeResult(score=1, comment="Точное совпадение")
 
-        return self._fuzzy_evaluation(given, reference)
+        if self._is_valid_prefix(given_words, ref_words):
+            return GradeResult(score=1, comment="Является префиксом эталона")
 
-    def _digits_match(self, given: str, reference: str) -> bool:
+        return self._fuzzy_evaluation(given_words, ref_words, reference)
+
+    def _digits_match(self, given_digits: Tuple[str, ...], ref_digits: Tuple[str, ...]) -> bool:
         """
         Проверяет, совпадают ли все цифры в ответе и эталоне
 
         Args:
-            given: ответ пользователя
-            reference: эталонный ответ
+            given_digits: извлеченные цифры из ответа
+            ref_digits: извлеченные цифры из эталона
 
         Returns:
             bool: True, если цифры совпадают
         """
-        return self._extract_digits(given) == self._extract_digits(reference)
+        return set(ref_digits).issubset(set(given_digits))
 
-    def _exact_match(self, given: str, reference: str) -> bool:
+    def _exact_match(self, given_words: Tuple[str, ...], ref_words: Tuple[str, ...]) -> bool:
         """
         Проверяет, полностью ли совпадают слова в ответе и эталоне
 
         Args:
-            given: ответ пользователя
-            reference: эталонный ответ
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
 
         Returns:
             bool: True, если слова совпадают
         """
-        return self._extract_words(given) == self._extract_words(reference)
+        return given_words == ref_words
 
-    def _is_valid_prefix(self, given: str, reference: str) -> bool:
+    def _is_valid_prefix(self, given_words: Tuple[str, ...], ref_words: Tuple[str, ...]) -> bool:
         """
         Проверяет, является ли ответ пользователя допустимым префиксом эталона
 
         Args:
-            given: ответ пользователя
-            reference: эталонный ответ
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
 
         Returns:
             bool: True, если ответ — допустимый префикс эталона
         """
-        given_words = self._extract_words(given)
-        ref_words = self._extract_words(reference)
-
-        if len(given_words) > len(ref_words):
+        given_length, ref_length = len(given_words), len(ref_words)
+        if ref_length == 0 or given_length == 0 or given_length < ref_length:
             return False
-
-        for offset in range(len(ref_words) - len(given_words) + 1):
-            if all(
-                    ref_words[offset + i].startswith(given_words[i])
-                    for i in range(len(given_words))
-            ):
+        for start in range(0, given_length - ref_length + 1):
+            ok = True
+            for i, ref_word in enumerate(ref_words):
+                given_word = given_words[start + i]
+                if not ref_word.startswith(given_word):
+                    ok = False
+                    break
+            if ok:
                 return True
-
         return False
 
-    def _fuzzy_evaluation(self, given: str, reference: str) -> GradeResult:
+    def _fuzzy_evaluation(
+            self,
+            given_words: Tuple[str, ...],
+            ref_words: Tuple[str, ...],
+            reference_original: str
+    ) -> GradeResult:
         """
         Выполняет нечеткую проверку схожести между ответом и эталоном.
         Используется `fuzz.partial_ratio`. Порог схожести зависит от длины ответа
 
         Args:
-            given: ответ пользователя
-            reference: эталонный ответ
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
+            reference_original: оригинальный необработанный эталонный текст
 
         Returns:
             GradeResult: результат оценки
         """
-        given_words = self._extract_words(given)
-        ref_words = self._extract_words(reference)
-
-        if not given_words or not ref_words:
-            return GradeResult(score=0, comment="Пустой ответ или эталон после обработки")
-
         text_len = len(given_words)
         threshold = self._calculate_similarity_threshold(text_len)
 
@@ -123,13 +133,16 @@ class FixedAnswerGrader:
         )
 
         if similarity_score >= threshold:
-            return GradeResult(score=1)
+            return GradeResult(
+                score=1,
+                comment=f"Достаточное соответствие: текущее - {similarity_score:.2f}%, порог - {threshold:.2f}%"
+            )
 
         return GradeResult(
             score=0,
             comment=(
-                f"Порог схожести ({threshold:.2f}%) не достигнут: текущий {similarity_score:.2f}%, "
-                f"эталон '{reference}'"
+                f"Недостаточное соответствие: текущее - {similarity_score:.2f}%, порог - {threshold:.2f}%, "
+                f"эталон: '{reference_original}'"
             )
         )
 
@@ -146,7 +159,9 @@ class FixedAnswerGrader:
         threshold = self.DEFAULT_SIMILARITY_THRESHOLD - (self.REDUCTION_FACTOR * math.log(word_count + 1))
         return max(self.MIN_SIMILARITY_THRESHOLD, threshold)
 
-    def _extract_digits(self, text: str) -> List[str]:
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _extract_digits(text: str) -> tuple[Any, ...]:
         """
         Извлекает все числовые фрагменты из текста
 
@@ -154,18 +169,20 @@ class FixedAnswerGrader:
             text: исходная строка
 
         Returns:
-            List[str]: список найденных чисел
+            tuple[Any, ...]: список найденных чисел
         """
-        return self._RE_DIGITS.findall(text.lower())
+        return tuple(RE_DIGITS.findall(text.lower()))
 
-    def _extract_words(self, text: str) -> List[str]:
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _extract_words(text: str) -> tuple[Any, ...]:
         """
-        Извлекает слова из текста, приводит к нижнему регистру
+        Извлекает слова из текста, приводит к нижнему регистру и кеширует результат (глобально)
 
         Args:
             text: исходная строка
 
         Returns:
-            List[str]: список слов (токенов)
+            tuple[Any, ...]: список слов (токенов)
         """
-        return self._RE_WORDS.findall(text.lower())
+        return tuple(RE_WORDS.findall(text.lower()))
