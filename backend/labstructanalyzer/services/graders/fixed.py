@@ -42,9 +42,11 @@ class FixedAnswerGrader:
         if not self._digits_match(given_digits, ref_digits):
             return GradeResult(
                 score=0,
-                comment=f"Цифры не совпадают, извлечено из ответа: "
-                        f"{'\'' + "; ".join(given_digits) + '\'' if len(given_digits) else "не найдены"}, "
-                        f"из эталона: {'\'' + "; ".join(ref_digits) + '\'' if len(ref_digits) else "не найдены"}"
+                comment=(
+                    f"Цифры не совпадают, извлечено из ответа: "
+                    f"{'{}' if given_digits else ''}{'; '.join(given_digits) if given_digits else 'не найдены'}{'{}' if given_digits else ''}, "
+                    f"из эталона: {'{}' if ref_digits else ''}{'; '.join(ref_digits) if ref_digits else 'не найдены'}{'{}' if ref_digits else ''}"
+                ).format("'" if given_digits or ref_digits else "")
             )
 
         if self._exact_match(given_words, ref_words):
