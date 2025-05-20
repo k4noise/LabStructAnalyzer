@@ -1,13 +1,12 @@
 import copy
 import uuid
-from typing import Optional
 from urllib.parse import urlparse
 
 from sqlalchemy import func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select, and_, desc
+from sqlmodel import select, asc
 
-from labstructanalyzer.core.exceptions import TemplateNotFoundException
+from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
@@ -51,7 +50,7 @@ class TemplateService:
         await self.session.refresh(template)
         return template
 
-    async def get_by_id(self, template_id: uuid.UUID) -> Optional[Template]:
+    async def get_by_id(self, template_id: uuid.UUID) -> Template:
         """
         Возвращает шаблон по ID.
 
@@ -60,8 +59,14 @@ class TemplateService:
 
         Returns:
             Модель шаблона, если шаблон с переданным id существует, иначе None
+
+        Raises:
+            TemplateNotFoundError: Шаблон не найден
         """
-        return await self.session.get(Template, template_id)
+        template = await self.session.get(Template, template_id)
+        if template is None:
+            raise TemplateNotFoundException(template_id)
+        return template
 
     async def update(self, template_id: uuid.UUID, data_to_modify: TemplateToModify):
         """
@@ -71,13 +76,8 @@ class TemplateService:
         Args:
             template_id: id шаблона
             data_to_modify: Новые данные шаблона
-
-        Raises:
-            TemplateNotFoundError: Шаблон не найден
         """
         template = await self.get_by_id(template_id)
-        if template is None:
-            raise TemplateNotFoundException(template_id)
 
         if template.is_draft:
             template.name = data_to_modify.name
@@ -102,9 +102,7 @@ class TemplateService:
         Raises:
             TemplateNotFoundError: Шаблон не найден
         """
-        template = await self.session.get(Template, template_id)
-        if template is None:
-            raise TemplateNotFoundException(template_id)
+        template = await self.get_by_id(template_id)
 
         await self.elements_service.remove_all_files_from_data(template.template_id)
         await self.session.delete(template)
@@ -113,6 +111,7 @@ class TemplateService:
     async def get_all_by_course(
             self,
             course_id: str,
+            user_id: str,
             is_draft: bool = False,
             with_reports: bool = False
     ):
@@ -126,9 +125,12 @@ class TemplateService:
                 select(
                     Report.template_id,
                     Report.author_id,
+                    Report.report_id,
+                    Report.status,
                     func.max(Report.created_at).label("latest_created_at")
                 )
-                .group_by(Report.template_id, Report.author_id)
+                .where(Report.author_id == user_id)
+                .group_by(Report.template_id, Report.author_id, Report.report_id, Report.status)
                 .subquery()
             )
 
@@ -136,20 +138,19 @@ class TemplateService:
                 select(
                     Template.template_id,
                     Template.name,
-                    Report.report_id,
-                    Report.status
+                    report_subquery.c.report_id,
+                    report_subquery.c.status
                 )
                 .select_from(Template)
-                .outerjoin(report_subquery, Template.template_id == report_subquery.c.template_id)
-                .outerjoin(Report, and_(
-                    Report.template_id == report_subquery.c.template_id,
-                    Report.author_id == report_subquery.c.author_id,
-                    Report.created_at == report_subquery.c.latest_created_at
-                ))
+                .outerjoin(
+                    report_subquery,
+                    Template.template_id == report_subquery.c.template_id
+                )
                 .where(
                     Template.course_id == course_id,
                     Template.is_draft == is_draft
                 )
+                .order_by(Template.created_at.desc())
             )
         else:
             statement = (
@@ -161,6 +162,7 @@ class TemplateService:
                     Template.course_id == course_id,
                     Template.is_draft == is_draft
                 )
+                .order_by(Template.created_at.desc())
             )
 
         result = await self.session.exec(statement)
@@ -200,8 +202,9 @@ class TemplateService:
         """
         statement = select(Report).where(
             Report.template_id == template_id,
-            Report.status != ReportStatus.saved.name
-        ).order_by(desc(Report.created_at))
+            Report.status != ReportStatus.saved.name,
+            Report.status != ReportStatus.created.name
+        ).order_by(asc(Report.updated_at))
 
         return (await self.session.exec(statement)).unique().all()
 

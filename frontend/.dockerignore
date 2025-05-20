@@ -1,0 +1,37 @@
+# Каталоги IDE и редакторов
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Каталог с зависимостями Node.js
+node_modules/
+
+# Каталог сборки
+dist/
+build/
+
+# Файлы конфигов и среды разработки
+.env
+.env.local
+.env.development
+.env.production
+
+# Системные файлы Mac/Linux
+.DS_Store
+Thumbs.db
+*.swp
+
+# Файлы кэша и логов
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Тесты и документация
+coverage/
+docs/
+
+# Git каталог
+.git/
+
+.dockerignore

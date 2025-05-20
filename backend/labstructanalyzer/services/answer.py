@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from sqlalchemy import update
@@ -6,7 +5,9 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto
+from labstructanalyzer.models.answer_type import AnswerType
+from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, FullAnswerData
+from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 
@@ -45,7 +46,7 @@ class AnswerService:
             statement = (
                 update(Answer)
                 .where(Answer.report_id == report_id, Answer.answer_id == update_answer.answer_id)
-                .values(data=update_answer.data, score=0)
+                .values(data=update_answer.data, score=None)
             )
             await self.session.exec(statement)
         await self.session.commit()
@@ -85,4 +86,22 @@ class AnswerService:
 
         if score_with_weight_sum == 0:
             return 0
-        return (score_with_weight_sum / weight_sum) * max_score
+        return round((score_with_weight_sum / weight_sum) * max_score, 2)
+
+    def collect_full_data(self, report: Report):
+        answer_elements = {template_element.element_id: template_element for template_element in
+                           report.template.elements if
+                           template_element.element_type == 'answer'}
+        answers_to_grade = []
+        for answer in report.answers:
+            if element := answer_elements.get(answer.element_id):
+                answers_to_grade.append(
+                    FullAnswerData(
+                        user_origin=answer,
+                        type=AnswerType[element.properties.get("answerType")],
+                        custom_id=element.properties.get("customId"),
+                        reference=element.properties.get("refAnswer"),
+                        weight=element.properties.get("weight")
+                    )
+                )
+        return answers_to_grade

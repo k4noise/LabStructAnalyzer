@@ -1,7 +1,7 @@
 from pylti1p3.message_launch import MessageLaunch
 
 
-class Course:
+class CourseService:
     """
     Сервис обработки данных курса пользователя из данных запуска или через сервис NRPS LTI 1.3
     """

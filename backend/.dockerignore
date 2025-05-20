@@ -1,0 +1,36 @@
+# Лишние каталоги IDE и редакторов
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Каталог виртуального окружения Python
+.venv/
+venv/
+env/
+
+# Каталог зависимостей Poetry
+poetry.lock
+poetry.toml
+*.egg-info/
+
+# Каталог кэша и логов
+*.log
+*.log.*
+__pycache__/
+*.pyc
+
+# Системные файлы Mac/Linux
+.DS_Store
+Thumbs.db
+*.swp
+
+# Тесты и документация
+tests/coverage/
+docs/build/
+
+# Git каталог
+.git/
+
+.dockerignore
+.env

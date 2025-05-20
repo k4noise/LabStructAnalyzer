@@ -23,16 +23,20 @@ const QuestionAnswerComponent: React.FC<QuestionAnswerProps> = ({
   const [question, answer] = element.properties.data;
   return (
     <div
-      className={`italic my-3 ${getMarginLeftStyle(
+      className={`italic my-8 ${getMarginLeftStyle(
         element.properties.nestingLevel
-      )}`}
+      )} ${
+        answer.properties.editNow ? "dark:text-blue-300 text-blue-600" : ""
+      }`}
     >
       <p>
         {question.properties.numberingBulletText && (
           <span>{question.properties.numberingBulletText + " "}</span>
         )}
         {question.properties.data}
-        <AnswerComponent element={answer} />
+        <span className="ml-4 inline">
+          <AnswerComponent element={answer} withQuestion={true} />
+        </span>
       </p>
     </div>
   );

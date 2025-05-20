@@ -7,8 +7,10 @@ out/
 .vscode/
 
 # Сертификаты
-cert.pem
-key.pem
+/keys
+/logs
+
+.env
 
 # Файлы и директории фронтенда
 /frontend/.env
@@ -26,8 +28,7 @@ key.pem
 # Конфигурационные/секретные файлы бэкенда
 /backend/.env
 /backend/labstructanalyzer.db
-/backend/alembic.ini
 /backend/images/*
 /backend/labstructanalyzer/configs/lti_config.json
-/backend/labstructanalyzer/configs/jwtRS256.key
-/backend/labstructanalyzer/configs/jwtRS256.key.pub
+/backend/labstructanalyzer/configs/keys/
+/backend/labstructanalyzer/logs

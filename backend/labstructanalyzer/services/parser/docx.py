@@ -237,6 +237,8 @@ class DocxParser:
         Returns:
             Данные нумерации при существовании нумерации
         """
+        if not numbering_props:
+            return None
         numbering_element = self.xml_manager.numberings_root.xpath(
             f'.//w:num[@w:numId="{numbering_props.id}"]',
             namespaces=self.xml_manager.NAMESPACES,
@@ -258,10 +260,10 @@ class DocxParser:
                 True,
             )
             numbering_data = NumberingItem(
-                format=overrided_numbering_data.format or numbering_data.format,
+                format=overrided_numbering_data.format if overrided_numbering_data else numbering_data.format,
                 startValue=overrided_numbering_data.startValue
-                           or numbering_data.startValue,
-                text=overrided_numbering_data.text or numbering_data.text,
+                if overrided_numbering_data else numbering_data.startValue,
+                text=overrided_numbering_data.text if overrided_numbering_data else numbering_data.text,
             )
         return numbering_data
 
@@ -274,15 +276,14 @@ class DocxParser:
         Returns:
           Свойства нумерации
         """
-
         numbering_id = element.xpath(
             "./w:numId/@w:val", namespaces=self.xml_manager.NAMESPACES
-        )[0]
+        )
         numbering_level = element.xpath(
             "./w:ilvl/@w:val", namespaces=self.xml_manager.NAMESPACES
         )
         numbering_level = int(numbering_level[0]) if numbering_level else 0
-        return NumberingProps(id=numbering_id, ilvl=numbering_level)
+        return NumberingProps(id=numbering_id[0] if numbering_id else None, ilvl=numbering_level)
 
     def _parse_numbering_data(
             self,
@@ -403,7 +404,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=urljoin(os.getenv("BACKEND_EXTERNAL_URL"), FileUtils.save(self.images_dir, image_data, image_extension))
+                data=FileUtils.save(self.images_dir, image_data, image_extension)
             )
 
         return None
@@ -558,7 +559,6 @@ class TableParser:
                 current_cell_index += self._get_cell_width(cell_element)
                 if current_cell_index != col_index:
                     continue
-
                 vertical_merge_element = cell_element.find(
                     ".//w:tcPr/w:vMerge", namespaces=self.xml_manager.NAMESPACES
                 )
@@ -568,7 +568,9 @@ class TableParser:
                 vertical_merged = vertical_merge_element.get(
                     f'{{{self.xml_manager.NAMESPACES["w"]}}}val'
                 )
-                if not vertical_merged or vertical_merged == "continue":
+                if vertical_merged == 'restart':
+                    return cell_height
+                elif not vertical_merged or vertical_merged == "continue":
                     cell_height += 1
 
         return cell_height

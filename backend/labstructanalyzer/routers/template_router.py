@@ -4,33 +4,36 @@ import uuid
 
 from fastapi import APIRouter, UploadFile, HTTPException, Depends
 from fastapi.params import File
-from fastapi_another_jwt_auth import AuthJWT
-from sqlalchemy.exc import SQLAlchemyError
-from starlette import status
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from labstructanalyzer.configs.config import CONFIG_DIR, tool_conf
-from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service
+from labstructanalyzer.main import global_logger
+from labstructanalyzer.routers.lti_router import cache
+from labstructanalyzer.configs.config import CONFIG_DIR, TOOL_CONF, TEMPLATE_IMAGE_PREFIX
+from labstructanalyzer.models.user_model import User, UserRole
+from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service, \
+    get_user_with_any_role, get_user
+
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.models.dto.report import MinimalReportInfoDto, AllReportsDto
 from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
-from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.answer import AnswerService
+
 from labstructanalyzer.services.lti.ags import AgsService
-from labstructanalyzer.services.lti.course import Course
+from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.lti.nrps import NrpsService
+
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
+
 from labstructanalyzer.services.parser.docx import DocxParser
-from labstructanalyzer.services.report import ReportService, ReportStatus
 from labstructanalyzer.services.template import TemplateService
-from labstructanalyzer.utils.rbac_decorator import roles_required
+from labstructanalyzer.services.report import ReportService, ReportStatus
+from labstructanalyzer.services.answer import AnswerService
 
 router = APIRouter()
-template_prefix = "images\\template"
+logger = global_logger.get_logger(__name__)
 
 
 @router.post(
@@ -51,7 +54,16 @@ template_prefix = "images\\template"
             "description": "Ошибка запроса. Файл отсутствует или имеет неподдерживаемый формат",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Нет файла шаблона"}
+                    "examples": {
+                        "no_template_file": {
+                            "summary": "Отсутствует файл шаблона",
+                            "value": {"detail": "Нет файла шаблона"}
+                        },
+                        "unsupported_file_type": {
+                            "summary": "Неподдерживаемый тип файла",
+                            "value": {"detail": "Тип файла не поддерживается"}
+                        },
+                    }
                 }
             }
         },
@@ -75,60 +87,52 @@ template_prefix = "images\\template"
             "description": "Ошибка со стороны БД",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"}
+                    "example": {"detail": "Ошибка доступа к данным"}
                 }
             }
         },
     },
 )
-@roles_required(["teacher"])
 async def parse_template(
-        authorize: AuthJWT = Depends(),
         template: UploadFile = File(..., description="DOCX файл для обработки"),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     """
-    Преобразовать шаблон из docx в json, применяя структуру.
+    Преобразовать шаблон из docx в json, применяя структуру
 
-    - **template**: Файл формата `.docx` для обработки.
-    - Требуется роль **teacher**.
+    Args:
+        template: Файл формата `.docx` для обработки
+        user: Данные учителя
+        template_service: Сервис обработки шаблонов
     """
     if not template:
-        raise HTTPException(
-            status_code=400,
-            detail="Нет файла шаблона"
-        )
+        raise HTTPException(status_code=400, detail="Нет файла шаблона")
 
     file_name_parts = os.path.splitext(os.path.basename(template.filename))
 
     if file_name_parts[1].lower() != ".docx":
-        raise HTTPException(
-            status_code=400,
-            detail="Тип файла не поддерживается"
-        )
+        raise HTTPException(status_code=400, detail="Тип файла не поддерживается")
 
+    # TODO ВНИМАНИЕ ХАРДКОД
     file_path = os.path.join(CONFIG_DIR, "structure.json")
     with open(file_path, 'r', encoding='utf-8') as file:
         data_dict = json.load(file)
-    docx_parser = DocxParser(await template.read(), data_dict, template_prefix)
+
+    docx_parser = DocxParser(await template.read(), data_dict, TEMPLATE_IMAGE_PREFIX)
     template_components = docx_parser.get_structure_components()
+    template_model = await template_service.create(user.sub, user.course_id, file_name_parts[0],
+                                                   template_components)
 
-    raw_jwt = authorize.get_raw_jwt()
-    course_id = raw_jwt.get("course_id")
-    user_id = raw_jwt.get("sub")
-
-    try:
-        template_model = await template_service.create(user_id, course_id, file_name_parts[0], template_components)
-        return JSONResponse({"template_id": str(template_model.template_id)})
-    except SQLAlchemyError:
-        return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    logger.info(f"Сохранен черновик шаблона: id {template_model.template_id}")
+    return JSONResponse({"template_id": str(template_model.template_id)})
 
 
 @router.patch(
     "/{template_id}",
     summary="Сохранить новые данные шаблона",
-    description="Обновляет существующие данные, заменяя их новыми пользовательскими данными",
+    description="Обновляет существующие данные, заменяя их новыми пользовательскими данными.\n"
+                "Для публикации шаблона необходим доступ к службе оценок AGS",
     tags=["Template"],
     responses={
         200: {
@@ -140,7 +144,7 @@ async def parse_template(
             }
         },
         401: {
-            "description": "Неавторизованный доступ.",
+            "description": "Неавторизованный доступ",
             "content": {
                 "application/json": {
                     "example": {"detail": "Не авторизован"}
@@ -148,7 +152,7 @@ async def parse_template(
             }
         },
         403: {
-            "description": "Доступ запрещен. Требуется роль преподавателя.",
+            "description": "Доступ запрещен. Требуется роль преподавателя",
             "content": {
                 "application/json": {
                     "example": {"detail": "Доступ запрещен"}
@@ -156,55 +160,51 @@ async def parse_template(
             }
         },
         404: {
-            "description": "Ошибка запроса. Шаблон не найден",
+            "description": "Шаблон не найден",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Шаблон не найден"}
+                    "example": {"detail": "Не найдено"}
                 }
             }
         },
         500: {
-            "description": "Служба AGS недоступна со стороны LMS (не включена / прочие сбои LMS)",
+            "description": "Служба AGS недоступна со стороны LMS или ошибка БД",
             "content": {
                 "application/json": {
-                    "example": {"detail": "c"}
-                }
-            }
-        },
-        500: {
-            "description": "Ошибка со стороны БД",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"}
+                    "examples": {
+                        "lis_service_error": {
+                            "summary": "Отсутствует доступ к службе оценок",
+                            "value": {"detail": "Нет доступа к службе оценок"}
+                        },
+                        "bd_error": {
+                            "summary": "Ошибка со стороны БД",
+                            "value": {"detail": "Ошибка доступа к данным"}
+                        },
+                    }
                 }
             }
         },
     },
 )
-@roles_required(["teacher"])
 async def save_modified_template(
         request: Request,
         template_id: uuid.UUID,
         modified_template: TemplateToModify,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
-    try:
-        template = await template_service.update(template_id, modified_template)
+    template = await template_service.update(template_id, modified_template)
 
-        if not modified_template.is_draft:
-            launch_data_storage = FastAPICacheDataStorage(cache)
-            message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
-                                                             FastAPIRequest(request),
-                                                             tool_conf,
-                                                             launch_data_storage=launch_data_storage)
-            ags_service = AgsService(message_launch)
-            ags_service.create_lineitem(template)
-        return JSONResponse({"detail": "Шаблон обновлен успешно"})
+    if not modified_template.is_draft:
+        launch_data_storage = FastAPICacheDataStorage(cache)
+        message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
+                                                         FastAPIRequest(request),
+                                                         TOOL_CONF,
+                                                         launch_data_storage=launch_data_storage)
+        AgsService(message_launch).create_lineitem(template)
 
-    except SQLAlchemyError:
-        return JSONResponse({"detail": "Произошла ошибка при сохранении данных, попробуйте еще раз"},
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    logger.info(f"Шаблон обновлен: id {template.template_id}")
+    return JSONResponse({"detail": "Шаблон обновлен успешно"})
 
 
 @router.get(
@@ -225,29 +225,33 @@ async def save_modified_template(
                     "example": {"detail": "Не авторизован"}
                 }
             }
-        }
+        },
+        500: {
+            "description": "Ошибка со стороны БД",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Ошибка доступа к данным"}
+                }
+            }
+        },
     },
 )
 async def get_templates(request: Request,
-                        authorize: AuthJWT = Depends(),
+                        user: User = Depends(get_user),
                         template_service: TemplateService = Depends(get_template_service)
                         ):
-    authorize.jwt_required()
-    raw_jwt = authorize.get_raw_jwt()
-    course_id = raw_jwt.get("course_id")
-
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 
-    course_name = Course(message_launch).get_name()
+    course_name = CourseService(message_launch).get_name()
 
-    user_roles = raw_jwt.get("roles")
-    has_full_access = "teacher" in user_roles
-    has_partial_access = "assistant" in user_roles
+    has_full_access = UserRole.TEACHER in user.roles
+    has_partial_access = UserRole.ASSISTANT in user.roles
     with_reports = not (has_full_access or has_partial_access)
 
-    templates_with_base_properties = await template_service.get_all_by_course(course_id, with_reports=with_reports)
+    templates_with_base_properties = await template_service.get_all_by_course(user.course_id, user.sub,
+                                                                              with_reports=with_reports)
 
     data = AllTemplatesDto(
         can_upload=has_full_access,
@@ -265,7 +269,7 @@ async def get_templates(request: Request,
 
     )
     if has_full_access:
-        drafts_with_base_properties = await template_service.get_all_by_course(course_id, True)
+        drafts_with_base_properties = await template_service.get_all_by_course(user.course_id, user.sub, True)
         data.drafts = [TemplateMinimalProperties(template_id=item[0], name=item[1]) for item in
                        drafts_with_base_properties]
     return data
@@ -282,7 +286,7 @@ async def get_templates(request: Request,
             "description": "Данные шаблона",
         },
         401: {
-            "description": "Неавторизованный доступ.",
+            "description": "Неавторизованный доступ",
             "content": {
                 "application/json": {
                     "example": {"detail": "Не авторизован"}
@@ -290,10 +294,10 @@ async def get_templates(request: Request,
             }
         },
         404: {
-            "description": "Ошибка запроса. Шаблон не найден",
+            "description": "Шаблон не найден",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Шаблон не найден"}
+                    "example": {"detail": "Не найдено"}
                 }
             }
         },
@@ -301,7 +305,7 @@ async def get_templates(request: Request,
             "description": "Ошибка со стороны БД",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Произошла ошибка при получении данных"}
+                    "example": {"detail": "Ошибка доступа к данным"}
                 }
             }
         },
@@ -309,31 +313,24 @@ async def get_templates(request: Request,
 )
 async def get_template(
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user),
         template_service: TemplateService = Depends(get_template_service)
 ):
-    authorize.jwt_required()
-    try:
-        template = await template_service.get_by_id(template_id)
-        if template:
-            elements = template_service.build_hierarchy(template.elements)
+    template = await template_service.get_by_id(template_id)
+    if template:
+        elements = template_service.build_hierarchy(template.elements)
+        can_edit = UserRole.TEACHER in user.roles
+        can_grade = can_edit or UserRole.ASSISTANT in user.roles
 
-            roles = authorize.get_raw_jwt().get("roles")
-            can_edit = "teacher" in roles
-            can_grade = can_edit or "assistant" in roles
-            return TemplateWithElementsDto(
-                template_id=template_id,
-                name=template.name,
-                is_draft=template.is_draft,
-                max_score=template.max_score,
-                can_edit=can_edit,
-                can_grade=can_grade,
-                elements=elements
-            )
-        return JSONResponse({"detail": "Шаблон не найден"}, status_code=404)
-    except SQLAlchemyError:
-        return JSONResponse({"detail": "Произошла ошибка при получении данных"},
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return TemplateWithElementsDto(
+            template_id=template_id,
+            name=template.name,
+            is_draft=template.is_draft,
+            max_score=template.max_score,
+            can_edit=can_edit,
+            can_grade=can_grade,
+            elements=elements
+        )
 
 
 @router.delete(
@@ -351,7 +348,7 @@ async def get_template(
             }
         },
         401: {
-            "description": "Неавторизованный доступ.",
+            "description": "Неавторизованный доступ",
             "content": {
                 "application/json": {
                     "example": {"detail": "Не авторизован"}
@@ -359,7 +356,7 @@ async def get_template(
             }
         },
         403: {
-            "description": "Доступ запрещен. Требуется роль преподавателя.",
+            "description": "Доступ запрещен. Требуется роль преподавателя",
             "content": {
                 "application/json": {
                     "example": {"detail": "Доступ запрещен"}
@@ -367,54 +364,50 @@ async def get_template(
             }
         },
         404: {
-            "description": "Ошибка запроса. Шаблон не найден",
+            "description": "Шаблон не найден",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Шаблон не найден"}
+                    "example": {"detail": "Не найдено"}
                 }
             }
         },
         500: {
-            "description": "Служба AGS недоступна со стороны LMS (не включена / прочие сбои LMS)",
+            "description": "Служба AGS недоступна со стороны LMS или ошибка БД",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Нет доступа к службе оценок"}
-                }
-            }
-        },
-        500: {
-            "description": "Ошибка со стороны БД",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Произошла ошибка при удалении данных, попробуйте еще раз"}
+                    "examples": {
+                        "lis_service_error": {
+                            "summary": "Отсутствует доступ к службе оценок",
+                            "value": {"detail": "Нет доступа к службе оценок"}
+                        },
+                        "bd_error": {
+                            "summary": "Ошибка со стороны БД",
+                            "value": {"detail": "Ошибка доступа к данным"}
+                        },
+                    }
                 }
             }
         },
     },
 )
-@roles_required(["teacher"])
 async def remove_template(
         request: Request,
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
-    try:
-        await template_service.delete(template_id)
-        launch_data_storage = FastAPICacheDataStorage(cache)
-        message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
-                                                         FastAPIRequest(request),
-                                                         tool_conf,
-                                                         launch_data_storage=launch_data_storage)
+    await template_service.delete(template_id)
+    launch_data_storage = FastAPICacheDataStorage(cache)
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
+                                                     FastAPIRequest(request),
+                                                     TOOL_CONF,
+                                                     launch_data_storage=launch_data_storage)
 
-        ags_service = AgsService(message_launch)
-        ags_service.delete_lineitem(template_id)
-        return JSONResponse({"detail": "Шаблон успешно удален"})
+    ags_service = AgsService(message_launch)
+    ags_service.delete_lineitem(template_id)
 
-
-    except SQLAlchemyError:
-        return JSONResponse({"detail": "Произошла ошибка при удалении данных"},
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    logger.info(f"Шаблон удален: id {template_id}")
+    return JSONResponse({"detail": "Шаблон успешно удален"})
 
 
 @router.post(
@@ -447,27 +440,26 @@ async def remove_template(
             }
         },
         404: {
-            "description": "Ошибка запроса. Шаблон не найден",
+            "description": "Шаблон не найден",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Шаблон не найден"}
+                    "example": {"detail": "Не найдено"}
                 }
             }
         },
         500: {
-            "description": "Внутренняя ошибка сервера",
+            "description": "Ошибка со стороны БД",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Ошибка при создании отчета"}
+                    "example": {"detail": "Ошибка доступа к данным"}
                 }
             }
-        }
+        },
     }
 )
-@roles_required(["student"])
 async def create_report(
         template_id: uuid.UUID,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         report_service: ReportService = Depends(get_report_service),
         template_service: TemplateService = Depends(get_template_service),
         answer_service: AnswerService = Depends(get_answer_service)
@@ -475,23 +467,66 @@ async def create_report(
     """
     Создать отчет на основе данных из шаблона
     """
-    user_id = authorize.get_jwt_subject()
-    report_id = await report_service.create(template_id, user_id)
     template = await template_service.get_by_id(template_id)
+    report_id = await report_service.create(template_id, user.sub)
     await answer_service.create_answers(template, report_id)
 
+    logger.info(
+        f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template_id}")
     return JSONResponse({"id": str(report_id)})
 
 
 @router.get("/{template_id}/reports",
             tags=["Template", "Report"],
-            summary="Получить все шаблоны по отчету"
+            summary="Получить все шаблоны по отчету",
+            responses={
+                401: {
+                    "description": "Неавторизованный доступ",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Не авторизован"}
+                        }
+                    }
+                },
+                403: {
+                    "description": "Доступ запрещен. Требуется роль преподавателя или ассистента",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Доступ запрещен"}
+                        }
+                    }
+                },
+                404: {
+                    "description": "Шаблон или отчет не найден",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Не найдено"}
+                        }
+                    }
+                },
+                500: {
+                    "description": "Служба NRPS недоступна со стороны LMS или ошибка БД",
+                    "content": {
+                        "application/json": {
+                            "examples": {
+                                "lis_service_error": {
+                                    "summary": "Отсутствует доступ к службе имен и ролей",
+                                    "value": {"detail": "Нет доступа к службе имен и ролей"}
+                                },
+                                "bd_error": {
+                                    "summary": "Ошибка со стороны БД",
+                                    "value": {"detail": "Ошибка доступа к данным"}
+                                },
+                            }
+                        }
+                    }
+                }
+            }
             )
-@roles_required(["teacher", "assistant"])
 async def get_reports_by_template(
         template_id: uuid.UUID,
         request: Request,
-        authorize: AuthJWT = Depends(),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER, UserRole.ASSISTANT)),
         template_service: TemplateService = Depends(get_template_service)
 ):
     """
@@ -501,11 +536,10 @@ async def get_reports_by_template(
     all_reports = await template_service.get_all_reports(template_id)
     template = await template_service.get_by_id(template_id)
     launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(authorize.get_raw_jwt().get("launch_id"),
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
                                                      FastAPIRequest(request),
-                                                     tool_conf,
+                                                     TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
-    nrps_service = NrpsService(message_launch)
     return AllReportsDto(
         template_name=template.name,
         max_score=template.max_score,
@@ -514,7 +548,7 @@ async def get_reports_by_template(
                 report_id=report.report_id,
                 date=report.updated_at,
                 status=ReportStatus[report.status].value,
-                author_name=nrps_service.get_user_name(report.author_id),
+                author_name=NrpsService(message_launch).get_user_name(report.author_id),
                 score=report.score
             ) for report in all_reports
         ]

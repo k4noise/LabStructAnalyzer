@@ -5,11 +5,13 @@ from pydantic import BaseModel
 from pylti1p3.tool_config import ToolConfJsonFile
 
 CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(CONFIG_DIR))
 LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
-tool_conf = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
+TOOL_CONF = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
 
-
-JWT_ACCESS_TOKEN_LIFETIME = 15 * 60     # 15 минут
+IMAGE_DIR = "images"
+TEMPLATE_IMAGE_PREFIX = f"{IMAGE_DIR}/template"
+JWT_ACCESS_TOKEN_LIFETIME = 15 * 60  # 15 минут
 
 
 class Settings(BaseModel):
@@ -20,16 +22,8 @@ class Settings(BaseModel):
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
     authjwt_access_token_expires: int = JWT_ACCESS_TOKEN_LIFETIME
-    authjwt_cookie_secure: bool = True
+
 
 @AuthJWT.load_config
 def get_config():
     return Settings()
-
-
-class User(BaseModel):
-    """
-    Базовая модель пользователя
-    """
-    id: str
-    role: str

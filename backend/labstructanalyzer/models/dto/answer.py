@@ -1,7 +1,11 @@
 import uuid
+from dataclasses import dataclass
 from typing import Optional
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
+
+from labstructanalyzer.models.answer import Answer
+from labstructanalyzer.models.answer_type import AnswerType
 
 
 class CreateAnswerDto(BaseModel):
@@ -23,3 +27,21 @@ class AnswerDto(CreateAnswerDto, UpdateAnswerDto):
     score: Optional[float] = None
     data: Optional[dict] = None
 
+
+class PreGradedAnswerDto(AnswerDto):
+    pre_grade: Optional[dict] = None
+
+
+class FullAnswerData(BaseModel):
+    user_origin: Answer
+    type: AnswerType
+    custom_id: Optional[str] = None
+    reference: Optional[str] = None
+    weight: float = None
+
+
+@dataclass
+class GradeResult:
+    score: float
+    comment: Optional[str] = None
+    wrong_params: list[str] = None
