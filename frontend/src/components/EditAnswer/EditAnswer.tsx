@@ -75,8 +75,8 @@ const EditAnswer = ({
           defaultValue={element?.properties.answerType ?? "simple"}
         >
           <option value="simple">Фиксированный</option>
-          <option value="param">Параметрезированный</option>
-          <option value="arg">Рассуждение</option>
+          <option value="param">Параметризированный</option>
+          <option value="arg">Описательный</option>
         </select>
       </label>
       <label className="block mb-3">
