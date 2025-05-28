@@ -129,10 +129,8 @@ class ParametrizedAnswerGrader:
             score = 1
 
             if hasattr(param, "user_origin"):
-                text_value = param.user_origin.get("data", {}).get("text") or ""
-                score = param.user_origin.get("pre_grade", {}).get("score", 1)
-            elif hasattr(param, "data"):
-                text_value = param.data.get("text") or ""
+                text_value = param.user_origin.data.get("text") or ""
+                score = param.user_origin.pre_grade.get("score", 1)
 
             if score == 0:
                 invalid_params.append(name)

@@ -25,6 +25,7 @@ rapidfuzz = "^3.13.0"
 natasha = "^1.6.0"
 setuptools = "^80.0.0"
 pymorphy2 = "^0.9.1"
+psycopg2 = "^2.9.10"
 
 [build-system]
 requires = ["poetry-core"]

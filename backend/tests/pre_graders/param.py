@@ -1,6 +1,7 @@
 import unittest
-from unittest.mock import Mock
 
+from labstructanalyzer.models.answer import Answer
+from labstructanalyzer.models.answer_type import AnswerType
 from labstructanalyzer.models.dto.answer import FullAnswerData
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 
@@ -47,8 +48,13 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_substitution(self):
         """Параметр {city} подставляется и используется в сравнении"""
-        city = Mock(spec=FullAnswerData)
-        city.user_origin = {"data": {"text": "Москва"}, "pre_grade": {"score": 1}}
+        city = FullAnswerData(
+            type=AnswerType.simple,
+            user_origin=Answer(
+                data={"text": "Москва"},
+                pre_grade={"score": 1}
+            )
+        )
         grader = ParametrizedAnswerGrader({"city": city})
 
         cases = [
@@ -78,8 +84,13 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_with_pregrade_zero(self):
         """Если параметр имеет pre_grade=0 — всегда ошибка"""
-        param = Mock(spec=FullAnswerData)
-        param.user_origin = {"data": {"text": "Питер"}, "pre_grade": {"score": 0}}
+        param = FullAnswerData(
+            type=AnswerType.simple,
+            user_origin=Answer(
+                data={"text": "Питер"},
+                pre_grade={"score": 0}
+            )
+        )
         grader = ParametrizedAnswerGrader({"city": param})
 
         result = grader.grade("столица Питер", "столица {city}")
@@ -199,16 +210,26 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_inside_range(self):
         """Параметр в скобках: [1-{max}] заменяется и парсится корректно"""
-        param = Mock(spec=FullAnswerData)
-        param.user_origin = {"data": {"text": "5"}, "pre_grade": {"score": 1}}
+        param = FullAnswerData(
+            type=AnswerType.simple,
+            user_origin=Answer(
+                data={"text": "5"},
+                pre_grade={"score": 1}
+            )
+        )
         grader = ParametrizedAnswerGrader({"max": param})
         result = grader.grade("val 3", "val [1-{max}]")
         self.assertEqual(result.score, 1)
 
     def test_repeated_param_usage(self):
         """Один и тот же параметр подставляется несколько раз"""
-        param = Mock(spec=FullAnswerData)
-        param.user_origin = {"data": {"text": "rep"}, "pre_grade": {"score": 1}}
+        param = FullAnswerData(
+            type=AnswerType.simple,
+            user_origin=Answer(
+                data={"text": "rep"},
+                pre_grade={"score": 1}
+            )
+        )
         grader = ParametrizedAnswerGrader({"x": param})
         result = grader.grade("rep and rep and rep", "{x} and {x} and {x}")
         self.assertEqual(result.score, 1)
@@ -226,8 +247,13 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_complex_reference_with_param_and_range(self):
         """Сложный тезис: параметр + диапазон вперемешку"""
-        param = Mock(spec=FullAnswerData)
-        param.user_origin = {"data": {"text": "London"}, "pre_grade": {"score": 1}}
+        param = FullAnswerData(
+            type=AnswerType.simple,
+            user_origin=Answer(
+                data={"text": "London"},
+                pre_grade={"score": 1}
+            )
+        )
         grader = ParametrizedAnswerGrader({"city": param})
 
         given = "This is text with London and code 3 inside"
