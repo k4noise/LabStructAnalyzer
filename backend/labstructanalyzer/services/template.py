@@ -14,7 +14,7 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.services.report import ReportStatus
-from labstructanalyzer.utils.file_utils import FileUtils
+from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
 
 class TemplateService:
@@ -328,7 +328,7 @@ class TemplateElementService:
             for image_element in image_elements:
                 image_path = image_element.properties.get("data")
                 try:
-                    FileUtils.remove("", urlparse(image_path).path)
+                    ChainStorage.get_default().remove(urlparse(image_path).path)
                 finally:
                     continue
 

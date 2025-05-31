@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 from lxml import etree
 from typing import Generator, List, Optional
 from zipfile import ZipFile
+
+from labstructanalyzer.utils.files.chain_storage import ChainStorage
 from labstructanalyzer.utils.parser.common_elements import (
     ImageElement,
     TextElement,
@@ -21,7 +23,6 @@ from labstructanalyzer.utils.parser.numbering_manager import (
 )
 
 from labstructanalyzer.utils.parser.nesting_manager import NestingManager
-from labstructanalyzer.utils.file_utils import FileUtils
 from labstructanalyzer.utils.parser.structure.structure_manager import StructureManager
 
 
@@ -404,7 +405,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=FileUtils.save(self.images_dir, image_data, image_extension)
+                data=ChainStorage.get_default().save(self.images_dir, image_data, image_extension)
             )
 
         return None
