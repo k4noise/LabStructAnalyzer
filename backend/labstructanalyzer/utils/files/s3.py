@@ -1,10 +1,8 @@
+import mimetypes
 import os
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 from .storage import Storage
-from labstructanalyzer.main import global_logger
-
-logger = global_logger.get_logger(__name__)
 
 
 class S3Storage(Storage):
@@ -16,6 +14,9 @@ class S3Storage(Storage):
         self.region_name = os.environ.get('AWS_DEFAULT_REGION', 'eu-north-1')
         self.endpoint_url = os.environ.get('AWS_S3_ENDPOINT_URL')
 
+        from labstructanalyzer.main import global_logger
+        self.logger = global_logger.get_logger(__name__)
+
         self._s3_client = None
         self._initialize()
 
@@ -26,7 +27,7 @@ class S3Storage(Storage):
     def _initialize(self):
         """Инициализирует и проверяет S3 клиент"""
         if not self.can_init():
-            logger.warning("Переменные окружения для S3 не сконфигурированы. S3Storage будет неактивен")
+            self.logger.warning("Переменные окружения для S3 не сконфигурированы. S3Storage будет неактивен")
             return
 
         try:
@@ -40,11 +41,11 @@ class S3Storage(Storage):
 
             self._s3_client = boto3.client(**client_config)
             self._s3_client.head_bucket(Bucket=self.bucket_name)
-            logger.info(f"S3Storage успешно подключен к бакету '{self.bucket_name}'")
+            self.logger.info(f"S3Storage успешно подключен к бакету '{self.bucket_name}'")
 
         except (NoCredentialsError, ClientError) as e:
             self._s3_client = None
-            logger.error(f"Ошибка инициализации S3Storage: {e}")
+            self.logger.error(f"Ошибка инициализации S3Storage: {e}")
 
     def save(self, save_dir: str, file_data: bytes, extension: str) -> str | None:
         if not self._s3_client:
@@ -52,17 +53,18 @@ class S3Storage(Storage):
 
         filename = f"{self.generate_unique_name()}{extension}"
         s3_key = self._normalize_key(os.path.join(save_dir, filename))
-
+        content_type = mimetypes.guess_type(filename)
         try:
             self._s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=s3_key,
-                Body=file_data
+                Body=file_data,
+                ContentType=content_type[0] if content_type else 'application/octet-stream'
             )
-            logger.info(f"Файл успешно сохранен в S3: {s3_key}")
+            self.logger.info(f"Файл успешно сохранен в S3: {s3_key}")
             return s3_key
         except ClientError as e:
-            logger.error(f"Ошибка сохранения в S3: {e}")
+            self.logger.error(f"Ошибка сохранения в S3: {e}")
             return None
 
     def get(self, file_path: str) -> bytes | None:
@@ -73,13 +75,13 @@ class S3Storage(Storage):
 
         try:
             response = self._s3_client.get_object(Bucket=self.bucket_name, Key=s3_key)
-            logger.info(f"Файл получен из S3: {s3_key}")
+            self.logger.info(f"Файл получен из S3: {s3_key}")
             return response['Body'].read()
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
-                logger.debug(f"Файл не найден в S3: {s3_key}")
+                self.logger.debug(f"Файл не найден в S3: {s3_key}")
             else:
-                logger.error(f"Ошибка получения из S3: {e}")
+                self.logger.error(f"Ошибка получения из S3: {e}")
             return None
 
     def remove(self, file_path: str) -> bool:
@@ -90,14 +92,14 @@ class S3Storage(Storage):
 
         try:
             self._s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
-            logger.info(f"Файл удален из S3: {s3_key}")
+            self.logger.info(f"Файл удален из S3: {s3_key}")
             return True
         except ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
-                logger.debug(f"Файл для удаления не найден в S3: {s3_key}")
+                self.logger.debug(f"Файл для удаления не найден в S3: {s3_key}")
                 return True
             else:
-                logger.error(f"Ошибка удаления из S3: {e}")
+                self.logger.error(f"Ошибка удаления из S3: {e}")
                 return False
 
     def _normalize_key(self, path: str) -> str:

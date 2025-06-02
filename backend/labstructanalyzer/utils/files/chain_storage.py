@@ -1,9 +1,6 @@
 from .storage import Storage
-from labstructanalyzer.main import global_logger
 from .local import LocalStorage
 from .s3 import S3Storage
-
-logger = global_logger.get_logger(__name__)
 
 
 class ChainStorage:
@@ -20,7 +17,10 @@ class ChainStorage:
 
         self.storages = storages
         storage_names = ', '.join(type(storage).__name__ for storage in self.storages)
-        logger.debug(f"Инициализирована цепочка хранилищ: [{storage_names}]")
+
+        from labstructanalyzer.main import global_logger
+        self.logger = global_logger.get_logger(__name__)
+        self.logger.debug(f"Инициализирована цепочка хранилищ: [{storage_names}]")
 
     @classmethod
     def get_default(cls):
@@ -73,7 +73,7 @@ class ChainStorage:
             if data is not None:
                 return data
 
-        logger.warning(f"Файл '{file_path}' не найден ни в одном из хранилищ")
+        self.logger.warning(f"Файл '{file_path}' не найден ни в одном из хранилищ")
         return None
 
     def remove(self, file_path: str) -> bool:

@@ -1,6 +1,5 @@
 import io
 import os, zipfile
-from urllib.parse import urljoin
 
 from lxml import etree
 from typing import Generator, List, Optional
@@ -102,7 +101,6 @@ class DocxParser:
     Конвертирует содержимое документа в массив структурных компонент согласно структуре
 
       Attributes:
-        images_dir: Путь до папки для сохранения изображений
         structure_manager: Инстанс класса StructureManager с методами для применения структуры к элементам документа
         xml_manager: Инстанс класса DocxXmlManager с изображениями и lxml деревьями основного содержимого, стилей, нумерации, связей документа
         image_parser: Инстанс класса ImageParser с методом для парсинга изображений
@@ -113,19 +111,18 @@ class DocxParser:
         style_id_to_numberings_data: Словарь взаимоотношений идентификатора стиля к данным нумерации - идентификатору и уровню нумерации
     """
 
-    def __init__(self, document: bytes, structure: dict, image_save_subfolder: str) -> None:
+    def __init__(self, document: bytes, structure: dict, image_save_prefix: str) -> None:
         """Инициализирует объект класса DocxParser
 
         Arguments:
           document: Байты docx документа
           structure: Словарь с данными структуры
-          image_save_subfolder: Подпапка для сохранения картинок
+          image_save_prefix: Подпапка для сохранения картинок
         """
         self.structure_manager = StructureManager(structure)
-        self.images_dir = image_save_subfolder
         self.xml_manager = DocxXmlManager(document)
         self.table_parser = TableParser(self.xml_manager, self.parse)
-        self.image_parser = ImageParser(self.xml_manager, self.images_dir)
+        self.image_parser = ImageParser(self.xml_manager, image_save_prefix)
         self.text_parser = TextParser(self.xml_manager)
         self.numbering_manager = NumberingManager()
         self.nesting_manager = NestingManager()
