@@ -16,7 +16,7 @@ const Nav = () => {
   useEffect(() => {
     const pingServer = async () => {
       try {
-        await api.get("/");
+        await api.get("/api");
         // действительно, нам тут все равно на возможную ошибку
       } catch (error) {}
     };
