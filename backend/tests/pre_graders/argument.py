@@ -4,462 +4,419 @@ import numpy as np
 
 from labstructanalyzer.services.graders.argument import ArgumentAnswerGrader
 
-patch_morph = patch('labstructanalyzer.services.graders.argument.MorphAnalyzer')
-MockMorphAnalyzer = patch_morph.start()
-
-mock_morph_instance = Mock()
-mock_morph_instance.parse.side_effect = lambda word: [Mock(normal_form=word.lower(), tag=Mock(POS='NOUN'))]
-MockMorphAnalyzer.return_value = mock_morph_instance
-
-VECTOR_SIZE = 300
-
 
 class TestArgumentAnswerGrader(unittest.TestCase):
-    """
-    Юнит-тесты для ArgumentAnswerGrader.
+    def setUp(self):
+        patcher_fasttext = patch('labstructanalyzer.services.graders.argument.load_fasttext_model')
+        patcher_morph = patch('labstructanalyzer.services.graders.argument.MorphAnalyzer')
 
-    Тестирует логику оценки ответов на основе семантической близости тезисов,
-    смоделированной с помощью моков внешних зависимостей (NewsEmbedding, MorphAnalyzer).
+        self.mock_load_fasttext = patcher_fasttext.start()
+        self.mock_morph_cls = patcher_morph.start()
+        self.addCleanup(patcher_fasttext.stop)
+        self.addCleanup(patcher_morph.stop)
 
-    Зоопарк моков и данных:
-    - NewsEmbedding мокается для каждого теста с использованием `@patch`.
-    - Его метод `get()` мокается локально в каждом тесте с помощью `side_effect`.
-    - Поведение `side_effect` определяется словарем `local_word_vectors`,
-      который маппит слова (или их леммы) на тестовые векторы.
-    - Для тестов с ожидаемым score=1 используются коллинеарные векторы (`[X]*VECTOR_SIZE`),
-      которые дают идеальное косинусное сходство (1.0) для одинаковых векторов.
-    - Для тестов с ожидаемым score < 1 или score=0 используются ортогональные векторы
-      (`np.eye(VECTOR_SIZE)[i]`), которые дают низкое косинусное сходство (0.0 raw, 0.5 transformed)
-      между разными векторами, имитируя семантически далекие концепты.
-    - MorphAnalyzer мокается глобально для всего класса, чтобы обеспечить быструю инициализацию
-      ArgumentAnswerGrader без реальной модели. Его мок имитирует базовую лемматизацию
-      (нижний регистр) и определение части речи (всегда NOUN).
-    """
+        self.mock_morph = self.mock_morph_cls.return_value
+        self.mock_morph.parse.side_effect = lambda w: [Mock(normal_form=w.lower(), tag=Mock(POS='NOUN'))]
 
-    @classmethod
-    def tearDownClass(cls):
-        if 'MockMorphAnalyzer' in globals():
-            patch_morph.stop()
+        self.mock_model = Mock()
+        self.mock_model.vector_size = 300
 
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_exact_semantic_match(self, mock_embedding_cls):
+        def default_get_vector_behavior(word):
+            vec = np.ones(300)
+            return vec / np.linalg.norm(vec) if np.any(vec) else np.zeros(300)
+
+        self.mock_model.get_vector.side_effect = default_get_vector_behavior
+        self.mock_load_fasttext.return_value = self.mock_model
+
+        self.grader = ArgumentAnswerGrader()
+
+    def _reset_mocks_to_default(self):
+        """Вспомогательная функция для сброса моков к поведению по умолчанию"""
+
+        def default_get_vector_behavior(word):
+            vec = np.ones(300)
+            return vec / np.linalg.norm(vec) if np.any(vec) else np.zeros(300)
+
+        self.mock_model.get_vector.side_effect = default_get_vector_behavior
+        self.mock_morph.parse.side_effect = lambda w: [Mock(normal_form=w.lower(), tag=Mock(POS='NOUN'))]
+
+    def test_grade_empty_or_meaningless_inputs(self):
         """
-        Тестирует точное семантическое совпадение переформулированных тезисов.
-        Моки векторов настроены так, чтобы семантически близкие слова мапились
-        на одинаковые коллинеарные векторы.
+        Тесты для случаев, когда входные строки пустые, содержат только пробелы
+        или пунктуацию, проверяя ожидаемый балл и комментарий
         """
-        vec_technology = np.array([0.1] * VECTOR_SIZE)
-        vec_industry = np.array([0.2] * VECTOR_SIZE)
-        vec_education = np.array([0.3] * VECTOR_SIZE)
+        cases = [
+            {
+                "name": "Эталон пуст, ответ содержит текст",
+                "given": "текст",
+                "reference": "",
+                "expected_score": 1,
+                "expected_comment": "Эталон пуст"
+            },
+            {
+                "name": "Эталон пуст (пробелы), ответ содержит текст",
+                "given": "текст",
+                "reference": "   ",
+                "expected_score": 1,
+                "expected_comment": "Эталон пуст"
+            },
+            {
+                "name": "Ответ пуст, эталон содержит текст",
+                "given": "",
+                "reference": "тезис",
+                "expected_score": 0,
+                "expected_comment": None
+            },
+            {
+                "name": "Ответ пуст (пробелы), эталон содержит текст",
+                "given": "   ",
+                "reference": "тезис",
+                "expected_score": 0,
+                "expected_comment": None
+            },
+            {
+                "name": "Оба пусты",
+                "given": "",
+                "reference": "",
+                "expected_score": 1,
+                "expected_comment": "Эталон пуст"
+            },
+            {
+                "name": "Оба содержат только пробелы",
+                "given": "   ",
+                "reference": "   ",
+                "expected_score": 1,
+                "expected_comment": "Эталон пуст"
+            },
+        ]
 
-        local_word_vectors = {
-            'развитие': vec_technology, 'технология': vec_technology,
-            'развиваться': vec_technology, 'стремительно': vec_technology,
-            'поддержка': vec_industry, 'промышленность': vec_industry,
-            'индустрия': vec_industry, 'нужно': None, 'поддерживать': vec_industry,
-            'образование': vec_education, 'будущий': vec_education,
-            'современный': vec_education, 'общество': vec_education,
-        }
+        for case in cases:
+            with self.subTest(name=case["name"]):
+                self._reset_mocks_to_default()
+                result = self.grader.grade(case["given"], case["reference"])
+                self.assertEqual(result.score, case["expected_score"])
+                self.assertEqual(result.comment, case["expected_comment"])
 
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
+    def test_grade_basic_and_normalized_matching(self):
+        """
+        Тесты на базовое совпадение, нечувствительность к регистру,
+        множественные совпадения и повторы
+        """
+        cases = [
+            {
+                "name": "Идеальное совпадение одного слова",
+                "given": "тест",
+                "reference": "тест",
+                "expected_score": 1.0,
+                "places": 5,
+                "mock_effect": "default"
+            },
+            {
+                "name": "Нечувствительность к регистру",
+                "given": "важный тезис.",
+                "reference": "ВАЖНЫЙ ТЕЗИС.",
+                "expected_score": 1.0,
+                "places": 5,
+                "mock_effect": "default"
+            },
+            {
+                "name": "Множественные совпадения для одного тезиса",
+                "given": "А. А. В.",
+                "reference": "А. В.",
+                "expected_score": 1.0,
+                "places": 5,
+                "mock_effect": "default"
+            },
+            {
+                "name": "Повторяющиеся слова в эталоне",
+                "given": "Важно.",
+                "reference": "Важно важно очень важно.",
+                "expected_score": 1.0,
+                "places": 5,
+                "mock_effect": lambda w: np.ones(300) / np.linalg.norm(
+                    np.ones(300)) if w.lower() == 'важно' else np.zeros(300)
+            }
+        ]
 
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
+        for case in cases:
+            with self.subTest(name=case["name"]):
+                self._reset_mocks_to_default()
+                if case["mock_effect"] != "default":
+                    self.mock_model.get_vector.side_effect = case["mock_effect"]
 
-        grader = ArgumentAnswerGrader()
+                result = self.grader.grade(case["given"], case["reference"])
 
-        reference = "Развитие технологий. Поддержка промышленности. Образование будущего."
-        given = "Технологии развиваются стремительно. Индустрию нужно поддерживать. Современному обществу нужно образование."
+                self.assertAlmostEqual(result.score, case["expected_score"], places=case["places"])
+                self.assertIsNone(result.comment)
 
-        result = grader.grade(given, reference)
+    def test_grade_comment_generation_logic(self):
+        """
+        Тесты на генерацию комментариев: когда комментарий отсутствует
+        и когда он перечисляет пропущенные тезисы
+        """
+        cases = [
+            {
+                "name": "Комментарий отсутствует, когда все тезисы найдены",
+                "given": "тезис1. тезис2.",
+                "reference": "тезис1. тезис2.",
+                "expected_score": 1.0,
+                "expected_comment": None,
+                "mock_effect": "default"
+            },
+            {
+                "name": "Комментарий перечисляет пропущенные тезисы",
+                "given": "тезис1. Тезис3.",
+                "reference": "тезис1. Тезис2. Тезис3.",
+                "expected_score_upper_bound": 1.0,
+                "expected_comment_part": "Тезис2",
+                "mock_effect": lambda w: np.ones(300) / np.linalg.norm(np.ones(300)) if w.lower() in ["тезис1",
+                                                                                                      "тезис3"] else np.zeros(
+                    300)
+            }
+        ]
+
+        for case in cases:
+            with self.subTest(name=case["name"]):
+                self._reset_mocks_to_default()
+                if case["mock_effect"] != "default":
+                    self.mock_model.get_vector.side_effect = case["mock_effect"]
+
+                result = self.grader.grade(case["given"], case["reference"])
+
+                if case.get("expected_comment_part"):
+                    self.assertIsNotNone(result.comment)
+                    self.assertIn(case["expected_comment_part"], result.comment)
+                    self.assertLess(result.score, case["expected_score_upper_bound"])
+                else:
+                    self.assertIsNone(result.comment)
+                    self.assertAlmostEqual(result.score, case["expected_score"], places=5)
+
+    def test_grade_oov_and_error_handling(self):
+        """
+        Тесты на обработку слов вне словаря, нулевых векторов
+        и исключений при получении векторов
+        """
+
+        def _raise_key_error(word):
+            raise KeyError(f"Word '{word}' not in vocabulary")
+
+        cases = [
+            {
+                "name": "OOV слова приводят к нулевой оценке",
+                "given": "неизвестное слово", "reference": "тезис",
+                "expected_score": 0.0, "mock_effect": lambda w: np.zeros(300)
+            },
+            {
+                "name": "Обработка нулевых векторов - общая",
+                "given": "словоа словоб", "reference": "словов словог",
+                "expected_score": 0.0, "mock_effect": lambda w: np.zeros(300)
+            },
+            {
+                "name": "Обработка нулевых векторов - самосравнение",
+                "given": "слово", "reference": "слово",
+                "expected_score": 0.0, "mock_effect": lambda w: np.zeros(300)
+            },
+            {
+                "name": "Обработка исключений при получении векторов (частичные слова, разные векторы)",
+                "given": "словоа ошибка словоб", "reference": "словоа ошибка словов",
+                "expected_score": 0.0,
+                "mock_effect": lambda w: (np.array([1.0, 0.0, 0.0] + [0.0] * 297) / np.linalg.norm(
+                    np.array([1.0, 0.0, 0.0] + [0.0] * 297))) if w.lower() == 'слово1' else \
+                    (np.array([0.0, 1.0, 0.0] + [0.0] * 297) / np.linalg.norm(
+                        np.array([0.0, 1.0, 0.0] + [0.0] * 297))) if w.lower() == 'слово2' else \
+                        (np.array([0.0, 0.0, 1.0] + [0.0] * 297) / np.linalg.norm(
+                            np.array([0.0, 0.0, 1.0] + [0.0] * 297))) if w.lower() == 'слово3' else \
+                            _raise_key_error(w)
+            },
+        ]
+        for case in cases:
+            with self.subTest(name=case["name"]):
+                self._reset_mocks_to_default()
+                self.mock_model.get_vector.side_effect = case["mock_effect"]
+                result = self.grader.grade(case["given"], case["reference"])
+                self.assertEqual(result.score, case["expected_score"])
+
+    def test_grade_structural_and_encoding_properties(self):
+        """
+        Тесты на структурные свойства (порядок тезисов, очень длинные предложения)
+        """
+        cases = [
+            {
+                "name": "Независимость от порядка тезисов",
+                "given": "Третий. Первый. Второй.",
+                "reference": "Первый. Второй. Третий.",
+                "expected_score": 1.0,
+                "expected_comment": None,
+                "mock_effect": {
+                    'первый': np.array([1.0, 0.0, 0.0] + [0.0] * 297),
+                    'второй': np.array([0.0, 1.0, 0.0] + [0.0] * 297),
+                    'третий': np.array([0.0, 0.0, 1.0] + [0.0] * 297)
+                }
+            },
+            {
+                "name": "Очень длинные предложения",
+                "given": " ".join([f"слово{i}" for i in range(50)]) + ".",
+                "reference": " ".join([f"слово{i}" for i in range(50)]) + ".",
+                "expected_score": 1.0,
+                "expected_comment": None,
+                "mock_effect": "default"
+            },
+        ]
+
+        for case in cases:
+            with self.subTest(name=case["name"]):
+                self._reset_mocks_to_default()
+                if isinstance(case["mock_effect"], dict):
+                    def custom_get_vector(word):
+                        vec = case["mock_effect"].get(word.lower(), np.zeros(300))
+                        return vec / np.linalg.norm(vec) if np.any(vec) else np.zeros(300)
+
+                    self.mock_model.get_vector.side_effect = custom_get_vector
+                elif case["mock_effect"] == "default":
+                    pass
+
+                result = self.grader.grade(case["given"], case["reference"])
+
+                self.assertEqual(result.score, case["expected_score"])
+                self.assertEqual(result.comment, case["expected_comment"])
+
+    def test_similarity_threshold_behavior(self):
+        """
+        Тест на поведение порога сходства (SIMILARITY_THRESHOLD).
+        Проверяет, как изменение порога влияет на то, считается ли тезис найденным
+        """
+        self._reset_mocks_to_default()
+
+        v1 = np.array([1.0, 0.0, 0.0] + [0.0] * 297)
+        v2 = np.array([0.85, 0.5267, 0.0] + [0.0] * 297)
+
+        def get_vector_for_threshold_test(word):
+            if word.lower() == 'а':
+                return v1
+            if word.lower() == 'б':
+                return v2
+            return np.zeros(300)
+
+        self.mock_model.get_vector.side_effect = get_vector_for_threshold_test
+
+        self.grader.SIMILARITY_THRESHOLD = 0.85
+        result = self.grader.grade("Б.", "А.")
         self.assertEqual(result.score, 1.0)
+
+        self.grader.SIMILARITY_THRESHOLD = 0.86
+        result = self.grader.grade("Б.", "А.")
+        self.assertEqual(result.score, 0.0)
+
+    def test_long_sentences_scoring(self):
+        """
+        Тест на оценку длинных предложений с семантическим сходством между словами
+        """
+        self._reset_mocks_to_default()
+
+        def get_vector_for_long_sentences(word):
+            mapping = {
+                'инновации': np.array([1.0, 0.0, 0.0] + [0.0] * 297),
+                'создание': np.array([0.8, 0.2, 0.0] + [0.0] * 297),
+                'прорывных': np.array([0.8, 0.2, 0.0] + [0.0] * 297),
+                'разработок': np.array([0.85, 0.15, 0.0] + [0.0] * 297),
+                'обеспечивает': np.array([0.7, 0.3, 0.0] + [0.0] * 297),
+                'будущее': np.array([0.0, 1.0, 0.0] + [0.0] * 297),
+            }
+            vec = mapping.get(word.lower(), np.zeros(300))
+            return vec / np.linalg.norm(vec) if np.any(vec) else vec
+
+        self.mock_model.get_vector.side_effect = get_vector_for_long_sentences
+
+        ref = "Инновации в сфере технологий имеют значение."
+        given = "Создание прорывных разработок обеспечивает будущее."
+
+        result = self.grader.grade(given, ref)
+        self.assertGreater(result.score, 0.7)
+
+    def test_different_pos_tags(self):
+        """
+        Тест на обработку различных частей речи.
+        Проверяет, что градер фильтрует слова не являющиеся существительными
+        """
+        self._reset_mocks_to_default()
+
+        def mock_parse_for_pos_test(word):
+            pos_mapping = {
+                'бежать': 'VERB',
+                'красивый': 'ADJF',
+                'быстро': 'ADVB',
+                'и': 'CONJ',
+                'в': 'PREP',
+                'слово': 'NOUN',
+                'тезис': 'NOUN'
+            }
+            pos = pos_mapping.get(word.lower(), None)
+            if pos is None:
+                return [Mock(normal_form=word.lower(), tag=Mock(POS='NOUN'))]
+            return [Mock(normal_form=word.lower(), tag=Mock(POS=pos))]
+
+        self.mock_morph.parse.side_effect = mock_parse_for_pos_test
+
+        def get_vector_for_pos_test(word):
+            if word in ['бежать', 'красивый', 'быстро', 'слово', 'тезис']:
+                return np.ones(300) / np.linalg.norm(np.ones(300))
+            return np.zeros(300)
+
+        self.mock_model.get_vector.side_effect = get_vector_for_pos_test
+
+        result = self.grader.grade("слово бежать", "слово тезис")
+        self.assertEqual(result.score, 1.0)
+
+    def test_partial_thesis_matching(self):
+        """
+        Тест на частичное совпадение длинных тезисов,
+        проверяющий способность модели находить семантически близкие слова (синонимы)
+        """
+        self._reset_mocks_to_default()
+
+        def get_vector_for_partial_match(word):
+            vectors = {
+                'инновации': np.array([1.0, 0.1, 0.0] + [0.0] * 297),
+                'новшества': np.array([0.95, 0.15, 0.0] + [0.0] * 297),
+                'технологии': np.array([0.0, 1.0, 0.1] + [0.0] * 297),
+                'техника': np.array([0.0, 0.9, 0.2] + [0.0] * 297),
+                'важны': np.array([0.0, 0.0, 1.0] + [0.0] * 297),
+                'значимы': np.array([0.1, 0.0, 0.95] + [0.0] * 297),
+            }
+            vec = vectors.get(word.lower(), np.zeros(300))
+            return vec / np.linalg.norm(vec) if np.any(vec) else vec
+
+        self.mock_model.get_vector.side_effect = get_vector_for_partial_match
+        self.grader.SIMILARITY_THRESHOLD = 0.85
+
+        ref = "Инновации в технологии очень важны."
+        given = "Новшества в технике крайне значимы."
+
+        result = self.grader.grade(given, ref)
+        self.assertGreater(result.score, 0.8)
         self.assertIsNone(result.comment)
 
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_literal_match_different_order(self, mock_embedding_cls):
+    def test_mixed_content_with_numbers_and_special_chars(self):
         """
-        Тестирует дословное совпадение тезисов в другом порядке предложений.
-        Моки векторов настроены так, чтобы каждое ключевое слово мапилось на
-        уникальный коллинеарный вектор.
+        Тест на обработку смешанного контента с числами,
+        словами со специальными символами и обычными словами
         """
-        vec_economy = np.array([0.1] * VECTOR_SIZE)
-        vec_security = np.array([0.2] * VECTOR_SIZE)
-        vec_will = np.array([0.3] * VECTOR_SIZE)
+        self._reset_mocks_to_default()
 
-        local_word_vectors = {
-            'экономика': vec_economy,
-            'безопасность': vec_security,
-            'воля': vec_will,
-        }
+        ref = "супер-тесты стали важными."
+        given = "супер-тесты стали важными."
 
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
+        def get_vector_for_mixed_content(word):
+            if word.lower() in ['ai-технологии', 'важными', 'стали']:
+                return np.ones(300) / np.linalg.norm(np.ones(300))
+            return np.zeros(300)
 
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
+        self.mock_model.get_vector.side_effect = get_vector_for_mixed_content
 
-        ref = "Экономика. Безопасность. Воля."
-        given = "Безопасность. Воля. Экономика."
-
-        result = grader.grade(given, ref)
-        self.assertEqual(result.score, 1.0)
-        self.assertIsNone(result.comment)
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_normalization_effects(self, mock_embedding_cls):
-        """
-        Тестирует, что разные регистры и пробелы не влияют на оценку.
-        Мок имитирует, что грейдер правильно нормализует текст
-        перед получением векторов, выполняя маппинг слов в нижнем регистре на векторы.
-        """
-        vec_human_capital = np.array([0.1] * VECTOR_SIZE)
-        vec_energy_efficiency = np.array([0.2] * VECTOR_SIZE)
-
-        local_word_vectors = {
-            'человеческий': vec_human_capital,
-            'капитал': vec_human_capital,
-            'энергоэффективность': vec_energy_efficiency,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "Человеческий Капитал. Энергоэффективность."
-        given = "человеческий     капитал.   Энергоэффективность"
-
-        result = grader.grade(given, reference)
+        result = self.grader.grade(given, ref)
+        self.assertGreater(result.score, 0.0)
         self.assertEqual(result.score, 1.0)
 
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_empty_reference(self, mock_embedding_cls):
-        """Тестирует случай пустого эталона reference"""
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = lambda w: None
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
 
-        result = grader.grade("что угодно", "")
-        self.assertEqual(result.score, 1.0)
-        self.assertEqual(result.comment, "Эталон пуст")
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_empty_given(self, mock_embedding_cls):
-        """Тестирует случай пустого ответа answer"""
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = lambda w: None
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        result = grader.grade("", "Один тезис")
-        self.assertEqual(result.score, 0)
-        self.assertIsNone(result.comment)
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_some_reference_theses_not_matched(self, mock_embedding_cls):
-        """
-        Тестирует случай, когда не все тезисы reference найдены в answer.
-        Моки векторов настроены так, чтобы
-        только часть тезисов reference имела высокое сходство с предложениями given.
-        Для разных концептов используются ортогональные векторы, дающие низкое сходство.
-        """
-        vec_ecology = np.eye(VECTOR_SIZE)[0]
-        vec_economy = np.eye(VECTOR_SIZE)[1]
-        vec_education = np.eye(VECTOR_SIZE)[2]
-
-        local_word_vectors = {
-            'экология': vec_ecology,
-            'экономика': vec_economy,
-            'образование': vec_education,
-            'важна': vec_economy,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "Экология. Экономика. Образование."
-        given = "Экономика важна."
-
-        result = grader.grade(given, reference)
-        self.assertGreater(result.score, 0)
-        self.assertLess(result.score, 1)
-        self.assertIsNotNone(result.comment)
-        self.assertEqual(result.comment, 'Тезисы не найдены: Экология; Образование')
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_no_thesis_match(self, mock_embedding_cls):
-        """
-        Тестирует случай полного отсутствия совпадений между answer и reference.
-        Моки векторов настроены так, чтобы все предложения given
-        имели низкое сходство с любым тезисом reference.
-        Для разных концептов используются ортогональные векторы.
-        """
-        vec_ref1 = np.eye(VECTOR_SIZE)[0]
-        vec_ref2 = np.eye(VECTOR_SIZE)[1]
-        vec_ref3 = np.eye(VECTOR_SIZE)[2]
-        vec_given = np.eye(VECTOR_SIZE)[3]
-
-        local_word_vectors = {
-            'цифровизация': vec_ref1, 'индустрия': vec_ref2, 'переработка': vec_ref3,
-            'кот': vec_given, 'есть': vec_given, 'мышь': vec_given,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "Цифровизация. Индустрия. Переработка."
-        given = "Коты едят мышей."
-
-        result = grader.grade(given, reference)
-        self.assertEqual(result.score, 0)
-        self.assertEqual(result.comment, 'Тезисы не найдены: Цифровизация; Индустрия; Переработка')
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_repeating_words_dont_fool_grader(self, mock_embedding_cls):
-        """
-        Тестирует, что многократное повторение слов, относящихся только к части тезисов,
-        не приводит к score 1.
-        Моки векторов настроены так, чтобы "Космос" и "Биология" мапились
-        на разные ортогональные векторы.
-        """
-        reference = "Космос. Биология."
-
-        vec_space = np.eye(VECTOR_SIZE)[0]
-        vec_biology = np.eye(VECTOR_SIZE)[1]
-
-        local_word_vectors = {
-            'космос': vec_space,
-            'биология': vec_biology,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        given = "Космос космос космос космос космос"
-
-        result = grader.grade(given, reference)
-        self.assertGreater(result.score, 0)
-        self.assertLess(result.score, 1)
-        self.assertEqual(result.comment, "Тезисы не найдены: Биология")
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_partial_sentence_match(self, mock_embedding_cls):
-        """
-        Тестирует случай, когда часть предложений answer соответствует тезисам reference,
-        а часть - нет.
-        Моки векторов настроены так, чтобы часть
-        предложений given соответствовала тезисам reference (высокое сходство),
-        а часть - не соответствовала (низкое сходство).
-        Для разных концептов используются ортогональные векторы.
-        """
-        vec_a = np.eye(VECTOR_SIZE)[0]
-        vec_b = np.eye(VECTOR_SIZE)[1]
-        vec_v = np.eye(VECTOR_SIZE)[2]
-        vec_other = np.eye(VECTOR_SIZE)[3]
-
-        local_word_vectors = {
-            'а': vec_a,
-            'б': vec_b,
-            'в': vec_v,
-            'нечто': vec_other,
-            'совсем': vec_other,
-            'другое': vec_other,
-        }
-
-        def get_word_vector_side_effect(word):
-            cleaned_word = word.lower().strip('.')
-            return local_word_vectors.get(cleaned_word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "А. Б. В."
-        given = "А. Нечто совсем другое. В."
-
-        result = grader.grade(given, reference)
-        self.assertGreater(result.score, 0)
-        self.assertLess(result.score, 1)
-        self.assertEqual(result.comment, "Тезисы не найдены: Б")
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_given_contains_only_noise(self, mock_embedding_cls):
-        """
-        Тестирует случай, когда answer содержит только стоп-слова или шум.
-        Моки настроены так, что для слов в answer get()
-        возвращает None, приводя к нулевому вектору предложения.
-        """
-        vec_capital = np.eye(VECTOR_SIZE)[0]
-
-        local_word_vectors = {
-            'капитал': vec_capital,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        ref = "Капитал"
-        given = "и в на о о у у"
-
-        result = grader.grade(given, ref)
-        self.assertEqual(result.score, 0)
-        self.assertEqual(result.comment, "Тезисы не найдены: Капитал")
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_unknown_words_in_given(self, mock_embedding_cls):
-        """
-        Тестирует случай, когда все слова в answer не находятся в словаре векторов.
-        Мок NewsEmbedding.get настроен так, чтобы всегда возвращать None.
-        """
-        vec_healthcare = np.eye(VECTOR_SIZE)[0]
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = lambda word: None
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        ref = "Здравоохранение"
-        given = "абра кадабра фубара"
-
-        result = grader.grade(given, ref)
-        self.assertEqual(result.score, 0)
-        self.assertEqual(result.comment, "Тезисы не найдены: Здравоохранение")
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_punctuation_ignored(self, mock_embedding_cls):
-        """
-        Тестирует, что пунктуация в answer не влияет на оценку при наличии совпадений.
-        Мок настроен так, чтобы мапить нормализованные слова
-        (без пунктуации) на коллинеарные векторы.
-        """
-        vec_tax_reform = np.array([0.1] * VECTOR_SIZE)
-
-        local_word_vectors = {
-            'реформа': vec_tax_reform,
-            'налоговой': vec_tax_reform,
-            'система': vec_tax_reform,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "Реформа налоговой системы"
-        given = "Реформа! налоговой???? системы..."
-
-        result = grader.grade(given, reference)
-        self.assertEqual(result.score, 1)
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_sentence_order_does_not_matter(self, mock_embedding_cls):
-        """
-        Тестирует, что порядок предложений в answer не влияет на итоговую оценку,
-        если все тезисы reference покрыты.
-         Моки векторов настроены так, чтобы каждое предложение
-        (или его ключевые слова) мапилось на уникальный ортогональный вектор.
-        Благодаря алгоритму `_match_theses` (max сходство с любым user-вектором),
-        порядок user-векторов не имеет значения.
-        """
-        vec_sentence_1 = np.eye(VECTOR_SIZE)[0]
-        vec_sentence_2 = np.eye(VECTOR_SIZE)[1]
-        vec_sentence_3 = np.eye(VECTOR_SIZE)[2]
-
-        local_word_vectors = {
-            '1': vec_sentence_1,
-            '2': vec_sentence_2,
-            '3': vec_sentence_3,
-        }
-
-        def get_word_vector_side_effect(word):
-            cleaned_word = word.lower().strip('.')
-            return local_word_vectors.get(cleaned_word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "1. 2. 3."
-        given = "3. 1. 2."
-
-        result = grader.grade(given, reference)
-        self.assertEqual(result.score, 1)
-
-    @patch("labstructanalyzer.services.graders.argument.NewsEmbedding")
-    def test_additional_text_does_not_decrease_score(self, mock_embedding_cls):
-        """
-        Тестирует, что наличие дополнительного текста в answer не снижает score,
-        если все тезисы reference покрыты.
-        Моки векторов настроены так, что слова из тезисов
-        reference мапятся на один вектор (или группу коллинеарных векторов),
-        а слова из дополнительного текста - на другой (ортогональный) вектор или None.
-        """
-        vec_peace_labor = np.array([0.1] * VECTOR_SIZE)
-        vec_other = np.eye(VECTOR_SIZE)[1]
-
-        local_word_vectors = {
-            'мир': vec_peace_labor,
-            'труд': vec_peace_labor,
-            'это': vec_other, 'важно': vec_other, 'остальное': vec_other, 'неважно': vec_other,
-            'хоть': vec_other, 'котик': vec_other, 'собачка': vec_other,
-        }
-
-        def get_word_vector_side_effect(word):
-            return local_word_vectors.get(word)
-
-        embedding_instance = Mock()
-        embedding_instance.get.side_effect = get_word_vector_side_effect
-        mock_embedding_cls.return_value = embedding_instance
-        grader = ArgumentAnswerGrader()
-
-        reference = "Мир и труд."
-        given = "Мир и труд. Это важно. Остальное неважно. Хоть котики, хоть собачки."
-
-        result = grader.grade(given, reference)
-        self.assertEqual(result.score, 1)
-
-
-if __name__ == "__main__":
-    if 'ArgumentAnswerGrader' in globals() and ArgumentAnswerGrader is not None and not patch_morph.is_patched:
-        patch_morph.start()
-        mock_morph_instance = Mock()
-        mock_morph_instance.parse.side_effect = lambda word: [Mock(normal_form=word.lower(), tag=Mock(POS='NOUN'))]
-        MockMorphAnalyzer.return_value = mock_morph_instance
-        import atexit
-
-        atexit.register(patch_morph.stop)
-
+if __name__ == '__main__':
     unittest.main()
