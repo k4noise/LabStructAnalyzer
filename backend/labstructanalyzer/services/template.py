@@ -7,13 +7,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, asc
 
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
+from labstructanalyzer.models.answer_type import AnswerType
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.models.dto.modify_template import TemplateToModify
 from labstructanalyzer.services.report import ReportStatus
-from labstructanalyzer.utils.file_utils import FileUtils
+from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
 
 class TemplateService:
@@ -182,6 +183,11 @@ class TemplateService:
         def build_subtree(parent_id):
             subtree = []
             for element in elements:
+                if (element.element_type == 'answer'
+                        and element.properties["answerType"] == AnswerType.param.name
+                        and element.properties.get("refAnswer")
+                        and (ref_answer := element.properties["refAnswer"].strip())):
+                    element.properties["simple"] = len(ref_answer) < 80 and ref_answer.count('\n') < 2
                 if element.parent_element_id == parent_id:
                     data = build_subtree(element.element_id)
                     properties = element.properties.copy()
@@ -322,7 +328,7 @@ class TemplateElementService:
             for image_element in image_elements:
                 image_path = image_element.properties.get("data")
                 try:
-                    FileUtils.remove("", urlparse(image_path).path)
+                    ChainStorage.get_default().remove(urlparse(image_path).path)
                 finally:
                     continue
 

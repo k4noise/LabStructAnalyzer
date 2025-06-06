@@ -187,6 +187,10 @@ export interface AnswerElement extends TemplateElementModel {
        */
       data: string;
       /**
+       * Предполагаемый "размер" ответа
+       */
+      simple?: boolean;
+      /**
        * Находится в режиме редактирования
        * @type {boolean}
        */

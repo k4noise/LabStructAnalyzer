@@ -9,8 +9,9 @@ BASE_PROJECT_DIR = os.path.dirname(os.path.dirname(CONFIG_DIR))
 LTI_CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, 'lti_config.json')
 TOOL_CONF = ToolConfJsonFile(LTI_CONFIG_FILE_PATH)
 
-IMAGE_DIR = "images"
-TEMPLATE_IMAGE_PREFIX = f"{IMAGE_DIR}/template"
+FILES_STORAGE_DIR = BASE_PROJECT_DIR
+IMAGE_PREFIX = "images"
+TEMPLATE_IMAGE_PREFIX = f"{IMAGE_PREFIX}/template"
 JWT_ACCESS_TOKEN_LIFETIME = 15 * 60  # 15 минут
 
 

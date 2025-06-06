@@ -1,61 +1,188 @@
+import math
 import re
+from functools import lru_cache
+from typing import Any, Tuple
+
 from rapidfuzz import fuzz
 from labstructanalyzer.models.dto.answer import GradeResult
 
+RE_WORDS = re.compile(r'\w+')
+RE_DIGITS = re.compile(r'-?\d+')
+
 
 class FixedAnswerGrader:
-    """Грейдер для ответов с фиксированным текстом."""
+    """Грейдер для ответов с фиксированным текстом"""
 
-    _RE_WORDS = re.compile(r'[a-zа-яёй]+')
-    _RE_DIGITS = re.compile(r'\d+')
+    DEFAULT_SIMILARITY_THRESHOLD = 92
+    MIN_SIMILARITY_THRESHOLD = 70
+    REDUCTION_FACTOR = 7
 
     def grade(self, given: str, reference: str) -> GradeResult:
-        """Оценивает ответ на соответствие эталонному ответу
+        """
+        Оценивает ответ на соответствие эталонному ответу
+
+        Проверка происходит по этапам:
+        1. Совпадают ли извлечённые цифры
+        2. Полное совпадение слов
+        3. Проверка на корректный префикс
+        4. Оценка нечеткой схожести
 
         Args:
-            given: Ответ пользователя
-            reference: Эталонный ответ
+            given: ответ пользователя
+            reference: эталонный ответ
 
         Returns:
-            Результат оценки
+            GradeResult: оценка за ответ (1 — верно; 0 — неверно)
         """
-        reference_words, reference_digits = self._split_alnum(reference)
-        given_words, given_digits = self._split_alnum(given)
+        given_digits = self._extract_digits(given)
+        ref_digits = self._extract_digits(reference)
+        given_words = self._extract_words(given)
+        ref_words = self._extract_words(reference)
 
-        if given_digits != reference_digits:
+        if not self._digits_match(given_digits, ref_digits):
             return GradeResult(
                 score=0,
-                comment=f"Цифры не совпадают. Эталон: {reference}"
+                comment=f"Цифры не совпадают, извлечено из ответа: "
+                        f"{'\'' + "; ".join(given_digits) + '\'' if len(given_digits) else "не найдены"}, "
+                        f"из эталона: {'\'' + "; ".join(ref_digits) + '\'' if len(ref_digits) else "не найдены"}"
             )
 
-        if given_words == reference_words:
-            return GradeResult(score=1)
+        if self._exact_match(given_words, ref_words):
+            return GradeResult(score=1, comment="Точное совпадение")
 
-        if len(given_words) <= len(reference_words):
-            for offset in range(len(reference_words) - len(given_words) + 1):
-                if all(reference_words[offset + i].startswith(given_words[i])
-                       for i in range(len(given_words))):
-                    return GradeResult(score=1, comment="Верный префикс эталонного ответа")
+        if self._is_valid_prefix(given_words, ref_words):
+            return GradeResult(score=1, comment="Является префиксом эталона")
 
-        score = fuzz.ratio(given_words, reference_words)
-        if score >= 90:
-            return GradeResult(score=1)
+        return self._fuzzy_evaluation(given_words, ref_words, reference)
+
+    def _digits_match(self, given_digits: Tuple[str, ...], ref_digits: Tuple[str, ...]) -> bool:
+        """
+        Проверяет, совпадают ли все цифры в ответе и эталоне
+
+        Args:
+            given_digits: извлеченные цифры из ответа
+            ref_digits: извлеченные цифры из эталона
+
+        Returns:
+            bool: True, если цифры совпадают
+        """
+        return set(ref_digits).issubset(set(given_digits))
+
+    def _exact_match(self, given_words: Tuple[str, ...], ref_words: Tuple[str, ...]) -> bool:
+        """
+        Проверяет, полностью ли совпадают слова в ответе и эталоне
+
+        Args:
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
+
+        Returns:
+            bool: True, если слова совпадают
+        """
+        return given_words == ref_words
+
+    def _is_valid_prefix(self, given_words: Tuple[str, ...], ref_words: Tuple[str, ...]) -> bool:
+        """
+        Проверяет, является ли ответ пользователя допустимым префиксом эталона
+
+        Args:
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
+
+        Returns:
+            bool: True, если ответ — допустимый префикс эталона
+        """
+        given_length, ref_length = len(given_words), len(ref_words)
+        if ref_length == 0 or given_length == 0 or given_length < ref_length:
+            return False
+        for start in range(0, given_length - ref_length + 1):
+            ok = True
+            for i, ref_word in enumerate(ref_words):
+                given_word = given_words[start + i]
+                if not ref_word.startswith(given_word):
+                    ok = False
+                    break
+            if ok:
+                return True
+        return False
+
+    def _fuzzy_evaluation(
+            self,
+            given_words: Tuple[str, ...],
+            ref_words: Tuple[str, ...],
+            reference_original: str
+    ) -> GradeResult:
+        """
+        Выполняет нечеткую проверку схожести между ответом и эталоном.
+        Используется `fuzz.partial_ratio`. Порог схожести зависит от длины ответа
+
+        Args:
+            given_words: извлеченные слова из ответа
+            ref_words: извлеченные слова из эталона
+            reference_original: оригинальный необработанный эталонный текст
+
+        Returns:
+            GradeResult: результат оценки
+        """
+        text_len = len(given_words)
+        threshold = self._calculate_similarity_threshold(text_len)
+
+        similarity_score = fuzz.partial_ratio(
+            ' '.join(given_words),
+            ' '.join(ref_words),
+        )
+
+        if similarity_score >= threshold:
+            return GradeResult(
+                score=1,
+                comment=f"Достаточное соответствие: текущее - {similarity_score:.2f}%, порог - {threshold:.2f}%"
+            )
 
         return GradeResult(
             score=0,
-            comment=f"Порог схожести (90%) не достигнут: текущий {score}%, эталон {reference}"
+            comment=(
+                f"Недостаточное соответствие: текущее - {similarity_score:.2f}%, порог - {threshold:.2f}%, "
+                f"эталон: '{reference_original}'"
+            )
         )
 
-    def _split_alnum(self, answer: str) -> tuple[list[str], list[str]]:
-        """Разделяет строку на списки слов и цифр
+    def _calculate_similarity_threshold(self, word_count: int) -> float:
+        """
+        Вычисляет динамический порог схожести на основе количества слов
 
         Args:
-            answer: Строка для разделения
+            word_count: количество слов в ответе пользователя
 
         Returns:
-            Кортеж, содержащий списки слов и цифр
+            float: требуемый % схожести
         """
-        answer = answer.lower()
-        letters = self._RE_WORDS.findall(answer)
-        digits = self._RE_DIGITS.findall(answer)
-        return letters, digits
+        threshold = self.DEFAULT_SIMILARITY_THRESHOLD - (self.REDUCTION_FACTOR * math.log(word_count + 1))
+        return max(self.MIN_SIMILARITY_THRESHOLD, threshold)
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _extract_digits(text: str) -> tuple[Any, ...]:
+        """
+        Извлекает все числовые фрагменты из текста
+
+        Args:
+            text: исходная строка
+
+        Returns:
+            tuple[Any, ...]: список найденных чисел
+        """
+        return tuple(RE_DIGITS.findall(text.lower()))
+
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def _extract_words(text: str) -> tuple[Any, ...]:
+        """
+        Извлекает слова из текста, приводит к нижнему регистру и кеширует результат (глобально)
+
+        Args:
+            text: исходная строка
+
+        Returns:
+            tuple[Any, ...]: список слов (токенов)
+        """
+        return tuple(RE_WORDS.findall(text.lower()))

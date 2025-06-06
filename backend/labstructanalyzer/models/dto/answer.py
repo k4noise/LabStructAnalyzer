@@ -44,3 +44,4 @@ class FullAnswerData(BaseModel):
 class GradeResult:
     score: float
     comment: Optional[str] = None
+    wrong_params: list[str] = None
