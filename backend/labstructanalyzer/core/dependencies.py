@@ -9,6 +9,7 @@ from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.report import ReportService
 from labstructanalyzer.services.template import TemplateService
+from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
 
 def get_template_service(session: AsyncSession = Depends(get_session)) -> TemplateService:
@@ -33,6 +34,10 @@ def get_user(authorize: AuthJWT = Depends()) -> User:
     payload = authorize.get_raw_jwt()
     user = User(**payload)
     return user
+
+
+def get_chain_storage():
+    return ChainStorage.get_default()
 
 
 def get_user_with_any_role(*roles: UserRole):
