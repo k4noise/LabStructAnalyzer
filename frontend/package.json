@@ -11,6 +11,11 @@
     "preview": "vite preview --host"
   },
   "dependencies": {
+    "@editorjs/code": "^2.9.3",
+    "@editorjs/editorjs": "^2.30.8",
+    "@editorjs/image": "^2.10.2",
+    "@editorjs/list": "^2.0.8",
+    "@editorjs/paragraph": "^2.11.7",
     "js-cookie": "^3.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
