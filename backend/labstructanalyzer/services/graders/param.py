@@ -18,6 +18,7 @@ class ParametrizedAnswerGrader:
     _RE_RANGE = re.compile(r"\[(.*?)\]")
     _RE_SPACE = re.compile(r"\s+")
     _RE_LITERAL_ESCAPE = re.compile(r"\[\[(.+?)]]")
+    _RE_PRESENCE_CHECK = re.compile(r'\{.*?\}|\[.*?\]')
 
     def __init__(self, parameters: Dict[str, FullAnswerData]):
         """
@@ -25,6 +26,9 @@ class ParametrizedAnswerGrader:
             parameters: словарь параметров, подставляемых в {param}
         """
         self._parameters = parameters
+
+    def is_processable(self, given: str, reference: str) -> bool:
+        return bool(re.search(self._RE_PRESENCE_CHECK, reference))
 
     def grade(self, given: str, reference: str) -> GradeResult:
         """
