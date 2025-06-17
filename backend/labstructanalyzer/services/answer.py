@@ -5,7 +5,6 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.answer_type import AnswerType
 from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, FullAnswerData
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
@@ -98,7 +97,6 @@ class AnswerService:
                 answers_to_grade.append(
                     FullAnswerData(
                         user_origin=answer,
-                        type=AnswerType[element.properties.get("answerType")],
                         custom_id=element.properties.get("customId"),
                         reference=element.properties.get("refAnswer"),
                         weight=element.properties.get("weight")

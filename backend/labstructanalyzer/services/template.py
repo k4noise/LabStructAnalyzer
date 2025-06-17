@@ -7,7 +7,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, asc
 
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
-from labstructanalyzer.models.answer_type import AnswerType
 from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
@@ -184,10 +183,9 @@ class TemplateService:
             subtree = []
             for element in elements:
                 if (element.element_type == 'answer'
-                        and element.properties["answerType"] == AnswerType.param.name
                         and element.properties.get("refAnswer")
                         and (ref_answer := element.properties["refAnswer"].strip())):
-                    element.properties["simple"] = len(ref_answer) < 80 and ref_answer.count('\n') < 2
+                    element.properties["simple"] = len(ref_answer) < 40 and ref_answer.count('\n') < 2
                 if element.parent_element_id == parent_id:
                     data = build_subtree(element.element_id)
                     properties = element.properties.copy()
