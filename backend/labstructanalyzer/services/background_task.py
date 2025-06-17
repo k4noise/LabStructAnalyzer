@@ -40,7 +40,7 @@ class BackgroundTaskService:
 
         except Exception as exception:
             await self.db_session.rollback()
-            logger.error("Ошибка при обработке результата задачи", exc_info=exception)
+            logger.error("Ошибка при обработке результата задачи", exc=exception)
 
     def _normalize_result(self, result: Any) -> Optional[List[dict]]:
         """Нормализует результат задачи в список словарей для сохранения."""

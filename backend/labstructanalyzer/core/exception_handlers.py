@@ -39,7 +39,7 @@ async def os_error_handler(request: Request, exception: Exception):
         logger.error(f"Файл не найден", request, exception)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Файл не найден")
 
-    logger.error(f"Ошибка доступа к файлу", request, exception)
+    logger.error(f"Ошибка файловой системы", request, exception)
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Ошибка доступа к файлу")
 
 

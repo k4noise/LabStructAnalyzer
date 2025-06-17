@@ -68,18 +68,6 @@ const EditAnswer = ({
         </p>
       )}
       <label className="block mb-3">
-        Тип ответа:
-        <select
-          className="ml-3 bg-zinc-200 dark:bg-zinc-950 text-zinc-950 dark:text-zinc-200 border-b-2"
-          {...register("answerType")}
-          defaultValue={element?.properties.answerType ?? "simple"}
-        >
-          <option value="simple">Фиксированный</option>
-          <option value="param">Параметризированный</option>
-          <option value="arg">Описательный</option>
-        </select>
-      </label>
-      <label className="block mb-3">
         Эталонный ответ:
         <Textarea
           className="ml-3 w-60 align-top bg-transparent border-b-2  border-zinc-950 dark:border-zinc-200 overflow-hidden"
