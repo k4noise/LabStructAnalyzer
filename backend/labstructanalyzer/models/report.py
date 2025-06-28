@@ -17,7 +17,7 @@ class Report(SQLModel, table=True):
     author_id: str
     status: str
     grader_id: Optional[str]
-    score: Optional[float]
+    score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
     created_at: datetime = Field(
         default=None,
@@ -39,11 +39,12 @@ class Report(SQLModel, table=True):
     )
 
     answers: list[Answer] = Relationship(
-        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "joined"}
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "selectin"}
     )
 
     template: "Template" = Relationship(
-        sa_relationship_kwargs={"lazy": "joined"}
+        back_populates="reports",
+        sa_relationship_kwargs={"lazy": "noload"}
     )
 
     __table_args__ = (

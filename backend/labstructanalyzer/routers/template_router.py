@@ -467,9 +467,13 @@ async def create_report(
     """
     Создать отчет на основе данных из шаблона
     """
-    template = await template_service.get_by_id(template_id)
+    last_report = await report_service.get_last_by_author(template_id, user.sub)
+    if last_report.status != ReportStatus.graded.name:
+        return JSONResponse({"id": str(last_report.report_id)})
+
     report_id = await report_service.create(template_id, user.sub)
-    await answer_service.create_answers(template, report_id)
+    template = await template_service.get_by_id(template_id)
+    await answer_service.create_answers(report_id, template.elements)
 
     logger.info(
         f"Отчет для пользователя с id {user.sub} создан: id {report_id} на основе шаблона с id{template_id}")

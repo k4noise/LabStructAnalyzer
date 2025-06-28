@@ -16,8 +16,7 @@ class ReportDto(BaseModel):
     author_name: str
     grader_name: Optional[str] = None
     score: Optional[float] = None
-    current_answers: list[PreGradedAnswerDto]
-    prev_answers: Optional[list[AnswerDto]] = None
+    answers: list[AnswerDto | PreGradedAnswerDto]
 
 
 class MinimalReportInfoDto(BaseModel):
