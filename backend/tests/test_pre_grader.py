@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from dataclasses import dataclass, asdict
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.dto.answer import FullAnswerData
+from labstructanalyzer.schemas.answer import FullAnswerData
 
 
 @dataclass

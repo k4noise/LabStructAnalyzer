@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from labstructanalyzer.models.dto.answer import AnswerDto, PreGradedAnswerDto
+from labstructanalyzer.schemas.answer import AnswerDto, PreGradedAnswerDto
 
 
 class ReportDto(BaseModel):

@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from labstructanalyzer.models.dto.template_element import TemplateElementDto
+from labstructanalyzer.schemas.template_element import TemplateElementDto
 
 
 class TemplateMinimalProperties(BaseModel):
@@ -11,6 +11,7 @@ class TemplateMinimalProperties(BaseModel):
     name: str
     report_id: Optional[uuid.UUID] = None
     report_status: Optional[str] = None
+
 
 class TemplateDto(TemplateMinimalProperties):
     is_draft: bool
@@ -28,10 +29,10 @@ class TemplateWithElementsDto(TemplateDto):
     class Config:
         for_attributes = True
 
+
 class AllTemplatesDto(BaseModel):
     can_upload: bool
     can_grade: bool
     course_name: str
     templates: list[TemplateMinimalProperties]
     drafts: Optional[list[TemplateMinimalProperties]] = None
-

@@ -2,7 +2,7 @@ import re
 from functools import lru_cache
 from typing import Dict, List, Tuple
 
-from labstructanalyzer.models.dto.answer import FullAnswerData, GradeResult
+from labstructanalyzer.schemas.answer import FullAnswerData, GradeResult
 from labstructanalyzer.services.graders.range_spec import RangeSpec
 
 

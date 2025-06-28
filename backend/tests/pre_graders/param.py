@@ -1,7 +1,7 @@
 import unittest
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.dto.answer import FullAnswerData
+from labstructanalyzer.schemas.answer import FullAnswerData
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 
 

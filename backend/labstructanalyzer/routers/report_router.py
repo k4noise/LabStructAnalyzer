@@ -11,8 +11,8 @@ from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_user_with_any_role, \
     get_user, get_background_task_service
 
-from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto, PreGradedAnswerDto
-from labstructanalyzer.models.dto.report import ReportDto
+from labstructanalyzer.schemas.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto, PreGradedAnswerDto
+from labstructanalyzer.schemas.report import ReportDto
 from labstructanalyzer.services.background_task import BackgroundTaskService
 
 from labstructanalyzer.services.lti.ags import AgsService

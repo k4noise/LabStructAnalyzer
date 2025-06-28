@@ -1,9 +1,8 @@
-import logging
 from dataclasses import asdict
 from typing import List, Optional
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.dto.answer import FullAnswerData, GradeResult
+from labstructanalyzer.schemas.answer import FullAnswerData, GradeResult
 from labstructanalyzer.services.graders.thesis import ThesisAnswerGrader
 from labstructanalyzer.services.graders.fixed import FixedAnswerGrader
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
