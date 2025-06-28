@@ -55,29 +55,20 @@ const Report: React.FC = () => {
   };
 
   const answers = {};
-  if (report?.prev_answers) {
-    answers["prev"] = {};
-    for (const answer of report.prev_answers) {
-      answers["prev"][answer.element_id] = { ...answer };
-    }
-  }
-  if (report?.current_answers) {
-    answers["current"] = {};
-    for (const answer of report.current_answers) {
-      answers["current"][answer.element_id] = {
-        ...answer,
-        given_score: answer.score,
-      };
-      if (report.can_grade && report.status != "graded") {
-        // оценка пустых ответов как неправильных
-        if (answer.data == null) {
-          answers["current"][answer.element_id].score = 0;
-        }
-        // значение по умолчанию для позитивного оценивания
-        else if (answers[answer.element_id]?.score == null)
-          answers["current"][answer.element_id].score =
-            answer?.pre_grade?.score ?? 1;
+
+  for (const answer of report.answers) {
+    answers[answer.element_id] = {
+      ...answer,
+      given_score: answer.score,
+    };
+    if (report.can_grade && report.status != "graded") {
+      // оценка пустых ответов как неправильных
+      if (answer.data == null) {
+        answers[answer.element_id].score = 0;
       }
+      // значение по умолчанию для позитивного оценивания
+      else if (answers[answer.element_id]?.score == null)
+        answers[answer.element_id].score = answer?.pre_grade?.score ?? 1;
     }
   }
 
@@ -122,7 +113,7 @@ const Report: React.FC = () => {
     try {
       await api.patch(
         `/api/v1/reports/${report.report_id}`,
-        Object.values(updatedAnswers.current)
+        Object.values(updatedAnswers)
       );
     } catch (error) {
       handleError(error);
@@ -153,7 +144,7 @@ const Report: React.FC = () => {
       if (isGradeTemplate) {
         await api.patch(
           `/api/v1/reports/${report.report_id}/grade`,
-          Object.values(updatedAnswers["current"])
+          Object.values(updatedAnswers)
         );
         navigate(`/template/${template.template_id}/reports`);
       } else if (isSaveTemplate) {
@@ -165,10 +156,10 @@ const Report: React.FC = () => {
           : await api.delete(`/api/v1/reports/${report.report_id}/submit`);
         navigate("/templates");
       } else if (isEditTemplate) {
-        const data = await api.post(
-          `api/v1/templates/${template.template_id}/reports`
+        const { data } = await api.post(
+          `/api/v1/templates/${template.template_id}/reports`
         );
-        navigate(`/reports/${data["id"]}`);
+        navigate(`/report/${data["id"]}`);
       }
       setButtonState({ [buttonName]: false });
     } catch (error) {

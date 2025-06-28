@@ -31,7 +31,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
     editable,
     graderView,
   } = useContext(AnswerContext);
-  const score = answers ? answers["current"][element.element_id]?.score : null;
+  const score = answers ? answers[element.element_id]?.score : null;
   const onChangeAnswer = (e) =>
     updateAnswer({
       element_id: element.element_id,
@@ -84,15 +84,15 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
         </details>
       )}
       {graderView &&
-        answers["current"][element.element_id]?.pre_grade?.score != null &&
-        (answers["current"][element.element_id].pre_grade.score > 0 ? (
-          answers["current"][element.element_id].pre_grade?.comment ? (
+        answers[element.element_id]?.pre_grade?.score != null &&
+        (answers[element.element_id].pre_grade.score > 0 ? (
+          answers[element.element_id].pre_grade?.comment ? (
             <details className="w-full">
               <summary className="mr-2 text-base select-none">
                 [Предварительно верно]
               </summary>
               <span className="inline-block mb-4 text-base dark:text opacity-60">
-                {answers["current"][element.element_id].pre_grade?.comment}
+                {answers[element.element_id].pre_grade?.comment}
               </span>
             </details>
           ) : (
@@ -104,7 +104,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
               [Предварительно неверно]
             </summary>
             <span className="inline-block mb-4 text-base dark:text opacity-60">
-              {answers["current"][element.element_id].pre_grade?.comment}
+              {answers[element.element_id].pre_grade?.comment}
             </span>
           </details>
         ))}
@@ -120,11 +120,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
               : "border-zinc-950 dark:border-zinc-200"
           }`}
           placeholder={graderView ? "Нет ответа" : "Ваш ответ"}
-          value={
-            answers["current"][element.element_id]?.data?.text ??
-            answers["prev"]?.[element.element_id]?.data?.text ??
-            ""
-          }
+          value={answers[element.element_id]?.data?.text ?? ""}
           onChange={onChangeAnswer}
           disabled={!editable}
         />
@@ -140,11 +136,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
           placeholder={graderView ? "Нет ответа" : "Ваш ответ"}
           minRowsCount={5}
           onChange={onChangeAnswer}
-          value={
-            answers["current"][element.element_id]?.data?.text ??
-            answers["prev"]?.[element.element_id]?.data?.text ??
-            ""
-          }
+          value={answers[element.element_id]?.data?.text ?? ""}
           disabled={!editable}
         />
       )}
@@ -156,8 +148,8 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
       )}
       {!editable &&
         answers &&
-        (answers["current"][element.element_id]?.given_score != null ||
-          (answers["current"]?.data == null && answers["prev"]?.score)) && (
+        (answers[element.element_id]?.given_score != null ||
+          answers?.data == null) && (
           <span>
             {`${score > 0 ? "✔️" : "❌"}${score * element.properties.weight}/${
               element.properties.weight
@@ -166,7 +158,7 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
         )}
       {graderView && (
         <>
-          {answers["current"][element.element_id]?.given_score != null && (
+          {answers[element.element_id]?.given_score != null && (
             <span className="mr-2">
               <br />
               Новая оценка:
@@ -177,8 +169,8 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
             className={`text-3xl mr-2 ${
               isRight == true ||
               (isRight == null &&
-                (answers["current"][element.element_id]?.pre_grade == null ||
-                  answers["current"][element.element_id]?.pre_grade?.score > 0))
+                (answers[element.element_id]?.pre_grade == null ||
+                  answers[element.element_id]?.pre_grade?.score > 0))
                 ? "opacity-80"
                 : "opacity-20"
             }`}
@@ -192,9 +184,8 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
             className={`text-3xl ${
               isRight == false ||
               (isRight == null &&
-                (answers["current"][element.element_id]?.pre_grade == null ||
-                  answers["current"][element.element_id]?.pre_grade?.score ==
-                    0))
+                (answers[element.element_id]?.pre_grade == null ||
+                  answers[element.element_id]?.pre_grade?.score == 0))
                 ? "opacity-80"
                 : "opacity-20"
             }`}
