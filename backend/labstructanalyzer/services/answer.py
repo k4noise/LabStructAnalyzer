@@ -6,7 +6,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, FullAnswerData
-from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 
@@ -19,19 +18,18 @@ class AnswerService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create_answers(self, template: Template, report_id: uuid.UUID):
+    async def create_answers(self, report_id: uuid.UUID, elements: list[TemplateElement]):
         """
         Массово создает пустые ответы
         """
         answers = [
             Answer(
-                template_id=template.template_id,
                 report_id=report_id,
                 element_id=element.element_id,
                 score=None,
                 data=None
             )
-            for element in template.elements if element.element_type == 'answer'
+            for element in elements if element.element_type == 'answer'
         ]
 
         self.session.add_all(answers)
@@ -87,12 +85,12 @@ class AnswerService:
             return 0
         return round((score_with_weight_sum / weight_sum) * max_score, 2)
 
-    def collect_full_data(self, report: Report):
+    async def collect_full_data(self, template: Template, answers: list[Answer]):
         answer_elements = {template_element.element_id: template_element for template_element in
-                           report.template.elements if
+                           template.elements if
                            template_element.element_type == 'answer'}
         answers_to_grade = []
-        for answer in report.answers:
+        for answer in answers:
             if element := answer_elements.get(answer.element_id):
                 answers_to_grade.append(
                     FullAnswerData(

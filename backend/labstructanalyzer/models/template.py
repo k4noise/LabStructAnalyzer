@@ -15,7 +15,7 @@ class Template(SQLModel, table=True):
     user_id: str = Field(max_length=255)
     name: str = Field(max_length=255)
     is_draft: bool = Field(default=True)
-    max_score: int = Field(default=30)
+    max_score: int = Field(default=30, ge=0)
 
     created_at: datetime = Field(
         default=None,
@@ -33,6 +33,14 @@ class Template(SQLModel, table=True):
             server_default=text("CURRENT_TIMESTAMP"),
             server_onupdate=FetchedValue(),
         )
+    )
+
+    reports: list["Report"] = Relationship(
+        back_populates="template",
+        sa_relationship_kwargs={
+            "lazy": "dynamic",
+            "cascade": "all, delete-orphan"
+        }
     )
 
     elements: list[TemplateElement] = Relationship(

@@ -3,6 +3,7 @@ import uuid
 from urllib.parse import urlparse
 
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, asc
 
@@ -63,7 +64,15 @@ class TemplateService:
         Raises:
             TemplateNotFoundError: Шаблон не найден
         """
-        template = await self.session.get(Template, template_id)
+        query = (
+            select(Template)
+            .where(Template.template_id == template_id)
+            .options(selectinload(Template.elements))
+        )
+
+        result = await self.session.exec(query)
+        template = result.first()
+
         if template is None:
             raise TemplateNotFoundException(template_id)
         return template
