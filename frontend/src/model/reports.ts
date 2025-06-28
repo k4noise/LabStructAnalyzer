@@ -20,6 +20,5 @@ export interface ReportInfoDto extends MinimalReportInfoDto {
   can_grade: boolean;
   author_name: string;
   grader_name?: string;
-  current_answers: AnswerModel[];
-  prev_answers?: AnswerModel[];
+  answers: AnswerModel[];
 }
