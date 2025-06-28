@@ -2,7 +2,7 @@ import re
 from functools import lru_cache
 
 from rapidfuzz import fuzz
-from labstructanalyzer.models.dto.answer import GradeResult
+from labstructanalyzer.schemas.answer import GradeResult
 
 RE_WORDS = re.compile(r"[\w'-]+")
 RE_DIGITS = re.compile(r'-?\d+')

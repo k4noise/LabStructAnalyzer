@@ -5,7 +5,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.models.dto.answer import UpdateScoreAnswerDto, UpdateAnswerDto, FullAnswerData
+from labstructanalyzer.schemas.answer import UpdateScoreAnswerDto, UpdateAnswerDto, FullAnswerData
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
 

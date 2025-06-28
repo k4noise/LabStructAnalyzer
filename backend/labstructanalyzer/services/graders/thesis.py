@@ -8,7 +8,7 @@ from pymorphy3 import MorphAnalyzer
 from razdel import sentenize, tokenize
 
 from labstructanalyzer.configs.config import BASE_PROJECT_DIR
-from labstructanalyzer.models.dto.answer import GradeResult
+from labstructanalyzer.schemas.answer import GradeResult
 
 
 @lru_cache(maxsize=1)

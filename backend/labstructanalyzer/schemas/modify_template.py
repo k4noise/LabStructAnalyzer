@@ -1,8 +1,8 @@
 import uuid
 from typing import Optional
 
-from labstructanalyzer.models.dto.template import TemplateDto
-from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
+from labstructanalyzer.schemas.template import TemplateDto
+from labstructanalyzer.schemas.template_element import TemplateElementDto, BaseTemplateElementDto
 
 
 class TemplateToModify(TemplateDto):

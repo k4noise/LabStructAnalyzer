@@ -14,9 +14,9 @@ from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service, \
     get_user_with_any_role, get_user
 
-from labstructanalyzer.models.dto.modify_template import TemplateToModify
-from labstructanalyzer.models.dto.report import MinimalReportInfoDto, AllReportsDto
-from labstructanalyzer.models.dto.template import TemplateWithElementsDto, AllTemplatesDto, \
+from labstructanalyzer.schemas.modify_template import TemplateToModify
+from labstructanalyzer.schemas.report import MinimalReportInfoDto, AllReportsDto
+from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllTemplatesDto, \
     TemplateMinimalProperties
 
 from labstructanalyzer.services.lti.ags import AgsService

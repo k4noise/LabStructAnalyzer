@@ -8,11 +8,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, asc
 
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
-from labstructanalyzer.models.dto.template_element import TemplateElementDto, BaseTemplateElementDto
+from labstructanalyzer.schemas.template_element import TemplateElementDto, BaseTemplateElementDto
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.template_element import TemplateElement
-from labstructanalyzer.models.dto.modify_template import TemplateToModify
+from labstructanalyzer.schemas.modify_template import TemplateToModify
 from labstructanalyzer.services.report import ReportStatus
 from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
