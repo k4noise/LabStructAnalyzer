@@ -9,12 +9,8 @@ engine = create_async_engine(os.getenv("DATABASE_URL"), pool_pre_ping=True)
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(engine) as session:
-        try:
+        async with session.begin():
             yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
 
 
 async def close_db():
