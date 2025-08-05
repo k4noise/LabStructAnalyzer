@@ -1,14 +1,10 @@
-from typing import List
-
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class UserInfo(BaseModel):
+class UserInfoDto(BaseModel):
     """
     Базовые данные о пользователе из LMS
     """
-    fullName: str
-    name: str
-    surname: str
-    role: List[str]
-    avatarUrl: HttpUrl
+    full_name: str = Field(alias="fullName")
+
+    model_config = ConfigDict(serialize_by_alias=True)

@@ -1,10 +1,12 @@
 from pylti1p3.message_launch import MessageLaunch
+from sqlalchemy import Sequence
 
+from labstructanalyzer.models.user_model import UserRole
 from labstructanalyzer.services.lti.course import CourseService
-from labstructanalyzer.services.lti.user import User
+from labstructanalyzer.services.lti.user import UserService
 
 
-class JWT:
+class JwtClaimService:
     """
     Сервис подготовки данных для токенов JWT
     """
@@ -19,12 +21,12 @@ class JWT:
         """
         Создает объект пользовательских данных на основе данных из данных запуска LTI
         """
-        roles = User(message_launch).get_roles()
+        roles = UserService(message_launch).roles
         launch_id = message_launch.get_launch_id()
-        course_id = CourseService(message_launch).get_id()
+        course_id = CourseService(message_launch).id
         return self._create_user_claims(roles, launch_id, course_id)
 
-    def _create_user_claims(self, roles: list[str], launch_id: str, course_id: str) -> dict:
+    def _create_user_claims(self, roles: Sequence[UserRole], launch_id: str, course_id: str) -> dict:
         """
         Создает универсальный объект пользовательских данных
         """

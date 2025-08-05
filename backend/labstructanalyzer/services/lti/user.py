@@ -1,56 +1,42 @@
-from typing import List
+from typing import Sequence, Optional
 
 from pylti1p3.message_launch import MessageLaunch
 
+from labstructanalyzer.models.user_model import UserRole
+from labstructanalyzer.services.lti.nrps import NrpsService
 
-class User:
+
+class UserService:
     """
     Сервис обработки данных пользователя из данных запуска
     """
 
-    def __init__(self, message_launch: MessageLaunch):
+    def __init__(self, message_launch: MessageLaunch, nrps_service: NrpsService | None = None):
         self.message_launch = message_launch
         self.launch_data = message_launch.get_launch_data()
+        self._nrps_service = nrps_service
 
-    def get_id(self) -> str:
-        """
-        Возвращает id пользователя
-        """
+    @property
+    def id(self) -> str:
         return self.launch_data.get("sub")
 
-    def get_avatar_url(self) -> str:
-        """
-        Возвращает url аватара пользователя (только для LMS Moodle)
-        """
-        return f"{self.message_launch.get_iss()}/user/pix.php/{self.get_id()}/f1.jpg"
+    @property
+    def roles(self) -> Sequence[UserRole]:
+        return [
+            role
+            for role, checker in [
+                (UserRole.TEACHER, self.message_launch.check_teacher_access),
+                (UserRole.ASSISTANT, self.message_launch.check_teaching_assistant_access),
+                (UserRole.STUDENT, self.message_launch.check_student_access),
+            ]
+            if checker()
+        ]
 
-    def get_full_name(self):
-        """
-        Возвращает имя пользователя полностью - ФИО
-        """
-        return self.launch_data.get("name")
-
-    def get_name(self):
-        """
-        Возвращает только имя пользователя
-        """
-        return self.launch_data.get("given_name")
-
-    def get_surname(self):
-        """
-        Возвращает только фамилию пользователя
-        """
-        return self.launch_data.get("family_name")
-
-    def get_roles(self) -> List[str]:
-        """
-        Получить роли пользователей
-        """
-        roles = []
-        if self.message_launch.check_teacher_access():
-            roles.append("teacher")
-        elif self.message_launch.check_teaching_assistant_access():
-            roles.append("assistant")
-        elif self.message_launch.check_student_access():
-            roles.append("student")
-        return roles
+    @property
+    def full_name(self) -> Optional[str]:
+        if name := self.launch_data.get("name"):
+            return name
+        if self._nrps_service:
+            if user := self._nrps_service.get_user_data(self.id):
+                return user.name
+        return None
