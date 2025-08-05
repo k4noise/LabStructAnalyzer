@@ -7,7 +7,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.responses import RedirectResponse, JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, TOOL_CONF
-from labstructanalyzer.services.lti.jwt import JWT
+from labstructanalyzer.services.lti.jwt import JwtClaimService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
@@ -97,7 +97,7 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     message_launch.validate_registration()
 
     user_id = message_launch.get_launch_data().get('sub')
-    user_claims = JWT().create_user_claims_at_message_launch(message_launch)
+    user_claims = JwtClaimService().create_user_claims_at_message_launch(message_launch)
 
     access_token = authorize.create_access_token(subject=user_id, user_claims=user_claims)
     refresh_token = authorize.create_refresh_token(subject=user_id, user_claims=user_claims)

@@ -23,7 +23,7 @@ class AgsService:
     def __init__(self, message_launch: MessageLaunch):
         if not message_launch.has_ags():
             raise AgsNotSupportedException()
-        
+
         self.message_launch = message_launch
 
     def create_lineitem(self, template: Template):
@@ -48,13 +48,16 @@ class AgsService:
         existing_lineitem = ags.find_lineitem_by_resource_id(str(template.template_id))
         if not existing_lineitem:
             self.create_lineitem(template)
+            return
 
-        updated_lineitem = self._create_lineitem_object(template)
-
+        lineitem_with_new_data = self._create_lineitem_object(template)
         request_headers = self._create_ags_request_headers()
-        response = requests.Session().put(updated_lineitem.get_id(), data=updated_lineitem.get_value(),
-                                          headers=request_headers)
 
+        response = requests.Session().put(
+            existing_lineitem.get_id(),
+            data=lineitem_with_new_data.get_value(),
+            headers=request_headers
+        )
         if response.status_code != 200:
             raise LtiException("Ошибка LMS")
 

@@ -3,11 +3,11 @@ from starlette.requests import Request
 
 from labstructanalyzer.configs.config import TOOL_CONF
 from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.lti.user import User
 from labstructanalyzer.core.dependencies import get_user
 
-from labstructanalyzer.models.user_info import UserInfo
+from labstructanalyzer.models.user_info import UserInfoDto
 from labstructanalyzer.models.user_model import User as UserModel
+from labstructanalyzer.services.lti.nrps import NrpsService
 
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -20,7 +20,7 @@ router = APIRouter()
     "/me",
     tags=["User"],
     responses={
-        200: {"model": UserInfo},
+        200: {"model": UserInfoDto},
         401: {
             "description": "Не авторизован или refresh токен истек",
             "content": {
@@ -58,11 +58,7 @@ async def get_user_data(request: Request, user: UserModel = Depends(get_user)):
     message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 
-    user_data = User(message_launch)
-    return UserInfo(
-        fullName=user_data.get_full_name(),
-        name=user_data.get_name(),
-        surname=user_data.get_surname(),
-        role=user_data.get_roles(),
-        avatarUrl=user_data.get_avatar_url()
+    user_data = NrpsService(message_launch)
+    return UserInfoDto(
+        full_name=user_data.get_current_full_name()
     )

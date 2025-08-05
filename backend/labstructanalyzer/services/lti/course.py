@@ -12,15 +12,10 @@ class CourseService:
             .get_launch_data() \
             .get("https://purl.imsglobal.org/spec/lti/claim/context")
 
-    def get_name(self) -> str:
-        """
-        Получить имя курса
-        """
+    @property
+    def name(self) -> str:
         return self.course_data.get("title")
 
-    def get_id(self) -> str:
-        """
-        Получить id курса
-        """
-        if "id" in self.course_data:
-            return self.course_data.get("id")
+    @property
+    def id(self) -> str:
+        return self.course_data.get("id")
