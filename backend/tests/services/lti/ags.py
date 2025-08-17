@@ -30,7 +30,7 @@ class TestAgsService(unittest.TestCase):
 
     def test_create_lineitem(self):
         """`create_lineitem` должен вызывать `find_or_create_lineitem` с корректным объектом LineItem"""
-        self.service.create_lineitem(self.mock_template)
+        self.service.find_or_create_lineitem(self.mock_template)
 
         self.mock_ags.find_or_create_lineitem.assert_called_once()
 

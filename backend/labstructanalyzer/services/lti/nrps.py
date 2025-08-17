@@ -1,11 +1,13 @@
 from contextlib import suppress
-from typing import Sequence, Optional
+from typing import Optional
 
 from pydantic import ValidationError
 from pylti1p3.message_launch import MessageLaunch
 
 from labstructanalyzer.exceptions.lis_service_no_access import NrpsNotSupportedException
+from labstructanalyzer.main import global_logger
 from labstructanalyzer.schemas.user import NrpsUser
+from labstructanalyzer.services.lti.course import CourseService
 
 
 class NrpsService:
@@ -17,6 +19,7 @@ class NrpsService:
         if not message_launch.has_nrps():
             raise NrpsNotSupportedException()
         self.message_launch = message_launch
+        self.logger = global_logger.get_logger(__name__)
         self._members_map: Optional[dict[str, NrpsUser]] = None
 
     def get_user_by_id(self, user_id: str) -> Optional[NrpsUser]:
@@ -28,6 +31,8 @@ class NrpsService:
         """Загружает данные, если они еще не были загружены"""
         if self._members_map is None:
             members = self.message_launch.get_nrps().get_members()
+            self.logger.warning(f"Получен доступ к данным NRPS в курсе {CourseService(self.message_launch).name}")
+
             self._members_map = {}
             for user_data in members:
                 with suppress(ValidationError):
