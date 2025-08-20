@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 import requests
 from pylti1p3.exception import LtiException
@@ -8,8 +9,8 @@ from pylti1p3.message_launch import MessageLaunch
 from pylti1p3.lineitem import LineItem
 from pylti1p3.service_connector import REQUESTS_USER_AGENT
 
+from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.exceptions.lis_service_no_access import AgsNotSupportedException
-from labstructanalyzer.main import global_logger
 from labstructanalyzer.models.template import Template
 
 
@@ -27,7 +28,7 @@ class AgsService:
 
         self.message_launch = message_launch
         self.ags = self.message_launch.get_ags()
-        self.logger = global_logger.get_logger(__name__)
+        self.logger = GlobalLogger.get_logger(__name__)
 
     def find_or_create_lineitem(self, template: Template) -> Optional[LineItem]:
         """
