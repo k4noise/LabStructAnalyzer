@@ -4,8 +4,8 @@ from typing import Optional
 from pydantic import ValidationError
 from pylti1p3.message_launch import MessageLaunch
 
+from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.exceptions.lis_service_no_access import NrpsNotSupportedException
-from labstructanalyzer.main import global_logger
 from labstructanalyzer.schemas.user import NrpsUser
 from labstructanalyzer.services.lti.course import CourseService
 
@@ -19,7 +19,7 @@ class NrpsService:
         if not message_launch.has_nrps():
             raise NrpsNotSupportedException()
         self.message_launch = message_launch
-        self.logger = global_logger.get_logger(__name__)
+        self.logger = GlobalLogger().get_logger(__name__)
         self._members_map: Optional[dict[str, NrpsUser]] = None
 
     def get_user_by_id(self, user_id: str) -> Optional[NrpsUser]:
