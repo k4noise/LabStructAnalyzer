@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, TIMESTAMP, text, FetchedValue, Index
+from sqlalchemy import Column, TIMESTAMP, text, Index
 from sqlmodel import SQLModel, Field, Relationship, asc
 
 from labstructanalyzer.models.template_element import TemplateElement
@@ -31,25 +31,27 @@ class Template(SQLModel, table=True):
             TIMESTAMP(timezone=True),
             nullable=False,
             server_default=text("CURRENT_TIMESTAMP"),
-            server_onupdate=FetchedValue(),
         )
     )
 
     reports: list["Report"] = Relationship(
         back_populates="template",
         sa_relationship_kwargs={
-            "lazy": "dynamic",
+            "lazy": "selectin",
             "cascade": "all, delete-orphan"
         }
     )
 
     elements: list[TemplateElement] = Relationship(
         sa_relationship_kwargs={
-            "cascade": "all, delete-orphan",
             "lazy": "selectin",
             "order_by": asc(TemplateElement.order)
         }
     )
+
+    @property
+    def id(self):
+        return self.template_id
 
     __table_args__ = (
         Index("templates_course_id_is_draft_idx", "course_id", "is_draft"),

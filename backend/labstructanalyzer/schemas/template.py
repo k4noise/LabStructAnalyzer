@@ -1,5 +1,8 @@
+import enum
 import uuid
-from typing import Optional
+from dataclasses import field
+from datetime import datetime
+from typing import Optional, Sequence, Dict, Any
 
 from pydantic import BaseModel
 
@@ -9,8 +12,6 @@ from labstructanalyzer.schemas.template_element import TemplateElementDto
 class TemplateMinimalProperties(BaseModel):
     template_id: uuid.UUID
     name: str
-    report_id: Optional[uuid.UUID] = None
-    report_status: Optional[str] = None
 
 
 class TemplateDto(TemplateMinimalProperties):
@@ -22,8 +23,6 @@ class TemplateDto(TemplateMinimalProperties):
 
 
 class TemplateWithElementsDto(TemplateDto):
-    can_edit: Optional[bool] = False
-    can_grade: Optional[bool] = False
     elements: list[TemplateElementDto]
 
     class Config:
@@ -36,3 +35,36 @@ class AllTemplatesDto(BaseModel):
     course_name: str
     templates: list[TemplateMinimalProperties]
     drafts: Optional[list[TemplateMinimalProperties]] = None
+
+
+class MinimalReport(BaseModel):
+    updated_at: datetime
+    report_id: uuid.UUID
+    status: str
+
+
+class MinimalTemplate(BaseModel):
+    template_id: uuid.UUID
+    name: str
+    is_draft: bool
+    reports: Optional[Sequence[MinimalReport]]
+
+
+class AllContentFromCourse(BaseModel):
+    can_upload: bool
+    can_grade: bool
+    course_name: str
+    templates: Sequence[MinimalTemplate]
+
+
+class TemplateElementUpdateAction(enum.Enum):
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+
+
+class TemplateElementUpdateUnit(BaseModel):
+    action: TemplateElementUpdateAction
+    element_id: uuid.UUID
+    element_type: Optional[str] = None
+    properties: Optional[Dict[str, Any] | Sequence[TemplateElementDto]] = field(default_factory=dict)
