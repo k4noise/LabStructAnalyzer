@@ -1,4 +1,6 @@
 import uuid
+from collections.abc import Sequence
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -10,10 +12,12 @@ class BaseTemplateElementDto(BaseModel):
 
 class TemplateElementDto(BaseTemplateElementDto):
     element_type: str
+    parent_id: Optional[uuid.UUID]
 
     class Config:
         for_attributes = True
 
 
-class CreateTemplateElementDto(TemplateElementDto):
-    data: str | list[BaseTemplateElementDto]
+class CreateTemplateElementDto(BaseTemplateElementDto):
+    element_type: str
+    data: str | Sequence[BaseTemplateElementDto]
