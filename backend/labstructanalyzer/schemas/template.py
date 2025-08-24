@@ -1,70 +1,59 @@
 import enum
 import uuid
-from dataclasses import field
-from datetime import datetime
 from typing import Optional, Sequence, Dict, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from labstructanalyzer.schemas.report import MinimalReport
 from labstructanalyzer.schemas.template_element import TemplateElementDto
 
 
-class TemplateMinimalProperties(BaseModel):
-    template_id: uuid.UUID
-    name: str
-
-
-class TemplateDto(TemplateMinimalProperties):
-    is_draft: bool
-    max_score: int
-
-    class Config:
-        for_attributes = True
-
-
-class TemplateWithElementsDto(TemplateDto):
-    elements: list[TemplateElementDto]
-
-    class Config:
-        for_attributes = True
-
-
-class AllTemplatesDto(BaseModel):
-    can_upload: bool
-    can_grade: bool
-    course_name: str
-    templates: list[TemplateMinimalProperties]
-    drafts: Optional[list[TemplateMinimalProperties]] = None
-
-
-class MinimalReport(BaseModel):
-    updated_at: datetime
-    report_id: uuid.UUID
-    status: str
-
-
-class MinimalTemplate(BaseModel):
-    template_id: uuid.UUID
-    name: str
-    is_draft: bool
-    reports: Optional[Sequence[MinimalReport]]
-
-
-class AllContentFromCourse(BaseModel):
-    can_upload: bool
-    can_grade: bool
-    course_name: str
-    templates: Sequence[MinimalTemplate]
-
-
-class TemplateElementUpdateAction(enum.Enum):
+class TemplateElementUpdateAction(str, enum.Enum):
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
 
 
+class TemplateDto(BaseModel):
+    """Краткое DTO шаблона без элементов"""
+    template_id: uuid.UUID
+    name: str
+    is_draft: bool
+    max_score: int
+
+    model_config = {"from_attributes": True}
+
+
+class TemplateWithElementsDto(TemplateDto):
+    """DTO шаблона вместе с элементами"""
+    elements: Sequence[TemplateElementDto]
+
+
+class MinimalTemplate(BaseModel):
+    """Шаблон в составе курса (с отчётами)"""
+    template_id: uuid.UUID
+    name: str
+    is_draft: bool
+    reports: Sequence[MinimalReport] = Field(default_factory=list)
+
+
+class AllContentFromCourse(BaseModel):
+    """Все шаблоны по курсу с отчетами"""
+    can_upload: bool
+    can_grade: bool
+    course_name: str
+    templates: Sequence[MinimalTemplate] = Field(default_factory=list)
+
+
 class TemplateElementUpdateUnit(BaseModel):
+    """Операция над элементом шаблона"""
     action: TemplateElementUpdateAction
     element_id: uuid.UUID
     element_type: Optional[str] = None
-    properties: Optional[Dict[str, Any] | Sequence[TemplateElementDto]] = field(default_factory=dict)
+    properties: Dict[str, Any] | Sequence[TemplateElementDto] = Field(default_factory=dict)
+
+
+class TemplateToModify(TemplateDto):
+    name: Optional[str] = None
+    max_score: Optional[int] = None
+    elements: Optional[Sequence[TemplateElementUpdateUnit]]

@@ -11,9 +11,8 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourse, MinimalTemplate, \
-    MinimalReport, TemplateElementUpdateAction, TemplateElementUpdateUnit
+    MinimalReport, TemplateElementUpdateAction, TemplateElementUpdateUnit, TemplateToModify
 from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto
-from labstructanalyzer.schemas.modify_template import TemplateToModify
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.template_element import TemplateElementService
@@ -63,6 +62,8 @@ class TemplateService:
     async def get(self, user: User, template_id: uuid.UUID) -> TemplateWithElementsDto:
         """Получить шаблон с элементами по идентификатору"""
         template = await self._get(user, template_id)
+        TemplateAccessVerifier(template).is_valid_course(user)
+        
         return TemplateWithElementsDto(
             template_id=template_id,
             name=template.name,
