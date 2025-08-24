@@ -39,7 +39,7 @@ class StructureManager:
 
         self.max_chunk_count = max(validator.chunk_count for validator in self.composite)
 
-    def apply_structure(self, elements: Generator[IParserElement, None, None]) -> Generator[dict, None, None]:
+    def apply(self, elements: Generator[IParserElement, None, None]) -> Generator[dict, None, None]:
         """Применяет структуру ко всем элементам парсера из генератора
 
         Args:

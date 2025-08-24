@@ -7,10 +7,9 @@ from labstructanalyzer.exceptions.invalid_action import InvalidTransitionExcepti
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.schemas.modify_template import TemplateToModify
 from labstructanalyzer.schemas.template import (
     TemplateElementUpdateUnit,
-    TemplateElementUpdateAction
+    TemplateElementUpdateAction, TemplateToModify
 )
 from labstructanalyzer.services.template import TemplateService
 

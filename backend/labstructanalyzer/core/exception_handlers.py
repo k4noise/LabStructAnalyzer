@@ -37,7 +37,7 @@ async def access_denied(request: Request, exception: Exception):
 
 async def invalid_action(request: Request, exception: Exception):
     logger.error("Не выполнено", request, exception)
-    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Действие недоступно")
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Действие невозможно")
 
 
 async def parser_error(request: Request, exception: Exception):

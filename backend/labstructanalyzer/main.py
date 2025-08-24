@@ -11,12 +11,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR
 from .core.logger import GlobalLogger
+from .exceptions.invalid_action import InvalidActionException
+from .exceptions.parser import ParserError
 
 global_logger = GlobalLogger()
 executor = ProcessPoolExecutor(max_workers=1)
 
 from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_lis_service_access, \
-    invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied
+    invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied, parser_error, invalid_action
 from pylti1p3.oidc_login import OIDCException
 
 from .exceptions.access_denied import AccessDeniedException
@@ -53,6 +55,8 @@ app.add_exception_handler(EntityNotFoundException, no_entity_error)
 app.add_exception_handler(AgsNotSupportedException, no_lis_service_access)
 app.add_exception_handler(NrpsNotSupportedException, no_lis_service_access)
 app.add_exception_handler(AccessDeniedException, access_denied)
+app.add_exception_handler(InvalidActionException, invalid_action)
+app.add_exception_handler(ParserError, parser_error)
 
 app.include_router(jwt_router, prefix='/api/v1/jwt')
 app.include_router(lti_router, prefix='/api/v1/lti')
