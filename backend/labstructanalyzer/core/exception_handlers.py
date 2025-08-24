@@ -31,7 +31,18 @@ async def no_lis_service_access(request: Request, exception: Exception):
 
 async def access_denied(request: Request, exception: Exception):
     logger.warning("Нет доступа к ресурсу", request, exception)
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен")
+    # Сокрытие деталей реализации и ничего более, 404 - не ошибка.
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Не найдено")
+
+
+async def invalid_action(request: Request, exception: Exception):
+    logger.error("Не выполнено", request, exception)
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Действие недоступно")
+
+
+async def parser_error(request: Request, exception: Exception):
+    logger.error("Ошибка сохранения шаблона", request, exception)
+    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="")
 
 
 async def os_error_handler(request: Request, exception: Exception):

@@ -22,7 +22,6 @@ from labstructanalyzer.utils.parser.numbering_manager import (
 )
 
 from labstructanalyzer.utils.parser.nesting_manager import NestingManager
-from labstructanalyzer.utils.parser.structure.structure_manager import StructureManager
 
 
 class DocxXmlManager:
@@ -101,7 +100,6 @@ class DocxParser:
     Конвертирует содержимое документа в массив структурных компонент согласно структуре
 
       Attributes:
-        structure_manager: Инстанс класса StructureManager с методами для применения структуры к элементам документа
         xml_manager: Инстанс класса DocxXmlManager с изображениями и lxml деревьями основного содержимого, стилей, нумерации, связей документа
         image_parser: Инстанс класса ImageParser с методом для парсинга изображений
         table_parser: Инстанс класса TableParser с методом для парсинга таблиц
@@ -111,15 +109,13 @@ class DocxParser:
         style_id_to_numberings_data: Словарь взаимоотношений идентификатора стиля к данным нумерации - идентификатору и уровню нумерации
     """
 
-    def __init__(self, document: bytes, structure: dict, image_save_prefix: str) -> None:
+    def __init__(self, document: bytes, image_save_prefix: str) -> None:
         """Инициализирует объект класса DocxParser
 
         Arguments:
           document: Байты docx документа
-          structure: Словарь с данными структуры
           image_save_prefix: Подпапка для сохранения картинок
         """
-        self.structure_manager = StructureManager(structure)
         self.xml_manager = DocxXmlManager(document)
         self.table_parser = TableParser(self.xml_manager, self.parse)
         self.image_parser = ImageParser(self.xml_manager, image_save_prefix)
@@ -128,13 +124,8 @@ class DocxParser:
         self.nesting_manager = NestingManager()
         self.style_id_to_numberings_data = self._parse_numbering_in_styles()
 
-    def get_structure_components(self) -> List[dict]:
-        """Получает список всех структурных компонент документа
-
-        Returns:
-          Список структурных компонент документа
-        """
-        return list(self.structure_manager.apply_structure(self.parse(self.xml_manager.main_content_root)))
+    def start(self) -> Generator[IParserElement, None, None]:
+        return self.parse(self.xml_manager.main_content_root)
 
     def parse(
             self, root_element: etree.Element
