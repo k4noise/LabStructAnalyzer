@@ -2,8 +2,10 @@ import enum
 import uuid
 from typing import Optional, Sequence, Dict, Any
 
+from fastapi_hypermodel import HALHyperModel, HALLinks, FrozenDict, HALFor
 from pydantic import BaseModel, Field
 
+from labstructanalyzer.models.user_model import User
 from labstructanalyzer.schemas.report import MinimalReport
 from labstructanalyzer.schemas.template_element import TemplateElementDto
 
@@ -14,6 +16,14 @@ class TemplateElementUpdateAction(str, enum.Enum):
     DELETE = "delete"
 
 
+class CreatedTemplateDto(HALHyperModel):
+    id: uuid.UUID
+
+    links: HALLinks = FrozenDict({
+        "get_template": HALFor("get_template", {"template_id": "<id>"})
+    })
+
+
 class TemplateDto(BaseModel):
     """Краткое DTO шаблона без элементов"""
     template_id: uuid.UUID
@@ -21,28 +31,80 @@ class TemplateDto(BaseModel):
     is_draft: bool
     max_score: int
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
-class TemplateWithElementsDto(TemplateDto):
+class TemplateWithElementsDto(TemplateDto, HALHyperModel):
     """DTO шаблона вместе с элементами"""
     elements: Sequence[TemplateElementDto]
 
+    # Поле используется только для условной генерации ссылок HAL
+    user: User = Field(exclude=True)
 
-class MinimalTemplate(BaseModel):
+    links: HALLinks = FrozenDict({
+        "update": HALFor(
+            "save_modified_template",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_teacher()
+        ),
+        "publish": HALFor(
+            "publish_template",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_teacher() and values.get("is_draft")
+        ),
+        "delete": HALFor(
+            "remove_template",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_teacher()
+        ),
+        "all": HALFor("get_templates"),
+    })
+
+
+class MinimalTemplateDto(HALHyperModel):
     """Шаблон в составе курса (с отчётами)"""
-    template_id: uuid.UUID
+    id: uuid.UUID
     name: str
     is_draft: bool
     reports: Sequence[MinimalReport] = Field(default_factory=list)
 
+    # Поле используется только для условной генерации ссылок HAL
+    user: User = Field(exclude=True)
 
-class AllContentFromCourse(BaseModel):
+    links: HALLinks = FrozenDict({
+        "get_template": HALFor(
+            "get_template",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_teacher()
+        ),
+        "get_reports": HALFor(
+            "get_reports_by_template",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_instructor(),
+        ),
+        "create_report": HALFor(
+            "create_report",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student(),
+        )
+    })
+
+
+class AllContentFromCourseDto(HALHyperModel):
     """Все шаблоны по курсу с отчетами"""
-    can_upload: bool
-    can_grade: bool
     course_name: str
-    templates: Sequence[MinimalTemplate] = Field(default_factory=list)
+    templates: Sequence[MinimalTemplateDto] = Field(default_factory=list)
+
+    # Поле используется только для условной генерации ссылок HAL
+    user: User = Field(exclude=True)
+
+    links: HALLinks = FrozenDict({
+        "add_template": HALFor(
+            "parse_template",
+            condition=lambda values: values["user"] and values["user"].is_teacher()
+        )
+    })
 
 
 class TemplateElementUpdateUnit(BaseModel):

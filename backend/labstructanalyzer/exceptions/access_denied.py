@@ -17,3 +17,10 @@ class NotOwnerAccessDeniedException(AccessDeniedException):
 
     def __init__(self):
         super().__init__("пользователь не является автором")
+
+
+class InvalidCourseAccessDeniedException(AccessDeniedException):
+    """Исключение, возникающее при попытке доступа к сущности другого курса"""
+
+    def __init__(self):
+        super().__init__("шаблон или отчет другого курса")

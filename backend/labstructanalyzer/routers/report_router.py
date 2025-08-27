@@ -11,7 +11,7 @@ from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_report_service, get_answer_service, get_user_with_any_role, \
     get_user, get_background_task_service
 
-from labstructanalyzer.schemas.answer import UpdateScoreAnswerDto, UpdateAnswerDto, AnswerDto, PreGradedAnswerDto
+from labstructanalyzer.schemas.answer import UpdateAnswerDataDto, AnswerDto, PreGradedAnswerDto, UpdateAnswerScoresDto
 from labstructanalyzer.schemas.report import ReportDto
 from labstructanalyzer.services.background_task import BackgroundTaskService
 
@@ -71,7 +71,7 @@ logger = global_logger.get_logger(__name__)
 )
 async def update_answers(
         report_id: uuid.UUID,
-        answers: list[UpdateAnswerDto],
+        answers: list[UpdateAnswerDataDto],
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
         answers_service: AnswerService = Depends(get_answer_service),
         report_service: ReportService = Depends(get_report_service)
@@ -79,7 +79,7 @@ async def update_answers(
     """
     Обновить некоторые ответы в отчете.
     """
-    await answers_service.update_answers(report_id, answers)
+    await answers_service.update_data(report_id, answers)
     await report_service.mark_as_saved(report_id, user.sub)
     logger.info(f"Обновлены ответы в отчете: id {report_id}")
 
@@ -151,7 +151,7 @@ async def get_report(
         report_service.validate_author(report, user.sub)
     can_grade = UserRole.TEACHER in user.roles or UserRole.ASSISTANT in user.roles
     can_edit = not can_grade and (
-            report.status != ReportStatus.submitted.name and report.status != ReportStatus.graded.name)
+            report.status != ReportStatus.SUBMITTED.name and report.status != ReportStatus.GRADED.name)
     answer_model = PreGradedAnswerDto if can_grade else AnswerDto
     launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch.from_cache(user.launch_id,
@@ -166,8 +166,8 @@ async def get_report(
         can_grade=can_grade,
         report_id=report.report_id,
         status=report.status,
-        author_name=nrps_service.get_user_name(report.author_id),
-        grader_name=nrps_service.get_user_name(
+        author_name=nrps_service.get_user_data(report.author_id),
+        grader_name=nrps_service.get_user_data(
             report.grader_id) if report.grader_id is not None else None,
         score=report.score,
         answers=[
@@ -232,7 +232,7 @@ async def get_report(
 )
 async def save_grades(
         report_id: uuid.UUID,
-        score_data: list[UpdateScoreAnswerDto],
+        score_data: list[UpdateAnswerScoresDto],
         request: Request,
         user: User = Depends(get_user_with_any_role(UserRole.TEACHER, UserRole.ASSISTANT)),
         answers_service: AnswerService = Depends(get_answer_service),
@@ -241,7 +241,7 @@ async def save_grades(
     """
     Сохранить оценки, подсчитать итоговый балл, перенести в LMS
     """
-    await answers_service.bulk_update_grades(report_id, score_data)
+    await answers_service.update_scores(report_id, score_data)
     report = await report_service.get_by_id(report_id)
     template = report.template
     final_grade = await answers_service.calc_final_score(report_id, template.max_score)
@@ -307,9 +307,8 @@ async def send_to_grade(
         answer_service: AnswerService = Depends(get_answer_service),
         background_task_service: BackgroundTaskService = Depends(get_background_task_service)
 ):
-    report = await report_service.submit_to_review(report_id, user.sub)
-
-    answers = await answer_service.collect_full_data(report.template, [])
+    await report_service.submit_to_review(report_id, user.sub)
+    answers = await answer_service.collect_full_data(report_id)
     pre_grader_service = PreGraderService(answers)
 
     future = executor.submit(pre_grader_service.grade)

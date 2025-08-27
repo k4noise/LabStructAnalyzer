@@ -10,8 +10,8 @@ from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
-from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourse, MinimalTemplate, \
-    MinimalReport, TemplateElementUpdateAction, TemplateElementUpdateUnit, TemplateToModify
+from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourseDto, MinimalTemplateDto, \
+    MinimalReport, TemplateElementUpdateAction, TemplateElementUpdateUnit, TemplateToModify, CreatedTemplateDto
 from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
@@ -40,7 +40,7 @@ class TemplateService:
         self.elements_service = elements_service
         self.logger = GlobalLogger().get_logger(__name__)
 
-    async def create(self, user: User, name: str, template_components: list[dict]) -> uuid.UUID:
+    async def create(self, user: User, name: str, template_components: list[dict]) -> CreatedTemplateDto:
         """
         Создает шаблон и его элементы
 
@@ -57,18 +57,19 @@ class TemplateService:
         await self.elements_service.create(template.id, self._map_parser_items(template_components))
 
         self.logger.info(f"Сохранен черновик шаблона: id {template.id}")
-        return template.id
+        return CreatedTemplateDto(id=template.id)
 
     async def get(self, user: User, template_id: uuid.UUID) -> TemplateWithElementsDto:
         """Получить шаблон с элементами по идентификатору"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
-        
+
         return TemplateWithElementsDto(
             template_id=template_id,
             name=template.name,
             is_draft=template.is_draft,
             max_score=template.max_score,
+            user=user,
             elements=[
                 TemplateElementDto(
                     element_id=element.element_id,
@@ -123,24 +124,24 @@ class TemplateService:
             file_service.remove(media)
         self.logger.info(f"Шаблон удален: id {template_id}")
 
-    async def get_all_by_course_user(self, user: User, course: CourseService) -> AllContentFromCourse:
+    async def get_all_by_course_user(self, user: User, course: CourseService) -> AllContentFromCourseDto:
         """Получить все шаблоны для пользователя по курсу"""
         templates = await self.repository.get_all_by_course_user(user.course_id, user.sub,
                                                                  UserRole.TEACHER in user.roles)
-        return AllContentFromCourse(
+        return AllContentFromCourseDto(
             course_name=course.name,
+            user=user,
             templates=[
-                MinimalTemplate(
-                    template_id=template.id,
+                MinimalTemplateDto(
+                    id=template.id,
                     name=template.name,
                     is_draft=template.is_draft,
+                    user=user,
                     reports=[
                         MinimalReport(**report.model_dump()) for report in template.reports if not template.is_draft
                     ]
                 ) for template in templates
             ],
-            can_upload=UserRole.TEACHER in user.roles,
-            can_grade=UserRole.TEACHER in user.roles or UserRole.ASSISTANT in user.roles
         )
 
     async def _get(self, user: User, template_id: uuid.UUID) -> Template:
