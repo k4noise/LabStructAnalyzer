@@ -2,14 +2,17 @@ import uuid
 
 from fastapi import APIRouter, UploadFile, Depends
 from fastapi.params import File
-from starlette.responses import JSONResponse
+from fastapi_hypermodel import HALResponse
+from starlette import status
+from starlette.responses import JSONResponse, Response
 
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service, \
     get_user_with_any_role, get_user, get_chain_storage, get_course_service, get_ags_service, \
     get_nrps_service
 
-from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourse, TemplateToModify
+from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourseDto, TemplateToModify, \
+    CreatedTemplateDto
 
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
@@ -26,6 +29,8 @@ router = APIRouter()
 
 @router.post(
     "",
+    response_model=CreatedTemplateDto,
+    response_class=HALResponse,
     summary="Преобразовать шаблон из docx в json",
     description="Принимает файл формата `.docx`, применяет структуру и возвращает JSON-компоненты.",
     tags=["Template"],
@@ -34,7 +39,7 @@ router = APIRouter()
             "description": "Успешное преобразование шаблона",
             "content": {
                 "application/json": {
-                    "example": {"template_id": "c72869cb-8ac0-48b7-936f-370917e82b8e"}
+                    "example": {"id": "c72869cb-8ac0-48b7-936f-370917e82b8e"}
                 }
             }
         },
@@ -88,10 +93,8 @@ async def parse_template(
     parser_service = ParserService()
 
     template_components = await parser_service.get_structured_components(template)
-    template_id = await template_service.create(user, parser_service.get_name(template),
-                                                template_components)
-
-    return JSONResponse({"template_id": str(template_id)})
+    return await template_service.create(user, parser_service.get_name(template),
+                                         template_components)
 
 
 @router.patch(
@@ -100,13 +103,8 @@ async def parse_template(
     description="Обновляет существующие данные, заменяя их новыми пользовательскими данными",
     tags=["Template"],
     responses={
-        200: {
+        204: {
             "description": "Данные шаблона обновлены успешно",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Шаблон обновлен успешно"}
-                }
-            }
         },
         401: {
             "description": "Неавторизованный доступ",
@@ -159,12 +157,13 @@ async def save_modified_template(
         template_service: TemplateService = Depends(get_template_service)
 ):
     await template_service.update(user, template_id, modified_template)
-    return JSONResponse({"detail": "Шаблон обновлен успешно"})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
     "/all",
-    response_model=AllContentFromCourse,
+    response_model=AllContentFromCourseDto,
+    response_class=HALResponse,
     summary="Получить все доступные шаблоны и отчеты",
     description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками, "
                 "для студентов возвращает id и статус отчета",
@@ -205,13 +204,8 @@ async def get_templates(
     description="Для публикации необходим доступ к службе оценок AGS",
     tags=["Template"],
     responses={
-        200: {
+        204: {
             "description": "Данные шаблона обновлены успешно",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Шаблон обновлен успешно"}
-                }
-            }
         },
         401: {
             "description": "Неавторизованный доступ",
@@ -276,12 +270,13 @@ async def publish_template(
         ags_service: AgsService = Depends(get_ags_service)
 ):
     await template_service.publish(user, template_id, ags_service)
-    return JSONResponse({"detail": "Шаблон обновлен успешно"})
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
     "/{template_id}",
     response_model=TemplateWithElementsDto,
+    response_class=HALResponse,
     summary="Получить данные шаблона",
     description="Возвращает свойства шаблона и все дочерние элементы",
     tags=["Template"],
@@ -338,13 +333,8 @@ async def get_template(
     description="Удаляет шаблон и все его дочерние элементы (включая файлы)",
     tags=["Template"],
     responses={
-        200: {
+        204: {
             "description": "Шаблон удален успешно",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Шаблон успешно удален"}
-                }
-            }
         },
         401: {
             "description": "Неавторизованный доступ",

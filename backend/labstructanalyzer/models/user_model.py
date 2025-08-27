@@ -18,6 +18,15 @@ class User(BaseModel):
     launch_id: str
     course_id: str
 
+    def is_teacher(self) -> bool:
+        return UserRole.TEACHER in self.roles
+
+    def is_instructor(self) -> bool:
+        return UserRole.TEACHER in self.roles or UserRole.ASSISTANT in self.roles
+
+    def is_student(self) -> bool:
+        return UserRole.STUDENT in self.roles
+
     @field_validator('roles', mode='before')
     def convert_roles_to_enum(cls, raw_roles: List[str | UserRole]) -> List[UserRole]:
         """Конвертирует строку с ролью в соответствующее значение UserRole"""

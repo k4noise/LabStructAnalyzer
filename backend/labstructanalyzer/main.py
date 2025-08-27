@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_another_jwt_auth.exceptions import AuthJWTException
+from fastapi_hypermodel import HALHyperModel
 from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -40,6 +41,7 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    HALHyperModel.init_app(app)
     yield
     await close_db()
 
