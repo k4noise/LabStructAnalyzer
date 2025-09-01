@@ -56,7 +56,7 @@ def get_chain_storage():
 
 
 def get_message_launch(
-        request: Request = Depends(),
+        request: Request,
         user: User = Depends(get_user)
 ) -> FastAPIMessageLaunch:
     launch_data_storage = FastAPICacheDataStorage(cache)

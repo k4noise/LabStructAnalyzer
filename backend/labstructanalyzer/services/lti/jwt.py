@@ -21,7 +21,7 @@ class JwtClaimService:
         """
         Создает объект пользовательских данных на основе данных из данных запуска LTI
         """
-        roles = UserService(message_launch).roles
+        roles = [role.value for role in UserService(message_launch).roles]
         launch_id = message_launch.get_launch_id()
         course_id = CourseService(message_launch).id
         return self._create_user_claims(roles, launch_id, course_id)
