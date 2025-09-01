@@ -81,7 +81,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         dto = await self.service.get(self.user, self.template_id)
 
         self.repo.get.assert_awaited()
-        self.assertEqual(dto.template_id, self.template_id)
+        self.assertEqual(dto.id, self.template_id)
 
     async def test_get_not_found(self):
         """Попытка получения несуществующего шаблона вызывает TemplateNotFoundException"""
@@ -94,7 +94,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         self.repo.get.return_value = Template(
             id=self.template_id, course_id="c1", user_id="u1", name="Test", is_draft=False
         )
-        mod = TemplateToModify(name="New", max_score=10, elements=[], template_id=self.template_id, is_draft=True)
+        mod = TemplateToModify(name="New", max_score=10, elements=[], id=self.template_id, is_draft=True)
 
         await self.service.update(self.user, self.template_id, mod)
 
@@ -152,7 +152,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
     async def test_update_invalid_course_access(self):
         """Update при другом course_id вызывает InvalidCourseAccessDeniedException"""
         self.repo.get.return_value = Template(id=self.template_id, course_id="x", user_id="u1")
-        mod = TemplateToModify(name="Test", elements=[], template_id=self.template_id, is_draft=True)
+        mod = TemplateToModify(name="Test", elements=[], id=self.template_id, is_draft=True)
         with self.assertRaises(InvalidCourseAccessDeniedException):
             await self.service.update(self.user, self.template_id, mod)
         self.mock_logger_instance.info.assert_not_called()
@@ -189,7 +189,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         )
         # repo.update ничего не обновил
         self.repo.update.return_value = False
-        mod = TemplateToModify(name="New", elements=[], template_id=self.template_id, is_draft=True)
+        mod = TemplateToModify(name="New", elements=[], id=self.template_id, is_draft=True)
 
         with self.assertRaises(TemplateNotFoundException):
             await self.service.update(self.user, self.template_id, mod)
@@ -231,7 +231,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         )
         # repo.update ничего не обновил
         self.repo.update.return_value = False
-        mod = TemplateToModify(name="New", elements=[], template_id=self.template_id, is_draft=True)
+        mod = TemplateToModify(name="New", elements=[], id=self.template_id, is_draft=True)
 
         with self.assertRaises(TemplateNotFoundException):
             await self.service.update(self.user, self.template_id, mod)

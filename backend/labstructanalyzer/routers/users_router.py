@@ -8,6 +8,7 @@ from labstructanalyzer.core.dependencies import get_user
 from labstructanalyzer.models.user_info import UserInfoDto
 from labstructanalyzer.models.user_model import User as UserModel
 from labstructanalyzer.services.lti.nrps import NrpsService
+from labstructanalyzer.services.lti.user import UserService
 
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
@@ -58,7 +59,7 @@ async def get_user_data(request: Request, user: UserModel = Depends(get_user)):
     message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 
-    user_data = NrpsService(message_launch)
+    user_data = UserService(message_launch, NrpsService(message_launch))
     return UserInfoDto(
-        full_name=user_data.get_current_full_name()
+        full_name=user_data.full_name
     )

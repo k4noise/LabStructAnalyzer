@@ -11,8 +11,9 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourseDto, MinimalTemplateDto, \
-    MinimalReport, TemplateElementUpdateAction, TemplateElementUpdateUnit, TemplateToModify, CreatedTemplateDto
-from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto
+    MinimalReport, TemplateElementUpdateUnit, TemplateToModify, CreatedTemplateDto
+from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto, \
+    TemplateElementUpdateAction
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.template_element import TemplateElementService
@@ -65,7 +66,7 @@ class TemplateService:
         TemplateAccessVerifier(template).is_valid_course(user)
 
         return TemplateWithElementsDto(
-            template_id=template_id,
+            id=template_id,
             name=template.name,
             is_draft=template.is_draft,
             max_score=template.max_score,
@@ -138,10 +139,11 @@ class TemplateService:
                     is_draft=template.is_draft,
                     user=user,
                     reports=[
-                        MinimalReport(**report.model_dump()) for report in template.reports if not template.is_draft
+                        MinimalReport(**report.model_dump()) for report in template.reports if
+                        report.author_id == user.sub
                     ]
                 ) for template in templates
-            ],
+            ]
         )
 
     async def _get(self, user: User, template_id: uuid.UUID) -> Template:

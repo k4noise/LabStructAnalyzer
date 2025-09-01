@@ -16,7 +16,7 @@ class TestAgsService(unittest.TestCase):
         self.mock_ags = self.mock_message_launch.get_ags.return_value
 
         self.mock_template = MockTemplate()
-        self.mock_template.template_id = 123
+        self.mock_template.id = 123
         self.mock_template.name = "Test Assignment"
         self.mock_template.max_score = 100.0
 
@@ -80,7 +80,7 @@ class TestAgsService(unittest.TestCase):
         self.mock_ags.find_lineitem_by_resource_id.return_value = mock_existing_lineitem
         self.mock_message_launch.get_service_connector.return_value.get_access_token.return_value = "fake-token"
 
-        self.service.delete_lineitem(self.mock_template.template_id)
+        self.service.delete_lineitem(self.mock_template.id)
 
         mock_requests_session.return_value.delete.assert_called_once_with(
             "http://example.com/lineitem/1",
