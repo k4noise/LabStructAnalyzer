@@ -1,13 +1,14 @@
 import uuid
 from typing import Optional, Sequence
 
-from fastapi_hypermodel import HALHyperModel, HALLinks, FrozenDict, HALFor
+from fastapi_hypermodel import HALLinks, FrozenDict, HALFor
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from labstructanalyzer.models.user_model import User
 from labstructanalyzer.schemas.report import MinimalReport
 from labstructanalyzer.schemas.template_element import TemplateElementDto, TemplateElementUpdateUnit
+from labstructanalyzer.utils.hal_hypermodel import HALHyperModel
 
 
 class TemplateDto(BaseModel):
