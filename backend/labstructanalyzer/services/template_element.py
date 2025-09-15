@@ -1,7 +1,8 @@
 import uuid
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Callable
 
 from labstructanalyzer.domain.template_element import PlainTemplateElement, TemplateElementPropsUpdate
+from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.repository.template_element import TemplateElementRepository
 from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto, \
     BaseTemplateElementDto
@@ -62,6 +63,14 @@ class TemplateElementService:
         """
         elements_with_media = await self.repository.get_elements_with_media(template_id)
         return [element.data for element in elements_with_media]
+
+    @staticmethod
+    def search_root_parent(id_map: dict[uuid, Optional[TemplateElement]]) -> Callable[[uuid.UUID], uuid.UUID]:
+        def find_root(element_id: uuid.UUID) -> uuid.UUID:
+            parent = id_map.get(element_id)
+            return element_id if parent is None else find_root(parent.id)
+
+        return lambda element_id: find_root(element_id)
 
     def _prepare_data_recursive(self, components: Sequence[TemplateElementDto],
                                 parent_id: Optional[uuid.UUID] = None) -> Sequence[PlainTemplateElement]:

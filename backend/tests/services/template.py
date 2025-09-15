@@ -7,10 +7,8 @@ from labstructanalyzer.exceptions.invalid_action import InvalidTransitionExcepti
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.schemas.template import (
-    TemplateElementUpdateUnit,
-    TemplateElementUpdateAction, TemplateToModify
-)
+from labstructanalyzer.schemas.template import TemplateToModify, CreatedTemplateDto, TemplateWithElementsDto
+from labstructanalyzer.schemas.template_element import TemplateElementUpdateUnit, TemplateElementUpdateAction
 from labstructanalyzer.services.template import TemplateService
 
 
@@ -47,8 +45,9 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         self.template_id = uuid.uuid4()
 
     async def test_create_success(self):
-        """Создание шаблона: repo.create вызывает генерацию id, сервис возвращает и логирует его"""
+        """Создание шаблона: repo.create вызывает генерацию id, сервис возвращает DTO и логирует его"""
         fake_template = Template(
+            id=uuid.uuid4(),
             user_id="u1",
             course_id="c1",
             name="Test name",
@@ -62,7 +61,8 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
             [{"element_type": "text", "order": 1, "data": []}]
         )
 
-        self.assertEqual(result, fake_template.id)
+        self.assertIsInstance(result, CreatedTemplateDto)
+        self.assertEqual(result.id, fake_template.id)
 
         self.elem_service.create.assert_awaited_once_with(
             fake_template.id, unittest.mock.ANY
@@ -81,6 +81,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         dto = await self.service.get(self.user, self.template_id)
 
         self.repo.get.assert_awaited()
+        self.assertIsInstance(dto, TemplateWithElementsDto)
         self.assertEqual(dto.id, self.template_id)
 
     async def test_get_not_found(self):
@@ -88,27 +89,41 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         self.repo.get.return_value = None
         with self.assertRaises(TemplateNotFoundException):
             await self.service.get(self.user, self.template_id)
+        self.mock_logger_instance.info.assert_not_called()
 
     async def test_update_success(self):
         """Успешное обновление существующего шаблона и его элементов"""
         self.repo.get.return_value = Template(
             id=self.template_id, course_id="c1", user_id="u1", name="Test", is_draft=False
         )
-        mod = TemplateToModify(name="New", max_score=10, elements=[], id=self.template_id, is_draft=True)
+
+        element_to_delete = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.DELETE,
+                                                      element_id=uuid.uuid4())
+        element_to_create = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.CREATE, element_type="text",
+                                                      element_id=uuid.uuid4())
+        element_to_update = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.UPDATE,
+                                                      element_id=uuid.uuid4(), properties={"a": 1})
+
+        mod = TemplateToModify(
+            name="New",
+            max_score=10,
+            elements=[element_to_delete, element_to_create, element_to_update],
+            id=self.template_id,
+            is_draft=True
+        )
 
         await self.service.update(self.user, self.template_id, mod)
 
         self.repo.update.assert_awaited()
-        self.elem_service.delete.assert_awaited()
-        self.elem_service.create.assert_awaited()
-        self.elem_service.update.assert_awaited()
+        self.elem_service.delete.assert_awaited_with(self.template_id, [element_to_delete])
+        self.elem_service.create.assert_awaited_with(self.template_id, [element_to_create])
+        self.elem_service.update.assert_awaited_with(self.template_id, [element_to_update])
         self.mock_logger_instance.info.assert_called_with(f"Шаблон обновлен: id {self.template_id}")
 
     async def test_publish_success(self):
         """Успешная публикация шаблона"""
         self.repo.get.return_value = Template(id=self.template_id, course_id="c1", user_id="u1", name="Test",
                                               is_draft=True)
-        self.repo.update.return_value = True
 
         await self.service.publish(self.user, self.template_id, self.ags)
 
@@ -171,102 +186,8 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
             await self.service.delete(self.user, self.template_id, self.files, self.ags)
         self.mock_logger_instance.info.assert_not_called()
 
-    async def test_publish_update_failed(self):
-        """Если repo.update возвращает False — lineitem не создаётся"""
-        self.repo.get.return_value = Template(id=self.template_id, course_id="c1", user_id="u1", is_draft=True)
-        self.repo.update.return_value = False
-
-        await self.service.publish(self.user, self.template_id, self.ags)
-
-        self.ags.find_or_create_lineitem.assert_not_called()
-
-        async def test_update_not_found(self):
-            """Если repo.update вернул False — выбрасывается TemplateNotFoundException"""
-
-        # мок возврата шаблона, чтобы пройти get()
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", name="Old", is_draft=False
-        )
-        # repo.update ничего не обновил
-        self.repo.update.return_value = False
-        mod = TemplateToModify(name="New", elements=[], id=self.template_id, is_draft=True)
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.update(self.user, self.template_id, mod)
-
-        self.mock_logger_instance.info.assert_not_called()
-
-    async def test_publish_not_found(self):
-        """Если repo.update вернул False при publish — выбрасывается TemplateNotFoundException"""
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", is_draft=True
-        )
-        self.repo.update.return_value = False
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.publish(self.user, self.template_id, self.ags)
-
-        self.mock_logger_instance.info.assert_not_called()
-        self.ags.find_or_create_lineitem.assert_not_called()
-
-    async def test_delete_not_found(self):
-        """Если repo.delete вернул False — выбрасывается TemplateNotFoundException"""
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", name="ToDelete"
-        )
-        # repo.delete ничего не удалил
-        self.repo.delete.return_value = False
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.delete(self.user, self.template_id, self.files, self.ags)
-
-        self.mock_logger_instance.info.assert_not_called()
-        self.ags.delete_lineitem.assert_not_called()
-
-    async def test_update_not_found(self):
-        """Если repo.update вернул False — выбрасывается TemplateNotFoundException"""
-        # мок возврата шаблона, чтобы пройти get()
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", name="Old", is_draft=False
-        )
-        # repo.update ничего не обновил
-        self.repo.update.return_value = False
-        mod = TemplateToModify(name="New", elements=[], id=self.template_id, is_draft=True)
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.update(self.user, self.template_id, mod)
-
-        self.mock_logger_instance.info.assert_not_called()
-
-    async def test_publish_not_found(self):
-        """Если repo.update вернул False при publish — выбрасывается TemplateNotFoundException"""
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", is_draft=True
-        )
-        self.repo.update.return_value = False
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.publish(self.user, self.template_id, self.ags)
-
-        self.mock_logger_instance.info.assert_not_called()
-        self.ags.find_or_create_lineitem.assert_not_called()
-
-    async def test_delete_not_found(self):
-        """Если repo.delete вернул False — выбрасывается TemplateNotFoundException"""
-        self.repo.get.return_value = Template(
-            id=self.template_id, course_id="c1", user_id="u1", name="ToDelete"
-        )
-        # repo.delete ничего не удалил
-        self.repo.delete.return_value = False
-
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.delete(self.user, self.template_id, self.files, self.ags)
-
-        self.mock_logger_instance.info.assert_not_called()
-        self.ags.delete_lineitem.assert_not_called()
-
     async def test_get_all_by_course_user_student_role(self):
-        """Студент не может upload/grade"""
+        """Проверяем, что для студента в DTO передается пользователь без ролей"""
         student = User(sub="s1", course_id="c1", roles=[], launch_id="x")
         t1 = Template(id=self.template_id, user_id="u1", course_id="c1", name="T", is_draft=False)
         t1.reports = []
@@ -274,11 +195,12 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         self.course.name = "Course"
 
         result = await self.service.get_all_by_course_user(student, self.course)
-        self.assertFalse(result.can_upload)
-        self.assertFalse(result.can_grade)
+
+        self.assertEqual(result.user.sub, "s1")
+        self.assertEqual(result.user.roles, [])
 
     async def test_get_all_by_course_user_assistant_role(self):
-        """Ассистент может grade, но не upload"""
+        """Проверяем, что для ассистента в DTO передается пользователь с ролью ASSISTANT"""
         assistant = User(sub="a1", course_id="c1", roles=[UserRole.ASSISTANT], launch_id="x")
         t1 = Template(id=self.template_id, user_id="u1", course_id="c1", name="T", is_draft=False)
         t1.reports = []
@@ -286,25 +208,12 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         self.course.name = "Course"
 
         result = await self.service.get_all_by_course_user(assistant, self.course)
-        self.assertFalse(result.can_upload)
-        self.assertTrue(result.can_grade)
 
-    async def test_modify_elements_buckets(self):
-        """_modify_elements вызывает delete/create/update в зависимости от action"""
-        modifiers = [
-            TemplateElementUpdateUnit(action=TemplateElementUpdateAction.DELETE, element_id=uuid.uuid4()),
-            TemplateElementUpdateUnit(action=TemplateElementUpdateAction.CREATE, element_id=uuid.uuid4(),
-                                      element_type="text", properties={"lol": 123}),
-            TemplateElementUpdateUnit(action=TemplateElementUpdateAction.UPDATE, element_id=uuid.uuid4(),
-                                      properties={}),
-        ]
-        await self.service._modify_elements(self.template_id, modifiers)
-        self.elem_service.delete.assert_awaited_once()
-        self.elem_service.create.assert_awaited_once()
-        self.elem_service.update.assert_awaited_once()
+        self.assertEqual(result.user.sub, "a1")
+        self.assertIn(UserRole.ASSISTANT, result.user.roles)
 
     async def test_modify_elements_empty(self):
-        """_modify_elements с пустым списком не вызывает сервисы"""
+        """_modify_elements с пустым списком вызывает сервисы с пустыми списками"""
         await self.service._modify_elements(self.template_id, [])
         self.elem_service.delete.assert_awaited_once_with(self.template_id, [])
         self.elem_service.create.assert_awaited_once_with(self.template_id, [])
@@ -322,13 +231,6 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         result = self.service._map_parser_items(items)
         self.assertEqual(result[0].element_type, "group")
         self.assertEqual(result[0].data[0].element_type, "text")
-
-    async def test_get_not_found_no_logger(self):
-        """При TemplateNotFoundException logger успеха не вызывается"""
-        self.repo.get.return_value = None
-        with self.assertRaises(TemplateNotFoundException):
-            await self.service.get(self.user, self.template_id)
-        self.mock_logger_instance.info.assert_not_called()
 
 
 if __name__ == '__main__':

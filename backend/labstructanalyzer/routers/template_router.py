@@ -457,7 +457,7 @@ async def create_report(
     """
     Создать отчет на основе данных из шаблона, если это возможно
     """
-    last_report = await report_service.get_last_by_author(user, template_id)
+    last_report = await report_service.get_last_id_by_author(user, template_id)
     if last_report.status != ReportStatus.GRADED:
         return JSONResponse({"id": str(last_report.report_id)})
 
@@ -485,10 +485,6 @@ async def create_report(
                     "content": {
                         "application/json": {
                             "example": {
-                                "wrong_role": {
-                                    "description": "Доступ запрещен. Требуется роль преподавателя",
-                                    "value": {"detail": "Не найдено"}
-                                },
                                 "wrong_course": {
                                     "description": "Доступ запрещен. Шаблон другого курса",
                                     "value": {"detail": "Не найдено"}
@@ -522,7 +518,7 @@ async def create_report(
             )
 async def get_reports_by_template(
         template_id: uuid.UUID,
-        user: User = Depends(get_user_with_any_role(UserRole.TEACHER, UserRole.ASSISTANT)),
+        user: User = Depends(get_user),
         report_service: ReportService = Depends(get_report_service),
         template_service: TemplateService = Depends(get_template_service),
         nrps_service: NrpsService = Depends(get_nrps_service)
@@ -532,4 +528,4 @@ async def get_reports_by_template(
     доступных для отображения согласно статусу (отправлен на (повторную) проверку / проверен)
     """
     template = await template_service.get(user, template_id)
-    return await report_service.get_all_by_template(template, nrps_service)
+    return await report_service.get_all_by_template(template, user, nrps_service)

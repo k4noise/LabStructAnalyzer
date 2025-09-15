@@ -15,6 +15,14 @@ class TemplateElement(SQLModel, table=True):
     properties: dict = Field(sa_column=Column(JSON))
     parent_element_id: Optional[uuid.UUID] = None
 
+    @property
+    def id(self):
+        return self.element_id
+
+    @property
+    def type(self):
+        return self.element_type
+
     __table_args__ = (
         Index("template_element_templates_id_order_idx", "template_id", "order"),
     )

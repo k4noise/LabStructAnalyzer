@@ -12,12 +12,12 @@ from labstructanalyzer.utils.hal_hypermodel import HALHyperModel
 
 
 class TemplateDto(BaseModel):
-    """Краткое DTO шаблона без элементов"""
+    """Краткое DTO шаблона с элементами"""
     id: uuid.UUID
     name: str
-    is_draft: bool
     max_score: int
     elements: Sequence[TemplateElementDto]
+    is_draft: Optional[bool] = None
 
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel,
                               from_attributes=True)
@@ -53,6 +53,11 @@ class TemplateWithElementsDto(TemplateDto, HALHyperModel):
             "remove_template",
             {"template_id": "<id>"},
             condition=lambda values: values["user"] and values["user"].is_teacher()
+        ),
+        "create_report": HALFor(
+            "create_report",
+            {"template_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student(),
         ),
         "all": HALFor("get_templates"),
     })
