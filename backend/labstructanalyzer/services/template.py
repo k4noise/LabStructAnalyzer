@@ -3,7 +3,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from labstructanalyzer.core.logger import GlobalLogger
-from labstructanalyzer.domain.template import CreateTemplate, UpdateTemplate
+from labstructanalyzer.domain.template import UpdateTemplate
 from labstructanalyzer.exceptions.access_denied import InvalidCourseAccessDeniedException
 from labstructanalyzer.exceptions.invalid_action import InvalidTransitionException
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
@@ -53,8 +53,12 @@ class TemplateService:
         Returns:
             Идентификатор шаблона
         """
-        base_template_params = CreateTemplate(user_id=user.sub, course_id=user.course_id, name=name)
-        template = await self.repository.create(base_template_params)
+        template = Template(
+            user_id=user.sub,
+            course_id=user.course_id,
+            name=name,
+        )
+        template = await self.repository.create(template)
         await self.elements_service.create(template.id, self._map_parser_items(template_components))
 
         self.logger.info(f"Сохранен черновик шаблона: id {template.id}")
@@ -86,13 +90,11 @@ class TemplateService:
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
 
-        update_template = UpdateTemplate(
-            id=template_id,
-            name=modifiers.name,
-            max_score=modifiers.max_score
-        )
+        template.name = modifiers.name if modifiers.name else template.name
+        template.max_score = modifiers.max_score if modifiers.max_score else template.max_score
+
         await self._modify_elements(template_id, modifiers.elements)
-        await self.repository.update(user.course_id, update_template)
+        await self.repository.update(template)
         self.logger.info(f"Шаблон обновлен: id {template_id}")
 
     async def publish(self, user: User, template_id: uuid.UUID, ags_service: AgsService):
@@ -100,14 +102,8 @@ class TemplateService:
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user).can_publish()
 
-        update_template = UpdateTemplate(
-            id=template_id,
-            is_draft=False
-        )
-        result = await self.repository.update(user.course_id, update_template)
-
-        if not result:
-            return
+        template.is_draft = False
+        await self.repository.update(template)
 
         ags_service.find_or_create_lineitem(template)  # TODO background
         self.logger.info(f"Шаблон опубликован: id {template_id}")

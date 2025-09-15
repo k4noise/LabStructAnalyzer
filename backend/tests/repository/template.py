@@ -2,7 +2,6 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, AsyncMock
 
-from labstructanalyzer.domain.template import CreateTemplate, UpdateTemplate
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.models.template import Template
 
@@ -12,8 +11,9 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
         """Настройка мок-сессии и репозитория"""
         self.session = MagicMock()
         self.session.exec = AsyncMock()
-        self.session.execute = AsyncMock()
+        self.session.flush = AsyncMock()
         self.session.add = MagicMock()
+        self.session.delete = AsyncMock()
 
         self.repo = TemplateRepository(self.session)
         self.course_id = "course123"
@@ -21,14 +21,17 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
         self.template_id = uuid.uuid4()
 
     async def test_create_template(self):
-        """Создание черновика шаблона добавляет его в сессию и возвращает"""
-        data = CreateTemplate(user_id=self.user_id, course_id=self.course_id, name="Test Name")
-        result = await self.repo.create(data)
+        """Создание черновика шаблона добавляет его в сессию и выполняет flush"""
+        template = Template(
+            user_id=self.user_id,
+            course_id=self.course_id,
+            name="Test Name"
+        )
 
-        self.session.add.assert_called_once_with(result)
-        self.assertEqual(result.user_id, self.user_id)
-        self.assertEqual(result.course_id, self.course_id)
-        self.assertEqual(result.name, "Test Name")
+        await self.repo.create(template)
+
+        self.session.add.assert_called_once_with(template)
+        self.session.flush.assert_awaited_once()
 
     async def test_get_template_success(self):
         """Успешное получение шаблона"""
@@ -39,7 +42,7 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
 
         result = await self.repo.get(self.course_id, self.template_id)
 
-        self.session.exec.assert_called_once()
+        self.session.exec.assert_awaited_once()
         mock_result.first.assert_called_once()
         self.assertEqual(result, mock_template)
 
@@ -53,52 +56,25 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(result)
 
-    async def test_update_template_success(self):
-        """Успешное обновление шаблона возвращает True"""
-        self.session.execute.return_value.rowcount = 1
-        update_data = UpdateTemplate(id=self.template_id, name="Updated Name")
+    async def test_update_template(self):
+        """Обновление шаблона добавляет его в сессию"""
+        template = Template(
+            template_id=self.template_id,
+            course_id=self.course_id,
+            name="Updated Name"
+        )
 
-        result = await self.repo.update(self.course_id, update_data)
+        await self.repo.update(template)
 
-        self.session.execute.assert_called_once()
-        self.assertTrue(result)
+        self.session.add.assert_called_once_with(template)
 
-    async def test_update_template_no_values(self):
-        """Если UpdateTemplate пустой — возврат False и update не вызывается"""
-        update_data = UpdateTemplate(id=self.template_id)
+    async def test_delete_template(self):
+        """Удаление шаблона"""
+        template = Template(template_id=self.template_id, course_id=self.course_id)
 
-        result = await self.repo.update(self.course_id, update_data)
+        await self.repo.delete(template)
 
-        self.assertFalse(result)
-        self.session.execute.assert_not_called()
-
-    async def test_update_template_not_found(self):
-        """Если строк не изменилось — возврат False"""
-        self.session.execute.return_value.rowcount = 0
-        update_data = UpdateTemplate(id=self.template_id, name="Not Found")
-
-        result = await self.repo.update(self.course_id, update_data)
-
-        self.session.execute.assert_called_once()
-        self.assertFalse(result)
-
-    async def test_delete_template_success(self):
-        """Удаление существующего шаблона возвращает True"""
-        self.session.execute.return_value.rowcount = 1
-
-        result = await self.repo.delete(self.course_id, self.template_id)
-
-        self.session.execute.assert_called_once()
-        self.assertTrue(result)
-
-    async def test_delete_template_not_found(self):
-        """Если шаблон не найден при удалении — возврат False"""
-        self.session.execute.return_value.rowcount = 0
-
-        result = await self.repo.delete(self.course_id, self.template_id)
-
-        self.session.execute.assert_called_once()
-        self.assertFalse(result)
+        self.session.delete.assert_awaited_once_with(template)
 
     async def test_get_all_templates_including_drafts(self):
         """Возвращает все шаблоны пользователя (вместе с черновиками)"""
@@ -109,12 +85,12 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
 
         result = await self.repo.get_all_by_course_user(self.course_id, self.user_id, include_drafts=True)
 
-        self.session.exec.assert_called_once()
+        self.session.exec.assert_awaited_once()
         mock_result.all.assert_called_once()
         self.assertEqual(result, mock_templates)
 
     async def test_get_all_templates_without_drafts(self):
-        """Возвращает только опубликованные шаблоны"""
+        """Возвращает только опубликованные шаблоны с отчетами пользователя"""
         mock_templates = [MagicMock(spec=Template)]
         mock_result = MagicMock()
         mock_result.all.return_value = mock_templates
@@ -122,10 +98,6 @@ class TestTemplateRepository(unittest.IsolatedAsyncioTestCase):
 
         result = await self.repo.get_all_by_course_user(self.course_id, self.user_id, include_drafts=False)
 
-        self.session.exec.assert_called_once()
+        self.session.exec.assert_awaited_once()
         mock_result.all.assert_called_once()
         self.assertEqual(result, mock_templates)
-
-
-if __name__ == '__main__':
-    unittest.main()
