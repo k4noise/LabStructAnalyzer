@@ -11,8 +11,8 @@ from labstructanalyzer.schemas.template_element import TemplateElementDto, Templ
 from labstructanalyzer.utils.hal_hypermodel import HALHyperModel
 
 
-class TemplateDto(BaseModel):
-    """Краткое DTO шаблона с элементами"""
+class TemplateStructure(BaseModel):
+    """Модель структуры шаблона"""
     id: uuid.UUID
     name: str
     max_score: int
@@ -23,7 +23,17 @@ class TemplateDto(BaseModel):
                               from_attributes=True)
 
 
-class CreatedTemplateDto(HALHyperModel):
+class TemplateUpdateRequest(TemplateStructure):
+    """Данные для обновления шаблона"""
+    name: Optional[str] = None
+    max_score: Optional[int] = None
+    elements: Optional[Sequence[TemplateElementUpdateUnit]]
+
+    model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
+
+
+class TemplateCreationResponse(HALHyperModel):
+    """id созданного шаблона"""
     id: uuid.UUID
 
     links: HALLinks = FrozenDict({
@@ -32,8 +42,8 @@ class CreatedTemplateDto(HALHyperModel):
     })
 
 
-class TemplateWithElementsDto(TemplateDto, HALHyperModel):
-    """DTO шаблона вместе с элементами"""
+class TemplateDetailResponse(TemplateStructure, HALHyperModel):
+    """Полные данные шаблона"""
     # Поле используется только для условной генерации ссылок HAL
     user: User = Field(exclude=True)
 
@@ -54,17 +64,12 @@ class TemplateWithElementsDto(TemplateDto, HALHyperModel):
             {"template_id": "<id>"},
             condition=lambda values: values["user"] and values["user"].is_teacher()
         ),
-        "create_report": HALFor(
-            "create_report",
-            {"template_id": "<id>"},
-            condition=lambda values: values["user"] and values["user"].is_student(),
-        ),
         "all": HALFor("get_templates"),
     })
 
 
-class MinimalTemplateDto(HALHyperModel):
-    """Шаблон в составе курса (с отчётами)"""
+class TemplateCourseSummary(HALHyperModel):
+    """Сводная информация о шаблоне в контексте курса с отчетами"""
     id: uuid.UUID
     name: str
     is_draft: bool
@@ -95,10 +100,10 @@ class MinimalTemplateDto(HALHyperModel):
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
 
 
-class AllContentFromCourseDto(HALHyperModel):
+class TemplateCourseCollection(HALHyperModel):
     """Все шаблоны по курсу с отчетами"""
     course_name: str
-    templates: Sequence[MinimalTemplateDto] = Field(default_factory=list)
+    templates: Sequence[TemplateCourseSummary] = Field(default_factory=list)
 
     # Поле используется только для условной генерации ссылок HAL
     user: User = Field(exclude=True)
@@ -110,13 +115,5 @@ class AllContentFromCourseDto(HALHyperModel):
             condition=lambda values: values["user"] and values["user"].is_teacher()
         )
     })
-
-    model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
-
-
-class TemplateToModify(TemplateDto):
-    name: Optional[str] = None
-    max_score: Optional[int] = None
-    elements: Optional[Sequence[TemplateElementUpdateUnit]]
 
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)

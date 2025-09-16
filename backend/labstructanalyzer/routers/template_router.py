@@ -11,8 +11,8 @@ from labstructanalyzer.core.dependencies import get_template_service, get_report
     get_user_with_any_role, get_user, get_chain_storage, get_course_service, get_ags_service, \
     get_nrps_service
 
-from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourseDto, TemplateToModify, \
-    CreatedTemplateDto
+from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateUpdateRequest, \
+    TemplateCreationResponse
 
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
@@ -29,7 +29,7 @@ router = APIRouter()
 
 @router.post(
     "",
-    response_model=CreatedTemplateDto,
+    response_model=TemplateCreationResponse,
     response_class=HALResponse,
     summary="Преобразовать шаблон из docx в json",
     description="Принимает файл формата `.docx`, применяет структуру и возвращает JSON-компоненты.",
@@ -152,7 +152,7 @@ async def parse_template(
 )
 async def save_modified_template(
         template_id: uuid.UUID,
-        modified_template: TemplateToModify,
+        modified_template: TemplateUpdateRequest,
         user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
@@ -162,7 +162,7 @@ async def save_modified_template(
 
 @router.get(
     "/all",
-    response_model=AllContentFromCourseDto,
+    response_model=TemplateCourseCollection,
     response_class=HALResponse,
     summary="Получить все доступные шаблоны и отчеты",
     description="Возвращает все сохраненные для курса пользователя шаблоны, которые не являются черновиками, "
@@ -275,7 +275,7 @@ async def publish_template(
 
 @router.get(
     "/{template_id}",
-    response_model=TemplateWithElementsDto,
+    response_model=TemplateDetailResponse,
     response_class=HALResponse,
     summary="Получить данные шаблона",
     description="Возвращает свойства шаблона и все дочерние элементы",

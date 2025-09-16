@@ -3,15 +3,14 @@ from collections import defaultdict
 from collections.abc import Sequence
 
 from labstructanalyzer.core.logger import GlobalLogger
-from labstructanalyzer.domain.template import UpdateTemplate
 from labstructanalyzer.exceptions.access_denied import InvalidCourseAccessDeniedException
 from labstructanalyzer.exceptions.invalid_action import InvalidTransitionException
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
-from labstructanalyzer.schemas.template import TemplateWithElementsDto, AllContentFromCourseDto, MinimalTemplateDto, \
-    MinimalReport, TemplateElementUpdateUnit, TemplateToModify, CreatedTemplateDto
+from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateCourseSummary, \
+    MinimalReport, TemplateElementUpdateUnit, TemplateUpdateRequest, TemplateCreationResponse
 from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto, \
     TemplateElementUpdateAction
 from labstructanalyzer.services.lti.ags import AgsService
@@ -41,7 +40,7 @@ class TemplateService:
         self.elements_service = elements_service
         self.logger = GlobalLogger().get_logger(__name__)
 
-    async def create(self, user: User, name: str, template_components: list[dict]) -> CreatedTemplateDto:
+    async def create(self, user: User, name: str, template_components: list[dict]) -> TemplateCreationResponse:
         """
         Создает шаблон и его элементы
 
@@ -62,14 +61,14 @@ class TemplateService:
         await self.elements_service.create(template.id, self._map_parser_items(template_components))
 
         self.logger.info(f"Сохранен черновик шаблона: id {template.id}")
-        return CreatedTemplateDto(id=template.id)
+        return TemplateCreationResponse(id=template.id)
 
-    async def get(self, user: User, template_id: uuid.UUID) -> TemplateWithElementsDto:
+    async def get(self, user: User, template_id: uuid.UUID) -> TemplateDetailResponse:
         """Получить шаблон с элементами по идентификатору"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
 
-        return TemplateWithElementsDto(
+        return TemplateDetailResponse(
             id=template_id,
             name=template.name,
             is_draft=template.is_draft,
@@ -85,7 +84,7 @@ class TemplateService:
             ]
         )
 
-    async def update(self, user: User, template_id: uuid.UUID, modifiers: TemplateToModify):
+    async def update(self, user: User, template_id: uuid.UUID, modifiers: TemplateUpdateRequest):
         """Обновить шаблон и/или его элементы"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
@@ -121,15 +120,15 @@ class TemplateService:
             file_service.remove(media)
         self.logger.info(f"Шаблон удален: id {template_id}")
 
-    async def get_all_by_course_user(self, user: User, course: CourseService) -> AllContentFromCourseDto:
+    async def get_all_by_course_user(self, user: User, course: CourseService) -> TemplateCourseCollection:
         """Получить все шаблоны для пользователя по курсу"""
         templates = await self.repository.get_all_by_course_user(user.course_id, user.sub,
                                                                  UserRole.TEACHER in user.roles)
-        return AllContentFromCourseDto(
+        return TemplateCourseCollection(
             course_name=course.name,
             user=user,
             templates=[
-                MinimalTemplateDto(
+                TemplateCourseSummary(
                     id=template.id,
                     name=template.name,
                     is_draft=template.is_draft,
