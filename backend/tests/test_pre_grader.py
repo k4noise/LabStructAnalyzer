@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from dataclasses import dataclass, asdict
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.schemas.answer import FullAnswerData
+from labstructanalyzer.schemas.answer import AnswerDto
 
 
 @dataclass
@@ -33,11 +33,11 @@ class TestPreGraderService(unittest.TestCase):
         from labstructanalyzer.services.pre_grader import PreGraderService
         self.PreGraderService = PreGraderService
 
-        self.mock_user_origin = Mock(spec=Answer)
-        self.mock_user_origin.data = {"text": "test answer"}
+        self.mock_data = Mock(spec=Answer)
+        self.mock_data.data = {"text": "test answer"}
 
-        self.mock_full_answer = Mock(spec=FullAnswerData)
-        self.mock_full_answer.user_origin = self.mock_user_origin
+        self.mock_full_answer = Mock(spec=AnswerDto)
+        self.mock_full_answer.data = self.mock_data
         self.mock_full_answer.reference = "reference answer"
         self.mock_full_answer.custom_id = "test_id"
 
@@ -80,11 +80,11 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_fixed_grader.grade.assert_called_once_with(
             "test answer", "reference answer"
         )
-        self.assertEqual(self.mock_user_origin.pre_grade, {
+        self.assertEqual(self.mock_data.pre_grade, {
             "score": 1.0,
             "feedback": "Perfect"
         })
-        self.assertEqual(result, [self.mock_user_origin])
+        self.assertEqual(result, [self.mock_data])
 
     def test_grade_skips_unprocessable_answers(self):
         """Проверка: пропускаются ответы, которые ни один грейдер не может обработать"""
@@ -102,7 +102,7 @@ class TestPreGraderService(unittest.TestCase):
 
     def test_grade_skips_empty_text(self):
         """Проверка: пропуск ответов с пустым текстом"""
-        self.mock_user_origin.data = {"text": ""}
+        self.mock_data.data = {"text": ""}
 
         service = self.PreGraderService([self.mock_full_answer])
         result = service.grade()
@@ -122,19 +122,19 @@ class TestPreGraderService(unittest.TestCase):
 
     def test_grade_multiple_answers(self):
         """Проверяем обработку нескольких ответов разными грейдерами"""
-        user_origin1 = Mock(spec=Answer)
-        user_origin1.data = {"text": "answer1"}
+        data1 = Mock(spec=Answer)
+        data1.data = {"text": "answer1"}
 
-        full_answer1 = Mock(spec=FullAnswerData)
-        full_answer1.user_origin = user_origin1
+        full_answer1 = Mock(spec=AnswerDto)
+        full_answer1.data = data1
         full_answer1.reference = "ref1"
         full_answer1.custom_id = "id1"
 
-        user_origin2 = Mock(spec=Answer)
-        user_origin2.data = {"text": "answer2"}
+        data2 = Mock(spec=Answer)
+        data2.data = {"text": "answer2"}
 
-        full_answer2 = Mock(spec=FullAnswerData)
-        full_answer2.user_origin = user_origin2
+        full_answer2 = Mock(spec=AnswerDto)
+        full_answer2.data = data2
         full_answer2.reference = "ref2"
         full_answer2.custom_id = "id2"
 
@@ -156,12 +156,12 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_thesis_grader.grade.assert_called_once_with("answer1", "ref1")
         self.mock_fixed_grader.grade.assert_called_once_with("answer2", "ref2")
 
-        self.assertEqual(user_origin1.pre_grade, asdict(grade_result1))
-        self.assertEqual(user_origin2.pre_grade, asdict(grade_result2))
+        self.assertEqual(data1.pre_grade, asdict(grade_result1))
+        self.assertEqual(data2.pre_grade, asdict(grade_result2))
 
     def test_grade_with_none_data(self):
         """Проверка: пропуск ответов с None в data"""
-        self.mock_user_origin.data = None
+        self.mock_data.data = None
 
         service = self.PreGraderService([self.mock_full_answer])
         result = service.grade()

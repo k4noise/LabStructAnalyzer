@@ -7,7 +7,8 @@ from labstructanalyzer.exceptions.invalid_action import InvalidTransitionExcepti
 from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.schemas.template import TemplateToModify, CreatedTemplateDto, TemplateWithElementsDto
+from labstructanalyzer.schemas.template import TemplateUpdateRequest, TemplateCreationResponse, \
+    TemplateDetailResponse
 from labstructanalyzer.schemas.template_element import TemplateElementUpdateUnit, TemplateElementUpdateAction
 from labstructanalyzer.services.template import TemplateService
 
@@ -61,7 +62,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
             [{"element_type": "text", "order": 1, "data": []}]
         )
 
-        self.assertIsInstance(result, CreatedTemplateDto)
+        self.assertIsInstance(result, TemplateCreationResponse)
         self.assertEqual(result.id, fake_template.id)
 
         self.elem_service.create.assert_awaited_once_with(
@@ -81,7 +82,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         dto = await self.service.get(self.user, self.template_id)
 
         self.repo.get.assert_awaited()
-        self.assertIsInstance(dto, TemplateWithElementsDto)
+        self.assertIsInstance(dto, TemplateDetailResponse)
         self.assertEqual(dto.id, self.template_id)
 
     async def test_get_not_found(self):
@@ -104,7 +105,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
         element_to_update = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.UPDATE,
                                                       element_id=uuid.uuid4(), properties={"a": 1})
 
-        mod = TemplateToModify(
+        mod = TemplateUpdateRequest(
             name="New",
             max_score=10,
             elements=[element_to_delete, element_to_create, element_to_update],
@@ -167,7 +168,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
     async def test_update_invalid_course_access(self):
         """Update при другом course_id вызывает InvalidCourseAccessDeniedException"""
         self.repo.get.return_value = Template(id=self.template_id, course_id="x", user_id="u1")
-        mod = TemplateToModify(name="Test", elements=[], id=self.template_id, is_draft=True)
+        mod = TemplateUpdateRequest(name="Test", elements=[], id=self.template_id, is_draft=True)
         with self.assertRaises(InvalidCourseAccessDeniedException):
             await self.service.update(self.user, self.template_id, mod)
         self.mock_logger_instance.info.assert_not_called()
