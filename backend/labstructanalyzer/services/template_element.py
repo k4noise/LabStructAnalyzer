@@ -4,15 +4,15 @@ from typing import Sequence, Optional, Callable
 from labstructanalyzer.domain.template_element import PlainTemplateElement, TemplateElementPropsUpdate
 from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.repository.template_element import TemplateElementRepository
-from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto, \
-    BaseTemplateElementDto
+from labstructanalyzer.schemas.template_element import TemplateElementResponse, CreateTemplateElementRequest, \
+    TemplateElementProperties
 
 
 class TemplateElementService:
     def __init__(self, repository: TemplateElementRepository):
         self.repository = repository
 
-    async def create(self, template_id: uuid.UUID, components: Sequence[CreateTemplateElementDto]):
+    async def create(self, template_id: uuid.UUID, components: Sequence[CreateTemplateElementRequest]):
         """
         Сохраняет элементы шаблона, корректно обрабатывая вложенную структуру компонентов
 
@@ -29,7 +29,7 @@ class TemplateElementService:
         prepared_data = self._prepare_data_recursive(components)
         await self.repository.bulk_create(template_id, prepared_data)
 
-    async def update(self, template_id: uuid.UUID, update_pairs: Sequence[BaseTemplateElementDto]):
+    async def update(self, template_id: uuid.UUID, update_pairs: Sequence[TemplateElementProperties]):
         """
         Обновляет свойства элементов шаблона
 
@@ -72,7 +72,7 @@ class TemplateElementService:
 
         return lambda element_id: find_root(element_id)
 
-    def _prepare_data_recursive(self, components: Sequence[TemplateElementDto],
+    def _prepare_data_recursive(self, components: Sequence[TemplateElementResponse],
                                 parent_id: Optional[uuid.UUID] = None) -> Sequence[PlainTemplateElement]:
         """
         Рекурсивно преобразует иерархию компонентов в плоский список элементов шаблона

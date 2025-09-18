@@ -10,8 +10,8 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateCourseSummary, \
-    MinimalReport, TemplateElementUpdateUnit, TemplateUpdateRequest, TemplateCreationResponse
-from labstructanalyzer.schemas.template_element import TemplateElementDto, CreateTemplateElementDto, \
+    TemplateElementUpdateRequest, TemplateUpdateRequest, TemplateCreationResponse
+from labstructanalyzer.schemas.template_element import CreateTemplateElementRequest, \
     TemplateElementUpdateAction
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
@@ -67,22 +67,7 @@ class TemplateService:
         """Получить шаблон с элементами по идентификатору"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
-
-        return TemplateDetailResponse(
-            id=template_id,
-            name=template.name,
-            is_draft=template.is_draft,
-            max_score=template.max_score,
-            user=user,
-            elements=[
-                TemplateElementDto(
-                    element_id=element.element_id,
-                    element_type=element.element_type,
-                    parent_id=element.parent_element_id,
-                    properties=element.properties
-                ) for element in template.elements
-            ]
-        )
+        return TemplateDetailResponse.from_domain(template, user)
 
     async def update(self, user: User, template_id: uuid.UUID, modifiers: TemplateUpdateRequest):
         """Обновить шаблон и/или его элементы"""
@@ -124,22 +109,7 @@ class TemplateService:
         """Получить все шаблоны для пользователя по курсу"""
         templates = await self.repository.get_all_by_course_user(user.course_id, user.sub,
                                                                  UserRole.TEACHER in user.roles)
-        return TemplateCourseCollection(
-            course_name=course.name,
-            user=user,
-            templates=[
-                TemplateCourseSummary(
-                    id=template.id,
-                    name=template.name,
-                    is_draft=template.is_draft,
-                    user=user,
-                    reports=[
-                        MinimalReport(**report.model_dump()) for report in template.reports if
-                        report.author_id == user.sub
-                    ]
-                ) for template in templates
-            ]
-        )
+        return TemplateCourseCollection.from_domain(templates, user, course.name)
 
     async def _get(self, user: User, template_id: uuid.UUID) -> Template:
         template = await self.repository.get(user.sub, template_id)
@@ -147,7 +117,7 @@ class TemplateService:
             raise TemplateNotFoundException(template_id)
         return template
 
-    async def _modify_elements(self, template_id: uuid.UUID, modifiers: Sequence[TemplateElementUpdateUnit]):
+    async def _modify_elements(self, template_id: uuid.UUID, modifiers: Sequence[TemplateElementUpdateRequest]):
         """Модифицирует элементы шаблона"""
         buckets = defaultdict(list)
         for modifier in modifiers:
@@ -157,14 +127,14 @@ class TemplateService:
         await self.elements_service.create(template_id, buckets[TemplateElementUpdateAction.CREATE])
         await self.elements_service.update(template_id, buckets[TemplateElementUpdateAction.UPDATE])
 
-    def _map_parser_items(self, items: Sequence[dict]) -> Sequence[CreateTemplateElementDto]:
+    def _map_parser_items(self, items: Sequence[dict]) -> Sequence[CreateTemplateElementRequest]:
         """
         !!!ВРЕМЕННЫЙ, ПОДЛЕЖИТ УДАЛЕНИЮ!!!
         Маппит сырые данные из парсера в минимально необходимое представление
         """
         mapped_items = []
         for item in items:
-            mapped_item = CreateTemplateElementDto.model_construct(**item)
+            mapped_item = CreateTemplateElementRequest.model_construct(**item)
             if isinstance(mapped_item.data, list):
                 mapped_item.data = self._map_parser_items(mapped_item.data)
             mapped_items.append(mapped_item)
