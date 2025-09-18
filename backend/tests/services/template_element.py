@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, AsyncMock
 
 from labstructanalyzer.domain.template_element import PlainTemplateElement, TemplateElementPropsUpdate
 from labstructanalyzer.repository.template_element import TemplateElementRepository
-from labstructanalyzer.schemas.template_element import TemplateElementDto, BaseTemplateElementDto, \
-    CreateTemplateElementDto
+from labstructanalyzer.schemas.template_element import TemplateElementResponse, TemplateElementProperties, \
+    CreateTemplateElementRequest
 from labstructanalyzer.services.template_element import TemplateElementService
 
 
@@ -18,10 +18,10 @@ class TestTemplateElementService(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_with_nested_structure(self):
         """Проверка корректного создания вложенных элементов"""
-        child_dto = CreateTemplateElementDto(element_type="text_child", properties={"text": "child"},
-                                             element_id=uuid.uuid4(), data="123")
-        parent_dto = CreateTemplateElementDto(element_type="container", properties={}, data=[child_dto],
-                                              element_id=uuid.uuid4())
+        child_dto = CreateTemplateElementRequest(element_type="text_child", properties={"text": "child"},
+                                                 element_id=uuid.uuid4(), data="123")
+        parent_dto = CreateTemplateElementRequest(element_type="container", properties={}, data=[child_dto],
+                                                  element_id=uuid.uuid4())
 
         await self.service.create(self.template_id, [parent_dto])
 
@@ -52,7 +52,7 @@ class TestTemplateElementService(unittest.IsolatedAsyncioTestCase):
 
     async def test_update_successful(self):
         """Обновление существующих элементов происходит корректно"""
-        update_dto = BaseTemplateElementDto(element_id=uuid.uuid4(), properties={"x": 1})
+        update_dto = TemplateElementProperties(element_id=uuid.uuid4(), properties={"x": 1})
         await self.service.update(self.template_id, [update_dto])
 
         self.mock_repository.bulk_update_properties.assert_called_once()

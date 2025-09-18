@@ -5,6 +5,8 @@ from typing import Optional, Dict, Any
 
 from pydantic import BaseModel, Field
 
+from labstructanalyzer.models.template_element import TemplateElement
+
 
 class TemplateElementUpdateAction(str, enum.Enum):
     CREATE = "create"
@@ -12,27 +14,36 @@ class TemplateElementUpdateAction(str, enum.Enum):
     DELETE = "delete"
 
 
-class BaseTemplateElementDto(BaseModel):
+class TemplateElementProperties(BaseModel):
     element_id: uuid.UUID
     properties: dict
 
 
-class TemplateElementDto(BaseTemplateElementDto):
+class CreateTemplateElementRequest(TemplateElementProperties):
+    element_type: str
+    data: str | Sequence[TemplateElementProperties]
+
+
+class TemplateElementUpdateRequest(BaseModel):
+    """Операция над элементом шаблона"""
+    action: TemplateElementUpdateAction
+    element_id: uuid.UUID
+    element_type: Optional[str] = None
+    properties: Dict[str, Any] | Sequence[TemplateElementResponse] = Field(default_factory=dict)
+
+
+class TemplateElementResponse(TemplateElementProperties):
     element_type: str
     parent_id: Optional[uuid.UUID] = None
 
     class Config:
         for_attributes = True
 
-
-class CreateTemplateElementDto(BaseTemplateElementDto):
-    element_type: str
-    data: str | Sequence[BaseTemplateElementDto]
-
-
-class TemplateElementUpdateUnit(BaseModel):
-    """Операция над элементом шаблона"""
-    action: TemplateElementUpdateAction
-    element_id: uuid.UUID
-    element_type: Optional[str] = None
-    properties: Dict[str, Any] | Sequence[TemplateElementDto] = Field(default_factory=dict)
+    @staticmethod
+    def from_domain(element: TemplateElement) -> "TemplateElementResponse":
+        return TemplateElementResponse(
+            element_id=element.element_id,
+            element_type=element.element_type,
+            parent_id=element.parent_element_id,
+            properties=element.properties
+        )
