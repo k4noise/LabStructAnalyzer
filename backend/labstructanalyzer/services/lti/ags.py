@@ -11,7 +11,7 @@ from pylti1p3.service_connector import REQUESTS_USER_AGENT
 
 from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.exceptions.lis_service_no_access import AgsNotSupportedException
-from labstructanalyzer.models.template import Template
+from labstructanalyzer.schemas.template import TemplateStructure
 
 
 class AgsService:
@@ -28,9 +28,9 @@ class AgsService:
 
         self.message_launch = message_launch
         self.ags = self.message_launch.get_ags()
-        self.logger = GlobalLogger.get_logger(__name__)
+        self.logger = GlobalLogger().get_logger(__name__)
 
-    def find_or_create_lineitem(self, template: Template) -> Optional[LineItem]:
+    def find_or_create_lineitem(self, template: TemplateStructure) -> Optional[LineItem]:
         """
         Создает lineitem по шаблону с тэгом, равным id шаблона и именем, равным имени шаблона.
         Если lineitem для этого шаблона уже существует, то ничего не делает.
@@ -45,7 +45,7 @@ class AgsService:
         lineitem = self._build_lineitem_object(template)
         return self.ags.find_or_create_lineitem(lineitem, "resource_id")
 
-    def update_lineitem(self, template: Template):
+    def update_lineitem(self, template: TemplateStructure):
         """
         Обновляет существующий lineitem.
         Использовать метод следует **С БОЛЬШОЙ ОСТОРОЖНОСТЬЮ**,
@@ -92,7 +92,7 @@ class AgsService:
 
             self.logger.info(f"Удалена линия оценок с id {template_id}")
 
-    def set_grade(self, template: Template, user_id: str, teacher_grade: float):
+    def set_grade(self, template: TemplateStructure, user_id: str, teacher_grade: float):
         """Передает оценку в LMS"""
         lineitem = self.find_or_create_lineitem(template)
         grade = Grade() \
@@ -107,7 +107,7 @@ class AgsService:
         self.logger.info(
             f"Передана оценка {teacher_grade}/{lineitem.get_score_maximum()} для шаблона {template.id} в LMS")
 
-    def _build_lineitem_object(self, template: Template):
+    def _build_lineitem_object(self, template: TemplateStructure):
         """
         Создает объект линии оценки для последующего сохранения средствами AGS
         """
