@@ -1,8 +1,8 @@
 from dataclasses import asdict
-from typing import List, Optional
+from typing import Optional, Sequence
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.schemas.answer import FullAnswerData, GradeResult
+from labstructanalyzer.schemas.answer import AnswerResponse, GradeResult
 from labstructanalyzer.services.graders.thesis import ThesisAnswerGrader
 from labstructanalyzer.services.graders.fixed import FixedAnswerGrader
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
@@ -13,15 +13,15 @@ class PreGraderService:
     Сервис предварительной оценки ответов по эталонным ответам преподавателя
     """
 
-    def __init__(self, answers: List[FullAnswerData]) -> None:
-        self._answers: List[FullAnswerData] = answers
+    def __init__(self, answers: Sequence[AnswerResponse]) -> None:
+        self._answers: Sequence[AnswerResponse] = answers
         self._strategies = [
             ParametrizedAnswerGrader({a.custom_id: a for a in answers}),
             FixedAnswerGrader(),
             ThesisAnswerGrader(),
         ]
 
-    def grade(self) -> List[Answer]:
+    def grade(self) -> Sequence[Answer]:
         """
         Проводит предварительную оценку всех доступных непустых ответов
         при условии существования стратегии проверки
@@ -29,13 +29,13 @@ class PreGraderService:
         Returns:
             Список оценённых объектов `Answer` для последующего сохранения в БД
         """
-        graded: List[Answer] = []
+        graded: Sequence[Answer] = []
 
         for answer in self._answers:
             if not self._is_processable(answer):
                 continue
 
-            user_text = answer.user_origin.data.get("text", "")
+            user_text = answer.data.data.get("text", "")
             best_result: Optional[GradeResult] = None
 
             for grader in self._strategies:
@@ -47,17 +47,17 @@ class PreGraderService:
                     best_result = current_result
 
             if best_result:
-                answer.user_origin.pre_grade = asdict(best_result)
-                graded.append(answer.user_origin)
+                answer.data.pre_grade = asdict(best_result)
+                graded.append(answer.data)
 
         return graded
 
     @staticmethod
-    def _is_processable(answer: FullAnswerData) -> bool:
+    def _is_processable(answer: AnswerResponse) -> bool:
         """
         Проверяет, готов ли ответ к оценке:
-        - Существует user_origin
-        - В ответе есть текст (user_origin.data["text"])
+        - Существует data
+        - В ответе есть текст (data.data["text"])
         - Есть эталон (answer.reference)
 
         Args:
@@ -66,8 +66,8 @@ class PreGraderService:
         Returns:
             True, если ответ можно обработать, иначе False
         """
-        if not answer.user_origin:
+        if not answer.data:
             return False
 
-        data = answer.user_origin.data or {}
+        data = answer.data.data or {}
         return bool(data.get("text") and answer.reference)

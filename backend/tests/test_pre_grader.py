@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 from dataclasses import dataclass, asdict
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.schemas.answer import AnswerDto
+from labstructanalyzer.schemas.answer import AnswerResponse
 
 
 @dataclass
@@ -36,7 +36,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_data = Mock(spec=Answer)
         self.mock_data.data = {"text": "test answer"}
 
-        self.mock_full_answer = Mock(spec=AnswerDto)
+        self.mock_full_answer = Mock(spec=AnswerResponse)
         self.mock_full_answer.data = self.mock_data
         self.mock_full_answer.reference = "reference answer"
         self.mock_full_answer.custom_id = "test_id"
@@ -125,7 +125,7 @@ class TestPreGraderService(unittest.TestCase):
         data1 = Mock(spec=Answer)
         data1.data = {"text": "answer1"}
 
-        full_answer1 = Mock(spec=AnswerDto)
+        full_answer1 = Mock(spec=AnswerResponse)
         full_answer1.data = data1
         full_answer1.reference = "ref1"
         full_answer1.custom_id = "id1"
@@ -133,7 +133,7 @@ class TestPreGraderService(unittest.TestCase):
         data2 = Mock(spec=Answer)
         data2.data = {"text": "answer2"}
 
-        full_answer2 = Mock(spec=AnswerDto)
+        full_answer2 = Mock(spec=AnswerResponse)
         full_answer2.data = data2
         full_answer2.reference = "ref2"
         full_answer2.custom_id = "id2"
