@@ -1,7 +1,7 @@
 import unittest
 
 from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.schemas.answer import FullAnswerData
+from labstructanalyzer.schemas.answer import AnswerResponse
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
 
 
@@ -47,8 +47,8 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_substitution(self):
         """Параметр {city} подставляется и используется в сравнении"""
-        city = FullAnswerData(
-            user_origin=Answer(
+        city = AnswerResponse(
+            data=Answer(
                 data={"text": "Москва"},
                 pre_grade={"score": 1}
             )
@@ -82,8 +82,8 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_with_pregrade_zero(self):
         """Если параметр имеет pre_grade=0 — всегда ошибка"""
-        param = FullAnswerData(
-            user_origin=Answer(
+        param = AnswerResponse(
+            data=Answer(
                 data={"text": "Питер"},
                 pre_grade={"score": 0}
             )
@@ -207,8 +207,8 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_param_inside_range(self):
         """Параметр в скобках: [1-{max}] заменяется и парсится корректно"""
-        param = FullAnswerData(
-            user_origin=Answer(
+        param = AnswerResponse(
+            data=Answer(
                 data={"text": "5"},
                 pre_grade={"score": 1}
             )
@@ -219,8 +219,8 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_repeated_param_usage(self):
         """Один и тот же параметр подставляется несколько раз"""
-        param = FullAnswerData(
-            user_origin=Answer(
+        param = AnswerResponse(
+            data=Answer(
                 data={"text": "rep"},
                 pre_grade={"score": 1}
             )
@@ -242,8 +242,8 @@ class TestParametrizedAnswerGrader(unittest.TestCase):
 
     def test_complex_reference_with_param_and_range(self):
         """Сложный тезис: параметр + диапазон вперемешку"""
-        param = FullAnswerData(
-            user_origin=Answer(
+        param = AnswerResponse(
+            data=Answer(
                 data={"text": "London"},
                 pre_grade={"score": 1}
             )

@@ -2,7 +2,7 @@ import re
 from functools import lru_cache
 from typing import Dict, List, Tuple
 
-from labstructanalyzer.schemas.answer import FullAnswerData, GradeResult
+from labstructanalyzer.schemas.answer import AnswerResponse, GradeResult
 from labstructanalyzer.services.graders.range_spec import RangeSpec
 
 
@@ -20,7 +20,7 @@ class ParametrizedAnswerGrader:
     _RE_LITERAL_ESCAPE = re.compile(r"\[\[(.+?)]]")
     _RE_PRESENCE_CHECK = re.compile(r'\{.*?\}|\[.*?\]')
 
-    def __init__(self, parameters: Dict[str, FullAnswerData]):
+    def __init__(self, parameters: Dict[str, AnswerResponse]):
         """
         Args:
             parameters: словарь параметров, подставляемых в {param}
@@ -132,9 +132,9 @@ class ParametrizedAnswerGrader:
             text_value = ""
             score = 1
 
-            if hasattr(param, "user_origin"):
-                text_value = param.user_origin.data.get("text") or ""
-                score = param.user_origin.pre_grade.get("score", 1)
+            if hasattr(param, "data"):
+                text_value = param.data.data.get("text") or ""
+                score = param.data.pre_grade.get("score", 1)
 
             if score == 0:
                 invalid_params.append(name)
