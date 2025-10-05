@@ -96,6 +96,7 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     message_launch = FastAPIMessageLaunch(request_obj, TOOL_CONF, launch_data_storage=launch_data_storage)
     message_launch.validate_registration()
 
+    print(message_launch.get_launch_data())
     user_id = message_launch.get_launch_data().get('sub')
     user_claims = JWT().create_user_claims_at_message_launch(message_launch)
 
