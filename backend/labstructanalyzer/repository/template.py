@@ -1,7 +1,7 @@
 import uuid
 from typing import Sequence, Optional
 
-from sqlalchemy import Select, update
+from sqlalchemy import Select
 from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from sqlmodel import select, col, desc, asc
@@ -38,15 +38,7 @@ class TemplateRepository:
         return result.first()
 
     async def update(self, template: Template):
-        """
-        Обновляет свойства шаблона
-
-        Args:
-            template_updates: свойства к обновлению, должны содержать идентификатор
-
-        Returns:
-            True, если шаблон был обновлен, иначе False
-        """
+        """Обновляет свойства шаблона"""
         self.session.add(template)
 
     async def delete(self, template: Template):

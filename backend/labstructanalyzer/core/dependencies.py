@@ -10,11 +10,13 @@ from labstructanalyzer.core.database import get_session
 from labstructanalyzer.exceptions.access_denied import RoleAccessDeniedException
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.answer import AnswerRepository
+from labstructanalyzer.repository.report import ReportRepository
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.repository.template_element import TemplateElementRepository
 from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.background_task import BackgroundTaskService
+from labstructanalyzer.services.grade import GradeService
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -27,22 +29,6 @@ from labstructanalyzer.services.template_element import TemplateElementService
 from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
 
-def get_template_service(session: AsyncSession = Depends(get_session)) -> TemplateService:
-    return TemplateService(TemplateRepository(session), TemplateElementService(TemplateElementRepository(session)))
-
-
-def get_report_service(session: AsyncSession = Depends(get_session)) -> ReportService:
-    return ReportService(session)
-
-
-def get_answer_service(session: AsyncSession = Depends(get_session)) -> AnswerService:
-    return AnswerService(AnswerRepository(session))
-
-
-def get_background_task_service(session: AsyncSession = Depends(get_session)) -> BackgroundTaskService:
-    return BackgroundTaskService(session)
-
-
 def get_user(authorize: AuthJWT = Depends()) -> User:
     """Возвращает минимально необходимые данные пользователя из токена"""
     authorize.jwt_required()
@@ -53,6 +39,10 @@ def get_user(authorize: AuthJWT = Depends()) -> User:
 
 def get_chain_storage():
     return ChainStorage.get_default()
+
+
+def get_background_task_service(session: AsyncSession = Depends(get_session)) -> BackgroundTaskService:
+    return BackgroundTaskService(session)
 
 
 def get_message_launch(
@@ -85,6 +75,21 @@ def get_course_service(
         message_launch: FastAPIMessageLaunch = Depends(get_message_launch)
 ) -> CourseService:
     return CourseService(message_launch)
+
+
+def get_template_service(session: AsyncSession = Depends(get_session)) -> TemplateService:
+    return TemplateService(TemplateRepository(session), TemplateElementService(TemplateElementRepository(session)))
+
+
+def get_report_service(session: AsyncSession = Depends(get_session)) -> ReportService:
+    return ReportService(ReportRepository(session), AnswerService(AnswerRepository(session)))
+
+
+def get_grade_service(report_service: ReportService = Depends(get_report_service),
+                      background_task_service: BackgroundTaskService = Depends(get_background_task_service),
+                      ags_service: AgsService = Depends(get_ags_service),
+                      nrps_service: NrpsService = Depends(get_nrps_service)) -> GradeService:
+    return GradeService(report_service, background_task_service, ags_service, nrps_service)
 
 
 def get_user_with_any_role(*roles: UserRole):

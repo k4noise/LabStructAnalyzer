@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from typing import Optional, Sequence
 
@@ -5,10 +7,15 @@ from fastapi_hypermodel import HALLinks, FrozenDict, HALFor
 from pydantic import BaseModel, Field, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from labstructanalyzer.domain.report_status import ReportStatus
+from labstructanalyzer.models.report import Report
+
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User
+from labstructanalyzer.schemas.answer import AnswerResponse, PreGradedAnswerResponse
 from labstructanalyzer.schemas.report import MinimalReportResponse
 from labstructanalyzer.schemas.template_element import TemplateElementResponse, TemplateElementUpdateRequest
+from labstructanalyzer.services.lti.nrps import NrpsService
 from labstructanalyzer.utils.hal_hypermodel import HALHyperModel
 
 
@@ -22,6 +29,15 @@ class TemplateStructure(BaseModel):
 
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel,
                               from_attributes=True)
+
+    @staticmethod
+    def from_domain(template: Template) -> "TemplateStructure":
+        return TemplateStructure(
+            id=template.id,
+            name=template.name,
+            max_score=template.max_score,
+            elements=[TemplateElementResponse.from_domain(element) for element in template.elements]
+        )
 
 
 class TemplateUpdateRequest(TemplateStructure):
@@ -148,3 +164,66 @@ class TemplateCourseCollection(HALHyperModel):
             user=user,
             templates=[TemplateCourseSummary.from_domain(template, user) for template in templates]
         )
+
+
+class FullWorkResponse(HALHyperModel):
+    """Детальный ответ с данными отчёта и шаблона"""
+    template: "TemplateStructure"
+    report_id: uuid.UUID
+    status: ReportStatus
+    grader_name: Optional[str] = None
+    score: Optional[float] = None
+    answers: Sequence[AnswerResponse | PreGradedAnswerResponse]
+
+    # Поля используются только для условной генерации ссылок HAL
+    author_id: str = Field(exclude=True)
+    user: User = Field(exclude=True)
+
+    links: HALLinks = FrozenDict({
+        "self": HALFor("get_report", {"report_id": "<id>"}),
+        "save": HALFor(
+            "save_grades",
+            {"report_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student(),
+        ),
+        "submit": HALFor(
+            "send_to_grade",
+            {"report_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student(),
+        ),
+        "unsubmit": HALFor(
+            "cancel_send_to_grade",
+            {"report_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student(),
+        ),
+
+        "grade": HALFor(
+            "save_grades",
+            {"report_id": "<id>"},
+            condition=lambda values:
+            values["user"] and
+            values["user"].is_instructor() and
+            not values["user"].sub == values["author_id"],
+        )
+    })
+
+    model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
+
+    @staticmethod
+    def from_domain(report: Report, user: User, nrps: NrpsService) -> "FullWorkResponse":
+        elements_by_id_map = {element.id: element for element in report.template.elements}
+
+        dto_factory = PreGradedAnswerResponse.from_domain if user.is_instructor() and not user.sub == report.author_id else AnswerResponse.from_domain
+
+        return FullWorkResponse(
+            template=TemplateStructure.from_domain(report.template),
+            report_id=report.id,
+            status=report.status,
+            score=report.score,
+            answers=[
+                dto_factory(answer, elements_by_id_map)
+                for answer in report.answers
+            ],
+            user=user,
+            author_id=report.author_id,
+            **({"grader_name": nrps.get_user_by_id(report.grader_id)} if report.grader_id is not None else {}))

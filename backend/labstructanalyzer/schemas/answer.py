@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.template_element import TemplateElement
+from labstructanalyzer.schemas.template_element import TemplateElementResponse
 
 
 class NewAnswerData(BaseModel):
@@ -15,7 +16,7 @@ class NewAnswerData(BaseModel):
     pre_grade: Optional[dict] = None
 
     @staticmethod
-    def from_domain(element: TemplateElement, answer: Optional[Answer] = None) -> "NewAnswerData":
+    def from_domain(element: TemplateElementResponse, answer: Optional[Answer] = None) -> "NewAnswerData":
         return NewAnswerData(
             element_id=element.id,
             score=answer.score if answer else None,
@@ -39,6 +40,7 @@ class AnswerResponse(BaseModel):
     score: Optional[float] = None
     data: Optional[dict] = None
 
+    id: Optional[uuid.UUID] = Field(default=None, exclude=True)
     custom_id: Optional[str] = Field(default=None, exclude=True)
     weight: Optional[float] = Field(default=None, exclude=True)
     reference: Optional[str] = Field(default=None, exclude=True)
@@ -71,6 +73,7 @@ class AnswerResponse(BaseModel):
         element = elements_by_id_map[answer_model.element_id]
 
         return AnswerResponse(
+            id=answer_model.element_id,
             element_id=answer_model.element_id,
             score=answer_model.score,
             data=answer_model.data,
@@ -91,7 +94,7 @@ class PreGradedAnswerResponse(AnswerResponse):
     ) -> "PreGradedAnswerResponse":
         base_dto = AnswerResponse.from_domain(answer_model, elements_by_id_map)
         return PreGradedAnswerResponse(
-            **base_dto.dict(),
+            **base_dto.model_dump(),
             pre_grade=answer_model.pre_grade
         )
 

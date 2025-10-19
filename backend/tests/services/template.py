@@ -9,7 +9,7 @@ from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.schemas.template import TemplateUpdateRequest, TemplateCreationResponse, \
     TemplateDetailResponse
-from labstructanalyzer.schemas.template_element import TemplateElementUpdateUnit, TemplateElementUpdateAction
+from labstructanalyzer.schemas.template_element import TemplateElementUpdateRequest, TemplateElementUpdateAction
 from labstructanalyzer.services.template import TemplateService
 
 
@@ -98,12 +98,12 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
             id=self.template_id, course_id="c1", user_id="u1", name="Test", is_draft=False
         )
 
-        element_to_delete = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.DELETE,
-                                                      element_id=uuid.uuid4())
-        element_to_create = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.CREATE, element_type="text",
-                                                      element_id=uuid.uuid4())
-        element_to_update = TemplateElementUpdateUnit(action=TemplateElementUpdateAction.UPDATE,
-                                                      element_id=uuid.uuid4(), properties={"a": 1})
+        element_to_delete = TemplateElementUpdateRequest(action=TemplateElementUpdateAction.DELETE,
+                                                         id=uuid.uuid4())
+        element_to_create = TemplateElementUpdateRequest(action=TemplateElementUpdateAction.CREATE, type="text",
+                                                         id=uuid.uuid4())
+        element_to_update = TemplateElementUpdateRequest(action=TemplateElementUpdateAction.UPDATE,
+                                                         id=uuid.uuid4(), properties={"a": 1})
 
         mod = TemplateUpdateRequest(
             name="New",
