@@ -1,8 +1,7 @@
 import uuid
-from typing import Sequence, Optional, Callable
+from typing import Sequence, Optional
 
 from labstructanalyzer.domain.template_element import PlainTemplateElement, TemplateElementPropsUpdate
-from labstructanalyzer.models.template_element import TemplateElement
 from labstructanalyzer.repository.template_element import TemplateElementRepository
 from labstructanalyzer.schemas.template_element import TemplateElementResponse, CreateTemplateElementRequest, \
     TemplateElementProperties
@@ -39,7 +38,7 @@ class TemplateElementService:
         """
         update_commands: Sequence[TemplateElementPropsUpdate] = [
             TemplateElementPropsUpdate(
-                element_id=item.element_id,
+                element_id=item.id,
                 properties=item.properties
             ) for item in update_pairs
         ]
@@ -64,14 +63,6 @@ class TemplateElementService:
         elements_with_media = await self.repository.get_elements_with_media(template_id)
         return [element.data for element in elements_with_media]
 
-    @staticmethod
-    def search_root_parent(id_map: dict[uuid, Optional[TemplateElement]]) -> Callable[[uuid.UUID], uuid.UUID]:
-        def find_root(element_id: uuid.UUID) -> uuid.UUID:
-            parent = id_map.get(element_id)
-            return element_id if parent is None else find_root(parent.id)
-
-        return lambda element_id: find_root(element_id)
-
     def _prepare_data_recursive(self, components: Sequence[TemplateElementResponse],
                                 parent_id: Optional[uuid.UUID] = None) -> Sequence[PlainTemplateElement]:
         """
@@ -87,7 +78,7 @@ class TemplateElementService:
         prepared_list = []
         for i, component in enumerate(components, 1):
             current = PlainTemplateElement(
-                element_type=component.element_type,
+                element_type=component.type,
                 properties=component.properties,
                 order=i,
                 parent_element_id=parent_id

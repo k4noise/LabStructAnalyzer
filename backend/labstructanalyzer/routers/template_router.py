@@ -7,9 +7,10 @@ from starlette import status
 from starlette.responses import JSONResponse, Response
 
 from labstructanalyzer.models.user_model import User, UserRole
-from labstructanalyzer.core.dependencies import get_template_service, get_report_service, get_answer_service, \
+from labstructanalyzer.core.dependencies import get_template_service, get_report_service, \
     get_user_with_any_role, get_user, get_chain_storage, get_course_service, get_ags_service, \
     get_nrps_service
+from labstructanalyzer.schemas.report import ReportCreationResponse
 
 from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateUpdateRequest, \
     TemplateCreationResponse
@@ -20,8 +21,7 @@ from labstructanalyzer.services.lti.nrps import NrpsService
 from labstructanalyzer.services.parser.common import ParserService
 
 from labstructanalyzer.services.template import TemplateService
-from labstructanalyzer.services.report import ReportService, ReportStatus
-from labstructanalyzer.services.answer import AnswerService
+from labstructanalyzer.services.report import ReportService
 from labstructanalyzer.utils.files.chain_storage import ChainStorage
 
 router = APIRouter()
@@ -82,14 +82,7 @@ async def parse_template(
         user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
-    """
-    Преобразовать шаблон из docx в json, применяя структуру
-
-    Args:
-        template: Файл формата `.docx` для обработки
-        user: Данные учителя
-        template_service: Сервис обработки шаблонов
-    """
+    """Парсит шаблон на структурные элементы и сохраняет его"""
     parser_service = ParserService()
 
     template_components = await parser_service.get_structured_components(template)
@@ -156,6 +149,7 @@ async def save_modified_template(
         user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
+    """Сохранить изменения в шаблоне"""
     await template_service.update(user, template_id, modified_template)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -195,6 +189,7 @@ async def get_templates(
         template_service: TemplateService = Depends(get_template_service),
         course_service: CourseService = Depends(get_course_service)
 ):
+    """Получить все шаблона курса"""
     return await template_service.get_all_by_course_user(user, course_service)
 
 
@@ -269,6 +264,7 @@ async def publish_template(
         template_service: TemplateService = Depends(get_template_service),
         ags_service: AgsService = Depends(get_ags_service)
 ):
+    """Опубликовать шаблон и создать для него линию оценок"""
     await template_service.publish(user, template_id, ags_service)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -301,6 +297,10 @@ async def publish_template(
                             "description": "Доступ запрещен. Шаблон другого курса",
                             "value": {"detail": "Не найдено"}
                         },
+                        "wrong_role": {
+                            "description": "Доступ запрещен. Требуется роль преподавателя",
+                            "value": {"detail": "Не найдено"}
+                        },
                         "no_template": {
                             "description": "Шаблон не найден",
                             "value": {"detail": "Не найдено"}
@@ -321,9 +321,10 @@ async def publish_template(
 )
 async def get_template(
         template_id: uuid.UUID,
-        user: User = Depends(get_user),
+        user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service)
 ):
+    """Получить шаблон отчета для редактирования"""
     return await template_service.get(user, template_id)
 
 
@@ -391,12 +392,15 @@ async def remove_template(
         ags_service: AgsService = Depends(get_ags_service),
         chain_storage: ChainStorage = Depends(get_chain_storage)
 ):
+    """Удалить шаблон, отчеты, ответы"""
     await template_service.delete(user, template_id, chain_storage, ags_service)
     return JSONResponse({"detail": "Шаблон успешно удален"})
 
 
 @router.post(
     "/{template_id}/reports",
+    response_model=ReportCreationResponse,
+    response_class=HALResponse,
     tags=["Template", "Report"],
     summary="Создать отчет с ответами на основе шаблона",
     responses={
@@ -450,22 +454,12 @@ async def remove_template(
 async def create_report(
         template_id: uuid.UUID,
         user: User = Depends(get_user_with_any_role(UserRole.STUDENT)),
-        report_service: ReportService = Depends(get_report_service),
         template_service: TemplateService = Depends(get_template_service),
-        answer_service: AnswerService = Depends(get_answer_service)
+        report_service: ReportService = Depends(get_report_service)
 ):
-    """
-    Создать отчет на основе данных из шаблона, если это возможно
-    """
-    last_report = await report_service.get_last_id_by_author(user, template_id)
-    if last_report.status != ReportStatus.GRADED:
-        return JSONResponse({"id": str(last_report.report_id)})
-
-    report_id = await report_service.create(user, template_id)
+    """Создает отчет с данными из старого, если он был"""
     template = await template_service.get(user, template_id)
-    await answer_service.create(report_id, template.elements)
-
-    return JSONResponse({"id": str(report_id)})
+    return await report_service.create(user, template)
 
 
 @router.get("/{template_id}/reports",

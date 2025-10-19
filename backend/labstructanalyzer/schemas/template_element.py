@@ -15,8 +15,25 @@ class TemplateElementUpdateAction(str, enum.Enum):
 
 
 class TemplateElementProperties(BaseModel):
-    element_id: uuid.UUID
+    id: uuid.UUID
     properties: dict
+
+
+class TemplateElementResponse(TemplateElementProperties):
+    type: str
+    parent_id: Optional[uuid.UUID] = None
+
+    class Config:
+        for_attributes = True
+
+    @staticmethod
+    def from_domain(element: TemplateElement) -> "TemplateElementResponse":
+        return TemplateElementResponse(
+            id=element.element_id,
+            type=element.element_type,
+            parent_id=element.parent_element_id,
+            properties=element.properties or {}
+        )
 
 
 class CreateTemplateElementRequest(TemplateElementProperties):
@@ -27,23 +44,6 @@ class CreateTemplateElementRequest(TemplateElementProperties):
 class TemplateElementUpdateRequest(BaseModel):
     """Операция над элементом шаблона"""
     action: TemplateElementUpdateAction
-    element_id: uuid.UUID
-    element_type: Optional[str] = None
+    id: uuid.UUID
+    type: Optional[str] = None
     properties: Dict[str, Any] | Sequence[TemplateElementResponse] = Field(default_factory=dict)
-
-
-class TemplateElementResponse(TemplateElementProperties):
-    element_type: str
-    parent_id: Optional[uuid.UUID] = None
-
-    class Config:
-        for_attributes = True
-
-    @staticmethod
-    def from_domain(element: TemplateElement) -> "TemplateElementResponse":
-        return TemplateElementResponse(
-            element_id=element.element_id,
-            element_type=element.element_type,
-            parent_id=element.parent_element_id,
-            properties=element.properties
-        )

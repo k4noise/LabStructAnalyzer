@@ -1,5 +1,4 @@
 import os
-from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -11,12 +10,8 @@ from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
 
 from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR
-from .core.logger import GlobalLogger
 from .exceptions.invalid_action import InvalidActionException
 from .exceptions.parser import ParserError
-
-global_logger = GlobalLogger()
-executor = ProcessPoolExecutor(max_workers=1)
 
 from .core.exception_handlers import invalid_jwt_state, invalid_lti_state, no_lis_service_access, \
     invalid_oidc_state, os_error_handler, database_error, no_entity_error, access_denied, parser_error, invalid_action

@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 
 class EntityNotFoundException(Exception):
@@ -18,5 +19,5 @@ class TemplateNotFoundException(EntityNotFoundException):
 class ReportNotFoundException(EntityNotFoundException):
     """Исключение, возникающее при попытке доступа к несуществующему отчету"""
 
-    def __init__(self, report_id: uuid.UUID):
+    def __init__(self, report_id: Optional[uuid.UUID] = None):
         super().__init__("Отчет", report_id)

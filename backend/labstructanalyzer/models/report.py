@@ -7,6 +7,7 @@ from sqlmodel import SQLModel, Field, Relationship
 
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.template import Template
+from labstructanalyzer.domain.report_status import ReportStatus, ReportStatusType
 
 
 class Report(SQLModel, table=True):
@@ -15,7 +16,7 @@ class Report(SQLModel, table=True):
     report_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     template_id: uuid.UUID = Field(foreign_key="templates.template_id")
     author_id: str
-    status: str
+    status: ReportStatus = Field(sa_column=Column(ReportStatusType(ReportStatus), nullable=False))
     grader_id: Optional[str]
     score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
@@ -46,6 +47,10 @@ class Report(SQLModel, table=True):
         back_populates="reports",
         sa_relationship_kwargs={"lazy": "noload"}
     )
+
+    @property
+    def id(self):
+        return self.report_id
 
     __table_args__ = (
         Index("reports_template_id_updated_at_idx", "template_id", "updated_at"),
