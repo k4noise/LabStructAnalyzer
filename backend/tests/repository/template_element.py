@@ -141,7 +141,7 @@ class TestTemplateElementRepository(unittest.IsolatedAsyncioTestCase):
             result = await self.repository.get_elements_with_media(self.template_id)
 
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].element_type, 'image')
+        self.assertEqual(result[0].type, 'image')
         self.session.exec.assert_called_once()
 
     async def test_get_elements_with_media_returns_empty_list(self):

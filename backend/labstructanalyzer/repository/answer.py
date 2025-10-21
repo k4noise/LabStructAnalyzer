@@ -52,14 +52,14 @@ class AnswerRepository:
 
         data_case_expr = case(
             data_updates,
-            value=Answer.answer_id,
+            value=Answer.id,
             else_=Answer.data
         )
 
         statement = (
             update(Answer)
             .where(
-                col(Answer.answer_id).in_(all_answer_ids),
+                col(Answer.id).in_(all_answer_ids),
                 col(Answer.report_id) == report_id
             )
             .values(
@@ -85,14 +85,14 @@ class AnswerRepository:
 
         score_case_expr = case(
             score_updates,
-            value=Answer.answer_id,
+            value=Answer.id,
             else_=Answer.score
         )
 
         statement = (
             update(Answer)
             .where(
-                col(Answer.answer_id).in_(all_answer_ids),
+                col(Answer.id).in_(all_answer_ids),
                 col(Answer.report_id) == report_id
             )
             .values(

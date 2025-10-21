@@ -221,7 +221,7 @@ class TestReportService(unittest.IsolatedAsyncioTestCase):
         self.repo.update.return_value = report
         updates = UpdateGradeInfo(id=uuid.uuid4(), grader_id="g1", final_score=90,
                                   new_scores=[
-                                      UpdateAnswerScoresRequest(id=self.template.elements[0].element_id, score=1)])
+                                      UpdateAnswerScoresRequest(id=self.template.elements[0].id, score=1)])
 
         await self.service.grade(self.user, self.report_id, updates)
 

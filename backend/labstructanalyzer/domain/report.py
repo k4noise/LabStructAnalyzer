@@ -24,7 +24,7 @@ class ReportAccessVerifier:
             raise NotOwnerAccessDeniedException()
 
         if user.is_instructor() and \
-                not self.report.author_id == user.sub and \
+                not self.report.id == user.sub and \
                 self.report.status in [ReportStatus.SAVED, ReportStatus.CREATED]:
             raise ReportStateAccessDeniedException(self.report.status)
 

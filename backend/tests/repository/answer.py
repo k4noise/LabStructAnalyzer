@@ -73,7 +73,7 @@ class TestAnswerRepository(unittest.IsolatedAsyncioTestCase):
 
         def add_all_side_effect(answers):
             for i, answer in enumerate(answers):
-                answer.answer_id = expected_ids[i]
+                answer.id = expected_ids[i]
                 created_answers.extend(answers)
 
         self.session.add_all.side_effect = add_all_side_effect

@@ -29,8 +29,8 @@ class TemplateElementResponse(TemplateElementProperties):
     @staticmethod
     def from_domain(element: TemplateElement) -> "TemplateElementResponse":
         return TemplateElementResponse(
-            id=element.element_id,
-            type=element.element_type,
+            id=element.id,
+            type=element.type,
             parent_id=element.parent_element_id,
             properties=element.properties or {}
         )
