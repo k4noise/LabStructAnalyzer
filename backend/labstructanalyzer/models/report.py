@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import Column, TIMESTAMP, text, FetchedValue, Index
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import SQLModel, Field, Relationship, desc
 
 from labstructanalyzer.models.answer import Answer
 from labstructanalyzer.models.template import Template
@@ -13,8 +13,8 @@ from labstructanalyzer.domain.report_status import ReportStatus, ReportStatusTyp
 class Report(SQLModel, table=True):
     __tablename__ = "reports"
 
-    report_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    template_id: uuid.UUID = Field(foreign_key="templates.template_id")
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    template_id: uuid.UUID = Field(foreign_key="templates.id")
     author_id: str
     status: ReportStatus = Field(sa_column=Column(ReportStatusType(ReportStatus), nullable=False))
     grader_id: Optional[str]
@@ -48,12 +48,13 @@ class Report(SQLModel, table=True):
         sa_relationship_kwargs={"lazy": "noload"}
     )
 
-    @property
-    def id(self):
-        return self.report_id
-
     __table_args__ = (
-        Index("reports_template_id_updated_at_idx", "template_id", "updated_at"),
+        Index(
+            "reports_template_id_created_idx",
+            "template_id",
+            desc("created_at")
+        ),
+        # Существующий оставьте:
         Index(
             "reports_author_id_template_id_created_at_idx",
             "author_id",

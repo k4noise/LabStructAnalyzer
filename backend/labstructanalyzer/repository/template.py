@@ -30,7 +30,7 @@ class TemplateRepository:
         """Получает шаблон по идентификатору"""
         statement: Select = (
             select(Template)
-            .where(Template.template_id == template_id, Template.course_id == course_id)
+            .where(Template.id == template_id, Template.course_id == course_id)
             .options(selectinload(Template.elements))
         )
 

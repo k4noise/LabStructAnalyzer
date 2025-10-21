@@ -70,7 +70,7 @@ class TemplateElementRepository:
         statement = (
             update(TemplateElement)
             .where(
-                col(TemplateElement.element_id) == bindparam("element_id"),
+                col(TemplateElement.id) == bindparam("element_id"),
             )
             .values(properties=bindparam("properties"))
         )
@@ -94,7 +94,7 @@ class TemplateElementRepository:
         statement = (
             delete(TemplateElement)
             .where(
-                col(TemplateElement.element_id).in_(ids_to_delete),
+                col(TemplateElement.id).in_(ids_to_delete),
                 col(TemplateElement.template_id) == template_id
             )
         )
@@ -113,7 +113,7 @@ class TemplateElementRepository:
         """
         statement: Select = select(TemplateElement).where(
             TemplateElement.template_id == template_id,
-            col(TemplateElement.element_type).in_(self.TYPES_WITH_MEDIA)
+            col(TemplateElement.type).in_(self.TYPES_WITH_MEDIA)
         )
         result = await self.session.exec(statement)
         return result.all()
@@ -134,10 +134,10 @@ class TemplateElementRepository:
             return {}
 
         statement: Select = (
-            select(TemplateElement.element_id, TemplateElement.properties)
+            select(TemplateElement.id, TemplateElement.properties)
             .where(
                 TemplateElement.template_id == template_id,
-                col(TemplateElement.element_id).in_(element_ids),
+                col(TemplateElement.id).in_(element_ids),
             )
             .with_for_update()
         )
