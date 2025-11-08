@@ -26,7 +26,7 @@ class ReportCreationResponse(HALHyperModel):
     })
 
 
-class MinimalReportResponse(BaseModel):
+class MinimalReportResponse(HALHyperModel):
     """Упрощённое представление отчёта по шаблону"""
     updated_at: datetime
     report_id: uuid.UUID
@@ -69,7 +69,24 @@ class MinimalReportInfoResponse(MinimalReportResponse):
         )
 
 
-class AllReportsResponse(BaseModel):
+class AllReportsByUserResponse(HALHyperModel):
+    template_name: str
+    template_id: uuid.UUID
+    max_score: float
+    reports: Sequence[MinimalReportInfoResponse]
+
+    @staticmethod
+    def from_domain(template: "TemplateDetailResponse", reports: Sequence[Report]):
+        return AllReportsByUserResponse(
+            template_name=template.name,
+            template_id=template.id,
+            max_score=template.max_score,
+            reports=[MinimalReportResponse.from_domain_with_user(report) for
+                     report in reports]
+        )
+
+
+class AllReportsResponse(HALHyperModel):
     """Коллекция всех отчётов по шаблону"""
     template_name: str
     template_id: uuid.UUID

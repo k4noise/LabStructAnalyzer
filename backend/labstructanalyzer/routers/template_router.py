@@ -10,7 +10,7 @@ from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_template_service, get_report_service, \
     get_user_with_any_role, get_user, get_chain_storage, get_course_service, get_ags_service, \
     get_nrps_service
-from labstructanalyzer.schemas.report import ReportCreationResponse
+from labstructanalyzer.schemas.report import ReportCreationResponse, AllReportsByUserResponse
 
 from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateUpdateRequest, \
     TemplateCreationResponse
@@ -464,7 +464,66 @@ async def create_report(
 
 @router.get("/{template_id}/reports",
             tags=["Template", "Report"],
-            summary="Получить все шаблоны по отчету",
+            summary="Получить все отчеты по шаблону",
+            responses={
+                401: {
+                    "description": "Неавторизованный доступ",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Не авторизован"}
+                        }
+                    }
+                },
+                404: {
+                    "description": "Доступ запрещен или шаблон не найден",
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "wrong_role": {
+                                    "description": "Доступ запрещен. Требуется роль студента",
+                                    "value": {"detail": "Не найдено"}
+                                },
+                                "wrong_course": {
+                                    "description": "Доступ запрещен. Шаблон другого курса",
+                                    "value": {"detail": "Не найдено"}
+                                },
+                                "no_template": {
+                                    "description": "Шаблон не найден",
+                                    "value": {"detail": "Не найдено"}
+                                }
+                            }
+                        }
+                    }
+                },
+                500: {
+                    "description": "Ошибка со стороны БД",
+                    "content": {
+                        "application/json": {
+                            "example": {"detail": "Ошибка доступа к данным"}
+                        }
+                    }
+                },
+            })
+async def get_reports_by_template(
+        template_id: uuid.UUID,
+        user: User = Depends(get_user),
+        report_service: ReportService = Depends(get_report_service),
+        template_service: TemplateService = Depends(get_template_service),
+        nrps_service: NrpsService = Depends(get_nrps_service)
+):
+    """
+    Получает краткую информацию о всех доступных версиях отчетов всех обучающихся курса конкретного шаблона,
+    доступных для отображения согласно статусу (отправлен на (повторную) проверку / проверен)
+    """
+    template = await template_service.get(user, template_id)
+    return await report_service.get_all_by_template(template, user, nrps_service)
+
+
+@router.get("/{template_id}/reports?author_id={author_id}&status={report_status}",
+            tags=["Template", "Report"],
+            summary="Получить все отчеты заданного статуса по шаблону",
+            response_model=AllReportsByUserResponse,
+            response_class=HALResponse,
             responses={
                 401: {
                     "description": "Неавторизованный доступ",
@@ -492,7 +551,7 @@ async def create_report(
                     }
                 },
                 500: {
-                    "description": "Служба NRPS недоступна со стороны LMS или ошибка БД",
+                    "description": "Ошибка БД",
                     "content": {
                         "application/json": {
                             "examples": {
@@ -510,16 +569,16 @@ async def create_report(
                 }
             }
             )
-async def get_reports_by_template(
+async def get_graded_reports_by_user_and_template(
         template_id: uuid.UUID,
+        author_id: str,
+        report_status: str,
         user: User = Depends(get_user),
         report_service: ReportService = Depends(get_report_service),
         template_service: TemplateService = Depends(get_template_service),
-        nrps_service: NrpsService = Depends(get_nrps_service)
 ):
-    """
-    Получает краткую информацию о всех доступных версиях отчетов всех обучающихся курса конкретного шаблона,
-    доступных для отображения согласно статусу (отправлен на (повторную) проверку / проверен)
+    """Получает краткую информацию о всех доступных отчетов заданного статуса
+    конкретного обучающегося курса конкретного шаблона
     """
     template = await template_service.get(user, template_id)
-    return await report_service.get_all_by_template(template, user, nrps_service)
+    return await report_service.get_all_by_template_and_status(user, template, author_id, report_status)

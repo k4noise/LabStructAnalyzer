@@ -51,10 +51,22 @@ class ReportRepository:
         return report.first()
 
     async def get_all_by_template(self, template_id: uuid.UUID) -> Sequence[Report]:
-        """Получить все отчеты по курсу"""
+        """Получить все отчеты по шаблону"""
         statement: Select = (
             select(Report)
             .where(Report.template_id == template_id)
+            .order_by(desc(Report.created_at))
+        )
+        report = await self.session.exec(statement)
+        return report.all()
+
+    async def get_all_by_author_and_status(self, template_id: uuid.UUID, author_id: str, status: str):
+        """Получить все отчеты по шаблону в заданном статусе"""
+        statement: Select = (
+            select(Report)
+            .where(Report.template_id == template_id,
+                   col(Report.author_id) == author_id,
+                   Report.status == status)
             .order_by(desc(Report.created_at))
         )
         report = await self.session.exec(statement)

@@ -6,13 +6,14 @@ from sqlalchemy import Sequence
 from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.domain.report import UpdateGradeInfo, ReportAccessVerifier
 from labstructanalyzer.domain.report_status import ReportStatus
+from labstructanalyzer.exceptions.access_denied import NotOwnerAccessDeniedException, ReportStateAccessDeniedException
 from labstructanalyzer.exceptions.invalid_action import InvalidActionException
 from labstructanalyzer.exceptions.no_entity import ReportNotFoundException
 from labstructanalyzer.models.report import Report
 from labstructanalyzer.models.user_model import User
 from labstructanalyzer.repository.report import ReportRepository
 from labstructanalyzer.schemas.answer import UpdateAnswerDataRequest, NewAnswerData
-from labstructanalyzer.schemas.report import ReportCreationResponse, AllReportsResponse
+from labstructanalyzer.schemas.report import ReportCreationResponse, AllReportsResponse, AllReportsByUserResponse
 from labstructanalyzer.schemas.template import TemplateDetailResponse, FullWorkResponse
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -57,6 +58,17 @@ class ReportService:
         """Возвращает краткую информацию о всех отчетах шаблона, кроме отчетов запросившего"""
         all_reports = await self.repository.get_all_by_template(template.id)
         return AllReportsResponse.from_domain(template, all_reports, user, nrps)
+
+    async def get_all_by_template_and_status(self, user: User, template: TemplateDetailResponse, author_id: str,
+                                             status: str):
+        """Получить все оцененные отчеты пользователя"""
+        if not user.is_instructor() and author_id != user.sub:
+            raise NotOwnerAccessDeniedException()
+        if status in [ReportStatus.SAVED.name, ReportStatus.CREATED.name]:
+            raise ReportStateAccessDeniedException(ReportStatus(status))
+
+        all_reports = await self.repository.get_all_by_author_and_status(template.id, author_id, status)
+        return AllReportsByUserResponse.from_domain(template, all_reports)
 
     async def save(self, user: User, report_id: uuid.UUID, answers: Sequence[UpdateAnswerDataRequest]):
         """Сохранить ответы в отчете"""
