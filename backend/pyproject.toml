@@ -32,6 +32,8 @@ scipy = "1.13.1"
 gensim = "4.3.3"
 scikit-learn = "1.7.0"
 fastapi-hypermodel = "2.2.0"
+redis = {extras = ["hiredis"], version = "^7.0.0"}
+rq = "^2.6.0"
 
 [build-system]
 requires = ["poetry-core"]

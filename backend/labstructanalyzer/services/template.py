@@ -9,14 +9,14 @@ from labstructanalyzer.exceptions.no_entity import TemplateNotFoundException
 from labstructanalyzer.models.template import Template
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.repository.template import TemplateRepository
-from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateCourseSummary, \
-    TemplateElementUpdateRequest, TemplateUpdateRequest, TemplateCreationResponse
+from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, \
+    TemplateElementUpdateRequest, TemplateUpdateRequest, TemplateCreationResponse, TemplateStructure
 from labstructanalyzer.schemas.template_element import CreateTemplateElementRequest, \
     TemplateElementUpdateAction
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.template_element import TemplateElementService
-from labstructanalyzer.utils.files.chain_storage import ChainStorage
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
 
 
 class TemplateAccessVerifier:
@@ -89,20 +89,20 @@ class TemplateService:
         template.is_draft = False
         await self.repository.update(template)
 
-        ags_service.find_or_create_lineitem(template)  # TODO background
+        ags_service.create_lineitem(TemplateStructure.from_domain(template))
         self.logger.info(f"Шаблон опубликован: id {template_id}")
 
-    async def delete(self, user: User, template_id: uuid.UUID, file_service: ChainStorage, ags_service: AgsService):
+    async def delete(self, user: User, template_id: uuid.UUID, file_service: HybridStorage, ags_service: AgsService):
         """Удалить шаблон, его элементы и медиа-файлы элементов"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user)
 
         media_to_delete = await self.elements_service.get_media_keys_in_elements(template_id)
-        await self.repository.delete(user.course_id, template_id)
+        await self.repository.delete(template)
 
-        ags_service.delete_lineitem(template_id)  # TODO background
-        for media in media_to_delete:  # TODO background
-            file_service.remove(media)
+        ags_service.delete_lineitem(template_id)
+        file_service.delete_many(media_to_delete)
+
         self.logger.info(f"Шаблон удален: id {template_id}")
 
     async def get_all_by_course_user(self, user: User, course: CourseService) -> TemplateCourseCollection:

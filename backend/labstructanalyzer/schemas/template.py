@@ -169,7 +169,7 @@ class TemplateCourseCollection(HALHyperModel):
 class FullWorkResponse(HALHyperModel):
     """Детальный ответ с данными отчёта и шаблона"""
     template: "TemplateStructure"
-    report_id: uuid.UUID
+    id: uuid.UUID
     status: ReportStatus
     grader_name: Optional[str] = None
     score: Optional[float] = None
@@ -217,7 +217,7 @@ class FullWorkResponse(HALHyperModel):
 
         return FullWorkResponse(
             template=TemplateStructure.from_domain(report.template),
-            report_id=report.id,
+            id=report.id,
             status=report.status,
             score=report.score,
             answers=[

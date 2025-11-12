@@ -5,7 +5,8 @@ from lxml import etree
 from typing import Generator, List, Optional
 from zipfile import ZipFile
 
-from labstructanalyzer.utils.files.chain_storage import ChainStorage
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
+from labstructanalyzer.utils.files.s3 import S3Storage
 from labstructanalyzer.utils.parser.common_elements import (
     ImageElement,
     TextElement,
@@ -393,7 +394,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=ChainStorage.get_default().save(self.images_dir, image_data, image_extension)
+                data=HybridStorage(backup=S3Storage()).save(self.images_dir, image_data, image_extension)
             )
 
         return None

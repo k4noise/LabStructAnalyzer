@@ -1,65 +1,60 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from concurrent.futures import Future, ProcessPoolExecutor
-import asyncio
-from typing import List, Any, Optional, Callable
+from typing import Any, Callable, Dict, Optional, Union
+from redis import Redis
+from rq import Queue
+from rq.job import Job, Retry
 
 from labstructanalyzer.core.logger import GlobalLogger
 
-executor = ProcessPoolExecutor(max_workers=1)
-
 
 class BackgroundTaskService:
-    """Сервис для обработки результатов фоновых задач и сохранения их в БД"""
+    """Сервис для управления фоновыми задачами через RQ"""
 
-    def __init__(self, db_session: AsyncSession):
-        """Инициализирует сервис BackgroundTaskService"""
+    DEFAULT_RETRY_MAX = 3
+    DEFAULT_RETRY_INTERVALS = [30, 60, 120]  # секунды
+    DEFAULT_FAILURE_TTL = 24 * 3600  # 24 часа
+    DEFAULT_TIMEOUT = 600  # 10 минут
+
+    def __init__(self, redis_conn: Redis, queue_name: str = 'default'):
         self.logger = GlobalLogger().get_logger(__name__)
-        self.db_session = db_session
+        self.redis_conn = redis_conn
+        self.queue = Queue(name=queue_name, connection=redis_conn)
 
-    def submit(self, fn: Callable, *args: Any, **kwargs: Any):
-        future = executor.submit(fn, *args, **kwargs)
-        asyncio.create_task(self.handle_task_result(future))
-
-    async def save_changes(self, changed_items: Optional[List[dict]]):
-        """Асинхронно сохраняет список измененных объектов в базе данных"""
-        if changed_items is None:
-            return  # Не вызываем add_all, если данные отсутствуют
-
+    def enqueue(self, fn: Callable, *args: Any, **kwargs: Any) -> Optional[Job]:
+        """Добавляет задачу в очередь RQ. Вернет Job объект или None при ошибке"""
         try:
-            self.db_session.add_all(changed_items)
-            await self.db_session.commit()
-            self.logger.info("Данные успешно сохранены в базе данных")
-        except Exception as exception:
-            await self.db_session.rollback()
-            self.logger.error("Ошибка при сохранении данных в базу данных", exc=exception)
-            raise
+            retry = Retry(
+                max=self.DEFAULT_RETRY_MAX,
+                interval=self.DEFAULT_RETRY_INTERVALS
+            )
 
-    async def handle_task_result(self, future: Future):
-        """Асинхронно обрабатывает результат завершенной фоновой задачи"""
-        try:
-            result = await asyncio.wrap_future(future)
-            normalized_result = self._normalize_result(result)
+            job = self.queue.enqueue(
+                fn,
+                *args,
+                retry=retry,
+                timeout=self.DEFAULT_TIMEOUT,
+                failure_ttl=self.DEFAULT_FAILURE_TTL,
+                **kwargs
+            )
 
-            if normalized_result is not None:
-                await self.save_changes(normalized_result)
+            self.logger.info(f"Задача {job.id} добавлена в очередь")
+            return job
 
-        except Exception as exception:
-            await self.db_session.rollback()
-            self.logger.error("Ошибка при обработке результата задачи", exc=exception)
-
-    def _normalize_result(self, result: Any) -> Optional[List[dict]]:
-        """Нормализует результат задачи в список словарей для сохранения"""
-        if result is None:
+        except Exception as e:
+            self.logger.error(f"Ошибка при добавлении задачи в очередь: {e}", exc_info=True)
             return None
 
-        if isinstance(result, list):
-            return result
-
-        if isinstance(result, dict):
-            return [result]
-
+    def get_job_status(self, job_id: str) -> Dict[str, Union[str, Any]]:
+        """Возвращает статус задачи по её ID"""
         try:
-            return list(result)
-        except (TypeError, ValueError):
-            self.logger.warning(f"Невозможно нормализовать результат типа {type(result).__name__}")
-            return None
+            job = Job.fetch(job_id, connection=self.redis_conn)
+        except Exception:
+            return {"status": "not_found"}
+
+        if job is None:
+            return {"status": "not_found"}
+
+        return {
+            "status": job.get_status(),
+            "result": job.return_value() if job.is_finished else None,
+            "exc_info": job.latest_result() if job.is_failed else None
+        }

@@ -1,6 +1,5 @@
 import sys
 import types
-import asyncio
 import unittest
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -11,7 +10,6 @@ sys.modules["labstructanalyzer.core.logger"] = _module_stub
 
 
 def create_async_session_mock() -> MagicMock:
-    """Создает мок-объект, имитирующий асинхронную сессию SQLModel"""
     session = MagicMock()
     session.add_all = MagicMock()
     session.commit = AsyncMock()
@@ -23,155 +21,119 @@ from labstructanalyzer.services.background_task import BackgroundTaskService
 
 
 class BackgroundTaskServiceTests(unittest.IsolatedAsyncioTestCase):
-    """Тесты для сервиса обработки фоновых задач"""
-
-    def setUp(self) -> None:
+    def setUp(self):
         self.db_session = create_async_session_mock()
-        self.task_service = BackgroundTaskService(self.db_session)
-        _mock_logger.reset_mock()  # Сброс мок-логгера перед каждым тестом
+        self.mock_redis = MagicMock()
+        self.mock_queue = MagicMock()
+        self.mock_job = MagicMock(id="job123", is_finished=False, is_failed=False, get_status=lambda: "queued")
+        self.mock_queue.enqueue = MagicMock(return_value=self.mock_job)
 
-    async def test_submit_creates_background_task(self):
-        """Проверка, что submit создает фоновую задачу"""
-        mock_fn = AsyncMock(return_value="result")
+        with patch("labstructanalyzer.services.background_task.Queue", return_value=self.mock_queue):
+            self.service = BackgroundTaskService(self.db_session, self.mock_redis)
 
-        async def wrapped_fn():
-            return await mock_fn()
+        _mock_logger.reset_mock()
 
-        await self.task_service.submit(wrapped_fn)
+    def test_enqueue_adds_job_to_queue_and_logs(self):
+        """enqueue должен добавлять задачу в очередь и логировать сообщение"""
+        fn = MagicMock()
+        job = self.service.enqueue(fn, 42, test="ok")
 
-        # Проверяем, что задача была создана
-        self.assertTrue(any(
-            task.coro.cr_code.co_name == 'handle_task_result'  # Исправлено здесь
-            for task in asyncio.all_tasks()
-        ))
+        self.mock_queue.enqueue.assert_called_once()
+        called_args, called_kwargs = self.mock_queue.enqueue.call_args
 
-    async def test_concurrent_task_processing(self):
-        """Проверка корректной параллельной обработки нескольких задач"""
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            futures = []
-            for i in range(3):
-                async def task(i=i):
-                    return [{"record_id": i, "value": f"test_{i}"}]
+        self.assertEqual(called_args[0], fn)
+        self.assertEqual(called_args[1], 42)
+        self.assertEqual(called_kwargs["test"], "ok")
 
-                future = asyncio.create_task(task())
-                futures.append(future)
+        self.assertIn("retry", called_kwargs)
+        self.assertIn("failure_ttl", called_kwargs)
 
-            await asyncio.gather(*futures)
+        self.assertEqual(job, self.mock_job)
+        _mock_logger.info.assert_called_once()
+        self.assertIn("Задача job123 добавлена в очередь", _mock_logger.info.call_args[0][0])
 
-            self.assertEqual(mock_save.call_count, 3)
+    async def test_save_changes_successful(self):
+        """Должен сохранять изменения и коммитить транзакцию"""
+        data = [{"id": 1}]
+        await self.service.save_changes(data)
+        self.db_session.add_all.assert_called_once_with(data)
+        self.db_session.commit.assert_awaited_once()
+        _mock_logger.info.assert_any_call("Данные успешно сохранены в базе данных")
 
-            for i in range(3):
-                args, _ = mock_save.call_args_list[i]
-                self.assertEqual(args[0], [{"record_id": i, "value": f"test_{i}"}])
+    async def test_save_changes_with_none(self):
+        """Не должен ничего делать, если None"""
+        await self.service.save_changes(None)
+        self.db_session.add_all.assert_not_called()
+        self.db_session.commit.assert_not_awaited()
 
-    async def test_successful_task_processing(self):
-        """Проверка корректной обработки успешного результата"""
-        test_data = [{"id": 1, "status": "completed"}]
+    async def test_save_changes_rollback_on_error(self):
+        """При ошибке commit должен сделать rollback"""
+        self.db_session.add_all.side_effect = Exception("DB error")
+        with self.assertRaises(Exception):
+            await self.service.save_changes([{"x": 1}])
+        self.db_session.rollback.assert_awaited_once()
+        _mock_logger.error.assert_called_once()
 
-        async def successful_task():
-            return test_data
+    async def test_handle_task_result_saves_dict_result(self):
+        """handle_task_result должен нормализовывать dict и сохранять"""
+        with patch.object(self.service, "save_changes", new_callable=AsyncMock) as mock_save:
+            await self.service.handle_task_result({"key": "val"})
+        mock_save.assert_awaited_once_with([{"key": "val"}])
 
-        future = asyncio.create_task(successful_task())
+    async def test_handle_task_result_saves_list_result(self):
+        """handle_task_result должен сохранять list as-is"""
+        items = [{"a": 1}]
+        with patch.object(self.service, "save_changes", new_callable=AsyncMock) as mock_save:
+            await self.service.handle_task_result(items)
+        mock_save.assert_awaited_once_with(items)
 
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            await self.task_service.handle_task_result(future)
-            mock_save.assert_awaited_once_with(test_data)
+    async def test_handle_task_result_none(self):
+        """handle_task_result с None не должен вызывать save_changes"""
+        with patch.object(self.service, "save_changes", new_callable=AsyncMock) as mock_save:
+            await self.service.handle_task_result(None)
+        mock_save.assert_not_awaited()
 
-    async def test_error_handling_absorbs_exceptions(self):
-        """Проверка, что обработчик поглощает исключения"""
-        future = asyncio.Future()
-        future.set_exception(RuntimeError("Test exception"))
-
-        await self.task_service.handle_task_result(future)
-
+    async def test_handle_task_result_error_rollbacks(self):
+        """При ошибке в save_changes должен делать rollback и логировать"""
+        with patch.object(self.service, "save_changes", new_callable=AsyncMock) as mock_save:
+            mock_save.side_effect = Exception("Test")
+            await self.service.handle_task_result([{"a": 1}])
+        self.db_session.rollback.assert_awaited_once()
         _mock_logger.error.assert_called_once()
         self.assertIn("Ошибка при обработке результата задачи", _mock_logger.error.call_args[0][0])
 
-    async def test_rollback_on_task_error(self):
-        """Проверка отката транзакции при ошибке в задаче"""
-        future = asyncio.Future()
-        future.set_exception(ValueError("Database constraint violation"))
+    def test_normalize_result_list_passthrough(self):
+        sample = [{"id": 1}]
+        self.assertEqual(self.service._normalize_result(sample), sample)
 
-        await self.task_service.handle_task_result(future)
+    def test_normalize_result_dict_wrapped(self):
+        sample = {"a": 1}
+        self.assertEqual(self.service._normalize_result(sample), [sample])
 
-        self.db_session.rollback.assert_awaited_once()
+    def test_normalize_result_iterable(self):
+        class Gen:
+            def __iter__(self): yield {"i": 1}
 
-    async def test_null_result_handling(self):
-        """Проверка обработки None-результата"""
-        future = asyncio.Future()
-        future.set_result(None)
+        result = self.service._normalize_result(Gen())
+        self.assertEqual(result, [{"i": 1}])
 
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            await self.task_service.handle_task_result(future)
-            mock_save.assert_not_called()
+    def test_normalize_result_invalid_type(self):
+        result = self.service._normalize_result(123)
+        self.assertIsNone(result)
+        _mock_logger.warning.assert_called_once()
 
-    async def test_empty_result_handling(self):
-        """Проверка обработки пустого списка"""
-        future = asyncio.Future()
-        future.set_result([])
+    def test_get_job_status_returns_valid_status(self):
+        with patch("labstructanalyzer.services.background_task.Job.fetch", return_value=self.mock_job):
+            status = self.service.get_job_status("job123")
 
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            await self.task_service.handle_task_result(future)
-            mock_save.assert_awaited_once_with([])
+        self.assertEqual(status["status"], "queued")
+        self.assertIsNone(status["result"])
+        self.assertIsNone(status["exc_info"])
 
-    async def test_successful_data_saving(self):
-        """Проверка успешного сохранения данных"""
-        records = [{"id": 1, "name": "Test Record"}]
-        await self.task_service.save_changes(records)
-
-        self.db_session.add_all.assert_called_once_with(records)
-        self.db_session.commit.assert_awaited_once()
-        _mock_logger.info.assert_called_once_with("Данные успешно сохранены в базе данных")
-
-    async def test_rollback_on_commit_failure(self):
-        """Проверка отката при ошибке commit"""
-        self.db_session.commit.side_effect = Exception("Database connection lost")
-
-        with self.assertRaises(Exception):
-            await self.task_service.save_changes([{"id": 1}])
-
-        self.db_session.rollback.assert_awaited_once()
-        _mock_logger.error.assert_called_once()
-
-    async def test_empty_list_saving(self):
-        """Проверка сохранения пустого списка"""
-        await self.task_service.save_changes([])
-
-        self.db_session.add_all.assert_called_once_with([])
-        self.db_session.commit.assert_awaited_once()
-
-    async def test_invalid_data_handling(self):
-        """Проверка обработки некорректных данных"""
-        invalid_records = [None, "not_a_dict", 123]
-
-        self.db_session.add_all.side_effect = TypeError("Expected dictionary objects")
-
-        with self.assertRaises(TypeError):
-            await self.task_service.save_changes(invalid_records)
-
-        self.db_session.rollback.assert_awaited_once()
-        _mock_logger.error.assert_called_once()
-
-    async def test_non_list_result_normalization(self):
-        """Проверка нормализации неспискового результата"""
-        future = asyncio.Future()
-        future.set_result({"single_record": True})
-
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            await self.task_service.handle_task_result(future)
-            mock_save.assert_awaited_once_with([{"single_record": True}])
-
-    async def test_rollback_on_save_error(self):
-        """Проверка отката при ошибке сохранения"""
-        future = asyncio.Future()
-        future.set_result([{"id": 1}])
-
-        with patch.object(self.task_service, "save_changes", new_callable=AsyncMock) as mock_save:
-            mock_save.side_effect = Exception("Error during save operation")
-            await self.task_service.handle_task_result(future)
-
-            _mock_logger.error.assert_called_once()
-            self.db_session.rollback.assert_awaited_once()
+    def test_get_job_status_not_found(self):
+        with patch("labstructanalyzer.services.background_task.Job.fetch", return_value=None):
+            status = self.service.get_job_status("not_found")
+        self.assertEqual(status, {"status": "not_found"})
 
 
 if __name__ == "__main__":

@@ -13,7 +13,6 @@ from labstructanalyzer.repository.answer import AnswerRepository
 from labstructanalyzer.repository.report import ReportRepository
 from labstructanalyzer.repository.template import TemplateRepository
 from labstructanalyzer.repository.template_element import TemplateElementRepository
-from labstructanalyzer.routers.lti_router import cache
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.grade import GradeService
@@ -26,7 +25,8 @@ from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 from labstructanalyzer.services.report import ReportService
 from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.services.template_element import TemplateElementService
-from labstructanalyzer.utils.files.chain_storage import ChainStorage
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
+from labstructanalyzer.utils.files.s3 import S3Storage
 
 
 def get_user(authorize: AuthJWT = Depends()) -> User:
@@ -37,24 +37,28 @@ def get_user(authorize: AuthJWT = Depends()) -> User:
     return user
 
 
-def get_chain_storage():
-    return ChainStorage.get_default()
+def get_file_storage():
+    return HybridStorage(backup=S3Storage())
 
 
-def get_background_task_service(session: AsyncSession = Depends(get_session)) -> BackgroundTaskService:
-    return BackgroundTaskService(session)
+def get_background_task_service(request: Request) -> BackgroundTaskService:
+    return BackgroundTaskService(request.app.state.cache.get_connection(), request.app.state.cache.get_connection())
+
+
+def get_cache_data_storage(request: Request) -> FastAPICacheDataStorage:
+    return FastAPICacheDataStorage(request.app.state.cache)
 
 
 def get_message_launch(
         request: Request,
-        user: User = Depends(get_user)
+        user: User = Depends(get_user),
+        cache_storage: FastAPICacheDataStorage = Depends(get_cache_data_storage)
 ) -> FastAPIMessageLaunch:
-    launch_data_storage = FastAPICacheDataStorage(cache)
     return FastAPIMessageLaunch.from_cache(
         user.launch_id,
         FastAPIRequest(request),
         TOOL_CONF,
-        launch_data_storage=launch_data_storage
+        launch_data_storage=cache_storage
     )
 
 
@@ -66,9 +70,10 @@ def get_nrps_service(
 
 
 def get_ags_service(
-        message_launch: FastAPIMessageLaunch = Depends(get_message_launch)
+        message_launch: FastAPIMessageLaunch = Depends(get_message_launch),
+        background_task_service: BackgroundTaskService = Depends(get_background_task_service)
 ) -> AgsService:
-    return AgsService(message_launch)
+    return AgsService(message_launch, background_task_service)
 
 
 def get_course_service(

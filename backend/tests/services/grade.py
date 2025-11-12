@@ -80,7 +80,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
         ]
 
         self.report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -145,7 +145,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
             UpdateAnswerScoresRequest(id=answers[1].id, score=0)
         ]
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -207,7 +207,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
             UpdateAnswerScoresRequest(id=answers[2].id, score=1)
         ]
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -247,7 +247,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
             UpdateAnswerScoresRequest(id=uuid.uuid4(), score=0)
         ]
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -297,7 +297,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
             UpdateAnswerScoresRequest(id=answers[1].id, score=0)
         ]
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -329,7 +329,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
             UpdateAnswerScoresRequest(id=answers[0].id, score=10)
         ]
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,
@@ -349,7 +349,7 @@ class TestGradeService(unittest.IsolatedAsyncioTestCase):
     async def test_grade_with_empty_scores(self):
         """Оценка отчета с пустым списком оценок"""
         report = FullWorkResponse(
-            report_id=self.report_id,
+            id=self.report_id,
             author_id=self.student.sub,
             status=ReportStatus.SUBMITTED,
             template=self.template,

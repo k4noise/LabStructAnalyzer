@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse, Response
 
 from labstructanalyzer.models.user_model import User, UserRole
 from labstructanalyzer.core.dependencies import get_template_service, get_report_service, \
-    get_user_with_any_role, get_user, get_chain_storage, get_course_service, get_ags_service, \
+    get_user_with_any_role, get_user, get_file_storage, get_course_service, get_ags_service, \
     get_nrps_service
 from labstructanalyzer.schemas.report import ReportCreationResponse, AllReportsByUserResponse
 
@@ -22,7 +22,7 @@ from labstructanalyzer.services.parser.common import ParserService
 
 from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.services.report import ReportService
-from labstructanalyzer.utils.files.chain_storage import ChainStorage
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
 
 router = APIRouter()
 
@@ -390,10 +390,10 @@ async def remove_template(
         user: User = Depends(get_user_with_any_role(UserRole.TEACHER)),
         template_service: TemplateService = Depends(get_template_service),
         ags_service: AgsService = Depends(get_ags_service),
-        chain_storage: ChainStorage = Depends(get_chain_storage)
+        file_storage: HybridStorage = Depends(get_file_storage)
 ):
     """Удалить шаблон, отчеты, ответы"""
-    await template_service.delete(user, template_id, chain_storage, ags_service)
+    await template_service.delete(user, template_id, file_storage, ags_service)
     return JSONResponse({"detail": "Шаблон успешно удален"})
 
 

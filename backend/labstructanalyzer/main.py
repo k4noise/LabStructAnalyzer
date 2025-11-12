@@ -30,6 +30,7 @@ from .routers.file_router import router as file_router
 
 from dotenv import load_dotenv
 from labstructanalyzer.core.database import close_db
+from .utils.ttl_cache import RedisCache
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     HALHyperModel.init_app(app)
+    app.state.cache = RedisCache()
     yield
     await close_db()
 

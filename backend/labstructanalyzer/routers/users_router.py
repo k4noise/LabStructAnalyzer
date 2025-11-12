@@ -2,15 +2,14 @@ from fastapi import APIRouter, Depends
 from starlette.requests import Request
 
 from labstructanalyzer.configs.config import TOOL_CONF
-from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.core.dependencies import get_user
+from labstructanalyzer.core.dependencies import get_user, get_cache_data_storage
 
 from labstructanalyzer.models.user_info import UserInfoDto
 from labstructanalyzer.models.user_model import User as UserModel
 from labstructanalyzer.services.lti.nrps import NrpsService
 from labstructanalyzer.services.lti.user import UserService
-
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
+
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
 
@@ -46,7 +45,8 @@ router = APIRouter()
     Он использует контекст LTI для получения пользовательских данных из системы управления обучением (LMS).
     """
 )
-async def get_user_data(request: Request, user: UserModel = Depends(get_user)):
+async def get_user_data(request: Request, user: UserModel = Depends(get_user),
+                        launch_data_storage: FastAPICacheDataStorage = Depends(get_cache_data_storage)):
     """
     Получает и возвращает данные пользователя из контекста LTI запуска
 
@@ -55,7 +55,6 @@ async def get_user_data(request: Request, user: UserModel = Depends(get_user)):
         user: Параметры пользователя
     """
 
-    launch_data_storage = FastAPICacheDataStorage(cache)
     message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 

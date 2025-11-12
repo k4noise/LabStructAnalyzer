@@ -1,8 +1,7 @@
 from dataclasses import asdict
 from typing import Optional, Sequence
 
-from labstructanalyzer.models.answer import Answer
-from labstructanalyzer.schemas.answer import AnswerResponse, GradeResult
+from labstructanalyzer.schemas.answer import AnswerResponse, GradeResult, PreGradedAnswerResponse
 from labstructanalyzer.services.graders.thesis import ThesisAnswerGrader
 from labstructanalyzer.services.graders.fixed import FixedAnswerGrader
 from labstructanalyzer.services.graders.param import ParametrizedAnswerGrader
@@ -21,7 +20,7 @@ class PreGraderService:
             ThesisAnswerGrader(),
         ]
 
-    def grade(self) -> Sequence[Answer]:
+    def grade(self) -> Sequence[PreGradedAnswerResponse]:
         """
         Проводит предварительную оценку всех доступных непустых ответов
         при условии существования стратегии проверки
@@ -29,13 +28,13 @@ class PreGraderService:
         Returns:
             Список оценённых объектов `Answer` для последующего сохранения в БД
         """
-        graded: Sequence[Answer] = []
+        graded: list[PreGradedAnswerResponse] = []
 
         for answer in self._answers:
             if not self._is_processable(answer):
                 continue
 
-            user_text = answer.data.data.get("text", "")
+            user_text = answer.data.get("data").get("text", "")
             best_result: Optional[GradeResult] = None
 
             for grader in self._strategies:

@@ -4,8 +4,8 @@ from fastapi import APIRouter, File, UploadFile, Depends
 from starlette.responses import Response, JSONResponse
 
 from labstructanalyzer.configs.config import IMAGE_PREFIX, USER_IMAGE_PREFIX
-from labstructanalyzer.core.dependencies import get_chain_storage
-from labstructanalyzer.utils.files.chain_storage import ChainStorage
+from labstructanalyzer.core.dependencies import get_file_storage
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
 
 router = APIRouter()
 
@@ -40,12 +40,10 @@ router = APIRouter()
     })
 async def get_temp_image(
         file_key: str,
-        chain_storage: ChainStorage = Depends(get_chain_storage)
+        file_storage: HybridStorage = Depends(get_file_storage)
 ):
-    """
-    Получить изображение из шаблона
-    """
-    image = chain_storage.get(os.path.join(IMAGE_PREFIX, file_key))
+    """Получить изображение из шаблона"""
+    image = file_storage.get(os.path.join(IMAGE_PREFIX, file_key))
     return Response(content=image, media_type="image/png")
 
 
@@ -78,16 +76,14 @@ async def get_temp_image(
     })
 async def save_image(
         file: UploadFile = File(...),
-        chain_storage: ChainStorage = Depends(get_chain_storage)
+        file_storage: HybridStorage = Depends(get_file_storage)
 ):
-    """
-    Сохранить пользовательское изображение
-    """
+    """Сохранить пользовательское изображение"""
     file_data = await file.read()
     extension = file.filename.split(".")[-1] if "." in file.filename else "png"
 
-    file_key = chain_storage.save(
-        save_dir=USER_IMAGE_PREFIX,
+    file_key = file_storage.save(
+        path=USER_IMAGE_PREFIX,
         file_data=file_data,
         extension=extension
     )
@@ -107,10 +103,8 @@ async def save_image(
     })
 async def delete_image(
         file_key: str,
-        chain_storage: ChainStorage = Depends(get_chain_storage)
+        file_storage: HybridStorage = Depends(get_file_storage)
 ):
-    """
-    Удалить изображение по ключу
-    """
-    chain_storage.remove(file_key)
+    """Удалить изображение по ключу"""
+    file_storage.delete(file_key)
     return Response(status_code=200)

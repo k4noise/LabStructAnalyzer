@@ -1,10 +1,12 @@
 import uuid
 from typing import Sequence
 
+from labstructanalyzer.core.dependencies import get_report_service
 from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.domain.report import UpdateGradeInfo
 from labstructanalyzer.models.user_model import User
 from labstructanalyzer.schemas.answer import UpdateAnswerScoresRequest, AnswerResponse
+from labstructanalyzer.schemas.template import FullWorkResponse
 from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -25,8 +27,7 @@ class GradeService:
         """Отправляет отчет на проверку с инициализацией предварительной проверки"""
         report = await self.report_service.get(user, report_id, self.nrps_service)
         await self.report_service.submit(user, report_id)
-        pre_grader_service = PreGraderService(report.answers)
-        self.background_task_service.submit(pre_grader_service.grade)
+        self.background_task_service.enqueue(self._pre_grade_with_save, report)
         self.logger.info(f"Отчет отправлен на проверку: id {report_id}")
 
     async def grade(self, user: User, report_id: uuid.UUID, scores: Sequence[UpdateAnswerScoresRequest]):
@@ -74,3 +75,9 @@ class GradeService:
     def _calc_answer_score(self, answer: AnswerResponse, group_weight: int):
         """Вычислить итоговый балл ответа с поправкой на количество ответов в родителе"""
         return answer.score * answer.weight * (1 / group_weight)
+
+    async def _pre_grade_with_save(self, report: FullWorkResponse):
+        """Вычислить и сохранить предварительные результаты"""
+        report_service = get_report_service()
+        results = PreGraderService(report.answers).grade()
+        await report_service.save(report.user, report.id, results)

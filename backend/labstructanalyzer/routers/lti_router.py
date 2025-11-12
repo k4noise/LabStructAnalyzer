@@ -7,15 +7,14 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.responses import RedirectResponse, JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME, TOOL_CONF
+from labstructanalyzer.core.dependencies import get_cache_data_storage
 from labstructanalyzer.services.lti.jwt import JwtClaimService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.oidc_login import FastAPIOIDCLogin
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
-from labstructanalyzer.utils.ttl_cache import TTLCache
 
 router = APIRouter()
-cache = TTLCache()
 
 
 @router.get("/login", tags=["LTI"], summary="Начало входа LTI 1.3",
@@ -44,6 +43,7 @@ async def login(
         request: Request,
         target_link_uri: str = Query(None,
                                      description="URI целевой ссылки для перенаправления после успешной аутентификации."),
+        launch_data_storage: FastAPICacheDataStorage = Depends(get_cache_data_storage)
 ):
     """
     Обрабатывает аутентификацию LTI 1.3 через OIDC.
@@ -55,7 +55,6 @@ async def login(
     Returns:
         Перенаправляет на сервис аутентификации провайдера
     """
-    launch_data_storage = FastAPICacheDataStorage(cache)
     fastapi_request = FastAPIRequest(request)
     await fastapi_request.parse_request()
     target_link_uri = target_link_uri or fastapi_request.get_param("target_link_uri")
@@ -78,7 +77,8 @@ async def login(
                        }
                        }
              })
-async def launch(request: Request, authorize: AuthJWT = Depends()):
+async def launch(request: Request, authorize: AuthJWT = Depends(),
+                 launch_data_storage: FastAPICacheDataStorage = Depends(get_cache_data_storage)):
     """
     Запускает систему через LTI после успешной аутентификации
 
@@ -91,7 +91,6 @@ async def launch(request: Request, authorize: AuthJWT = Depends()):
     """
     request_obj = FastAPIRequest(request)
     await request_obj.parse_request()
-    launch_data_storage = FastAPICacheDataStorage(cache)
 
     message_launch = FastAPIMessageLaunch(request_obj, TOOL_CONF, launch_data_storage=launch_data_storage)
     message_launch.validate_registration()
