@@ -1,206 +1,234 @@
-import os.path
-from functools import lru_cache
-from typing import List
+import os
+from collections.abc import Sequence
+from typing import Final
 
 import numpy as np
-from compress_fasttext import CompressedFastTextKeyedVectors
-from pymorphy3 import MorphAnalyzer
-from razdel import sentenize, tokenize
+import onnxruntime as ort
+from razdel import sentenize
+from scipy.optimize import linear_sum_assignment
+from transformers import AutoTokenizer
 
-from labstructanalyzer.configs.config import BASE_PROJECT_DIR
+from labstructanalyzer.configs.config import ONNX_MODEL_DIR
 from labstructanalyzer.schemas.answer import GradeResult
 
+SIMILARITY_THRESHOLD: Final[float] = 0.78
+MIN_SENTENCE_LENGTH: Final[int] = 10
+MIN_TOKEN_COUNT: Final[int] = 3
+MAX_SEQUENCE_LENGTH: Final[int] = 128
+VECTOR_DIMENSION: Final[int] = 312
+SIMILARITY_CLOSE_THRESHOLD: Final[float] = 0.5
+MAX_COMMENT_ITEMS: Final[int] = 10
 
-@lru_cache(maxsize=1)
-def load_fasttext_model() -> CompressedFastTextKeyedVectors:
-    """
-    Загружает сжатую модель FastText из файла
 
-    Returns:
-        Загруженная сжатая модель векторов слов
+def load_onnx_session(model_dir: str) -> ort.InferenceSession:
     """
-    return CompressedFastTextKeyedVectors.load(
-        os.path.join(BASE_PROJECT_DIR, "labstructanalyzer/assets", "geowac_tokens_sg_300_5_2020-100K-20K-100.bin")
-    )
+    Загружает ONNX Runtime сессию для модели с именем model.onnx
+    из относительного пути директории
+    """
+    model_path = os.path.join(model_dir, "model.onnx")
+
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"ONNX модель не найдена в указанном пути: {model_path}")
+
+    return ort.InferenceSession(model_path)
+
+
+def load_tokenizer(model_dir: str) -> AutoTokenizer:
+    """Загружает токенизатор из указанного относительного пути директории"""
+    return AutoTokenizer.from_pretrained(model_dir)
 
 
 class ThesisAnswerGrader:
-    """
-    Грейдер для оценивания ответов-рассуждений.
-    Оценивает, насколько тезисы преподавателя отражены в ответе пользователя,
-    на основе семантической близости предложений
-    """
+    """Оценщик студенческих ответов на основе семантического сравнения с эталоном"""
 
-    POS_WEIGHTS = {
-        'NOUN': 1.0,
-        'VERB': 0.8,
-        'ADJF': 0.6,
-        'NUMR': 0.8,
-    }
-
-    DEFAULT_WEIGHT = 0.3
-    SIMILARITY_THRESHOLD = 0.85
-
-    def __init__(self):
-        self.morph = MorphAnalyzer()
-        self.word_vectors = load_fasttext_model()
-        self.vector_size = self.word_vectors.vector_size
+    def __init__(self, model_dir: str = ONNX_MODEL_DIR):
+        self.session = load_onnx_session(model_dir)
+        self.tokenizer = load_tokenizer(model_dir)
+        self.vector_size = VECTOR_DIMENSION
 
     def is_processable(self, given: str, reference: str) -> bool:
-        return len(given) >= 40 or len(list(sentenize(reference.replace("\n", ".")))) >= 2
+        """Проверяет, достаточно ли содержательны тексты для обработки"""
+        ref_sents = len(list(sentenize(reference.replace("\n", " "))))
+        return len(given.strip()) >= MIN_SENTENCE_LENGTH * 4 or ref_sents >= 2
 
     def grade(self, given: str, reference: str) -> GradeResult:
         """
-        Основной метод оценки ответа пользователя
-
-        Args:
-            given: строка ответа пользователя
-            reference: эталонная строка (или многострочный текст)
-
-        Returns:
-            GradeResult: Объект с оценкой (score от 0 до 1) и комментарием
-
-        Raises:
-            ValueError: Если модель не загружена или текст некорректен
+        Оценивает ответ студента относительно эталона.
+        Возвращает результат оценки с баллом [0.0, 1.0] и опциональным комментарием
         """
+        given = given.strip()
+        reference = reference.strip()
+
         user_sentences = self._split_sentences(given)
         reference_theses = self._split_sentences(reference)
 
         if not reference_theses:
-            return GradeResult(score=1, comment="Эталон пуст")
+            raise ValueError(
+                "Эталонный текст пустой или состоит только из пробелов/переносов"
+            )
 
         if not user_sentences:
-            return GradeResult(score=0)
+            return GradeResult(score=0.0, comment="Ответ пустой")
 
-        theses_vectors = [self._compute_sentence_vector(s) for s in reference_theses]
-        user_vectors = [self._compute_sentence_vector(s) for s in user_sentences]
+        ref_vectors = self._compute_vectors_batch(reference_theses)
+        user_vectors = self._compute_vectors_batch(user_sentences)
 
-        scores = self._match_theses(theses_vectors, user_vectors)
-        score = sum(scores) / len(scores)
-        comment = self._generate_comment(reference_theses, scores) if score < 1 else None
-        return GradeResult(score=score, comment=comment)
+        match_scores = self._compute_best_matches(ref_vectors, user_vectors)
+        score = np.mean(match_scores)
 
-    def _match_theses(self, reference_theses_vectors: List[np.ndarray], user_answer_vectors: List[np.ndarray]) -> List[
-        int]:
+        comment = None
+        if score < 1.0:
+            comment = self._generate_comment(
+                reference_theses=reference_theses,
+                user_sentences=user_sentences,
+                ref_vectors=ref_vectors,
+                user_vectors=user_vectors,
+                match_scores=match_scores,
+            )
+
+        return GradeResult(score=round(float(score), 3), comment=comment)
+
+    def _compute_best_matches(
+            self,
+            ref_vectors: np.ndarray,
+            user_vectors: np.ndarray
+    ) -> Sequence[float]:
         """
-        Вычисляет косинусное сходство между векторами предложений.
-        Предполагается, что векторы уже нормализованы
-
-        Returns:
-            Список 0/1 (тезис найден/не найден)
+        Вычисляет оптимальное сопоставление тезисов с предложениями студента.
+        Использует венгерский алгоритм для максимизации суммарной схожести
+        при ограничении "один тезис — одно предложение максимум"
         """
-        if not reference_theses_vectors or not user_answer_vectors:
-            return [0] * len(reference_theses_vectors)
+        if ref_vectors.shape[0] == 0:
+            return []
 
-        scores = []
-        for ref_vec in reference_theses_vectors:
-            similarities = []
-            for user_vec in user_answer_vectors:
-                if len(ref_vec) > 0 and len(user_vec) > 0:
-                    similarities.append(self._cosine_similarity(ref_vec, user_vec))
-            if similarities:
-                max_score = max(similarities)
-                scores.append(int(max_score >= self.SIMILARITY_THRESHOLD))
-            else:
-                scores.append(0)
-        return scores
+        if user_vectors.shape[0] == 0:
+            return [0.0] * ref_vectors.shape[0]
 
-    def _cosine_similarity(self, reference_theses_vectors: np.ndarray, user_answer_vectors: np.ndarray) -> float:
+        similarity_matrix = np.dot(ref_vectors, user_vectors.T)
+        row_indices, col_indices = linear_sum_assignment(-similarity_matrix)
+
+        best_matches = {
+            row: similarity_matrix[row, col]
+            for row, col in zip(row_indices, col_indices)
+        }
+
+        return [
+            float(best_matches.get(i, 0.0))
+            for i in range(len(ref_vectors))
+        ]
+
+    def _generate_comment(
+            self,
+            reference_theses: Sequence[str],
+            user_sentences: Sequence[str],
+            ref_vectors: np.ndarray,
+            user_vectors: np.ndarray,
+            match_scores: Sequence[float],
+    ) -> str:
         """
-        Косинусная близость между двумя векторами. Нормализуется в [0..1]
-
-        Returns:
-            Список значений 0/1, где 1 - тезис найден, 0 - не найден
-
-        Raises:
-            ValueError: Если входные списки пусты
+        Генерирует детальный комментарий о недостающих/неточных тезисах.
+        Для каждого тезиса ниже порога находит наиболее близкое предложение
+        студента и показывает степень близости
         """
-        if len(reference_theses_vectors) == 0 or len(user_answer_vectors) == 0 or np.linalg.norm(
-                reference_theses_vectors) == 0 or np.linalg.norm(user_answer_vectors) == 0:
-            return 0.0
-        dot_product = np.dot(reference_theses_vectors, user_answer_vectors)
-        return dot_product / (np.linalg.norm(reference_theses_vectors) * np.linalg.norm(user_answer_vectors))
+        missed_items = []
 
-    def _generate_comment(self, theses: List[str], match_mask: List[int]) -> str:
-        """
-        Формирует строку вида: "Тезисы не найдены: <список>"
-
-        Returns:
-            str: Строка с перечнем несоответствующих тезисов, или None, если все совпали.
-        """
-        missed = [thesis for thesis, flag in zip(theses, match_mask) if flag == 0]
-        return f"Тезисы не найдены: {'; '.join(missed)}" if missed else None
-
-    def _compute_sentence_vector(self, sentence: str) -> np.ndarray:
-        """
-        Вычисляет взвешенный и нормализованный вектор предложения
-
-        Returns:
-            Нормализованный вектор предложения или нулевой вектор, если предложение пустое
-        """
-        tokens = self._tokenize(sentence)
-        if not tokens:
-            return np.zeros(self.vector_size)
-
-        vectors = []
-        weights = []
-
-        for token in tokens:
-            word = self._lemmatize(token).lower()
-            try:
-                vec = self.word_vectors.get_vector(word)
-                vectors.append(vec)
-                weights.append(self._get_pos_weight(word))
-            except (KeyError, AttributeError):
+        for thesis, score, ref_vec in zip(reference_theses, match_scores, ref_vectors):
+            if score >= SIMILARITY_THRESHOLD:
                 continue
 
-        if not vectors:
-            return np.zeros(self.vector_size)
+            similarities = np.dot(ref_vec, user_vectors.T)
+            best_idx = int(np.argmax(similarities))
+            best_similarity = float(similarities[best_idx])
+            best_sentence = user_sentences[best_idx] if user_sentences else "(нет предложений)"
 
-        avg = np.average(vectors, axis=0, weights=weights)
-        norm = np.linalg.norm(avg)
-        if norm == 0:
-            return np.zeros(self.vector_size)
-        return avg / norm
+            if best_similarity > SIMILARITY_CLOSE_THRESHOLD:
+                missed_items.append(
+                    f"• «{thesis}» → близко: «{best_sentence}» ({best_similarity:.2f})"
+                )
+            else:
+                missed_items.append(f"• Не найдено: «{thesis}»")
 
-    def _get_pos_weight(self, word: str) -> float:
-        """
-        Возвращает вес слова на основе его части речи
+        if not missed_items:
+            return "Все тезисы найдены, но с небольшими отклонениями в формулировках."
 
-        Args:
-           Лемматизированное слово
+        header = "Не полностью покрыты тезисы:\n"
+        items = "\n".join(missed_items[:MAX_COMMENT_ITEMS])
+        footer = (
+            "\n… и ещё некоторые"
+            if len(missed_items) > MAX_COMMENT_ITEMS
+            else ""
+        )
 
-        Returns:
-            Вес слова (из POS_WEIGHTS или DEFAULT_WEIGHT)
-        """
-        parsed = self.morph.parse(word)[0]
-        pos = parsed.tag.POS
-        return self.POS_WEIGHTS.get(pos, self.DEFAULT_WEIGHT)
+        return header + items + footer
 
-    @lru_cache(maxsize=4096)
-    def _lemmatize(self, word: str) -> str:
-        """
-        Лемматизирует слово
+    def _compute_vectors_batch(self, sentences: Sequence[str]) -> np.ndarray:
+        """Вычисляет нормализованные эмбеддинги предложений для батча"""
+        if not sentences:
+            return np.zeros((0, self.vector_size), dtype=np.float32)
 
-        Returns:
-            Нормальная форма слова
-        """
-        return self.morph.parse(word.lower())[0].normal_form
+        filtered_sentences = []
+        for sentence in sentences:
+            tokens = self.tokenizer.tokenize(sentence)
+            if len(tokens) >= MIN_TOKEN_COUNT:
+                filtered_sentences.append(sentence)
 
-    def _tokenize(self, text: str) -> List[str]:
-        """
-        Токенизирует текст и фильтрует токены
+        if not filtered_sentences:
+            return np.zeros((len(sentences), self.vector_size), dtype=np.float32)
 
-        Returns:
-            Список отфильтрованных токенов (только буквы и числа)
-        """
-        return [token.text for token in tokenize(text) if token.text.isalnum()]
+        inputs = self.tokenizer(
+            filtered_sentences,
+            return_tensors="np",
+            padding=True,
+            truncation=True,
+            max_length=MAX_SEQUENCE_LENGTH,
+        )
 
-    def _split_sentences(self, text: str) -> List[str]:
-        """
-        Разделяет текст на предложения
+        outputs = self.session.run(
+            None,
+            {
+                "input_ids": inputs["input_ids"].astype(np.int64),
+                "attention_mask": inputs["attention_mask"].astype(np.int64),
+            },
+        )
+        last_hidden_state = outputs[0].astype(np.float32)
 
-        Returns:
-            Список непустых предложений
-        """
-        return [sent.text.strip() for sent in sentenize(text) if sent.text.strip()]
+        embeddings = self._apply_mean_pooling(
+            hidden_states=last_hidden_state,
+            attention_mask=inputs["attention_mask"],
+        )
+
+        embeddings = self._normalize_vectors(embeddings)
+
+        result = np.zeros((len(sentences), self.vector_size), dtype=np.float32)
+        result[: len(filtered_sentences)] = embeddings
+
+        return result
+
+    @staticmethod
+    def _apply_mean_pooling(
+            hidden_states: np.ndarray,
+            attention_mask: np.ndarray,
+    ) -> np.ndarray:
+        """Применяет mean pooling с учётом attention mask."""
+        mask = attention_mask[..., None].astype(np.float32)
+        masked_hidden = hidden_states * mask
+
+        summed = masked_hidden.sum(axis=1)
+        token_counts = mask.sum(axis=1)
+        token_counts = np.clip(token_counts, 1e-9, None)
+
+        return summed / token_counts
+
+    @staticmethod
+    def _normalize_vectors(vectors: np.ndarray) -> np.ndarray:
+        """Применяет L2-нормализацию к векторам"""
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1.0, norms)
+        return vectors / norms
+
+    @staticmethod
+    def _split_sentences(text: str) -> Sequence[str]:
+        """Разбивает текст на предложения и фильтрует слишком короткие"""
+        normalized = text.replace("\n", " ").strip()
+        sentences = [s.text.strip() for s in sentenize(normalized)]
+        return [s for s in sentences if len(s) >= MIN_SENTENCE_LENGTH]
