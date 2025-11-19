@@ -1,10 +1,8 @@
-import os
 import numpy as np
 from typing import Final, Sequence
-from transformers import AutoTokenizer
-import onnxruntime as ort
 
-from labstructanalyzer.configs.config import ONNX_MODEL_DIR
+from onnxruntime import InferenceSession
+from transformers import T5Tokenizer
 
 MIN_TOKEN_COUNT: Final[int] = 3
 MAX_SEQUENCE_LENGTH: Final[int] = 128
@@ -12,19 +10,10 @@ VECTOR_DIMENSION: Final[int] = 312
 
 
 class TextEmbedder:
-    def __init__(self, model_dir: str = ONNX_MODEL_DIR):
-        self.session = self._load_onnx_session(model_dir)
-        self.tokenizer = self._load_tokenizer(model_dir)
+    def __init__(self, model: InferenceSession, tokenizer: T5Tokenizer):
         self.vector_size = VECTOR_DIMENSION
-
-    def _load_onnx_session(self, model_dir: str) -> ort.InferenceSession:
-        model_path = os.path.join(model_dir, "model.onnx")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"ONNX модель не найдена: {model_path}")
-        return ort.InferenceSession(model_path)
-
-    def _load_tokenizer(self, model_dir: str) -> AutoTokenizer:
-        return AutoTokenizer.from_pretrained(model_dir)
+        self.model = model
+        self.tokenizer = tokenizer
 
     def compute_embeddings(self, sentences: Sequence[str]) -> np.ndarray:
         """Вычисляет нормализованные эмбеддинги для списка текстов"""

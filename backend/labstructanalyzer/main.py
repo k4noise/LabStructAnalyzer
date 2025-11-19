@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
+import ctranslate2
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,8 +9,10 @@ from fastapi_another_jwt_auth.exceptions import AuthJWTException
 from fastapi_hypermodel import HALHyperModel
 from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
+from transformers import T5Tokenizer
+import onnxruntime as ort
 
-from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR
+from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR, GENERATE_MODEL_DIR, ONNX_MODEL_DIR
 from .exceptions.invalid_action import InvalidActionException
 from .exceptions.parser import ParserError
 
@@ -39,6 +42,22 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     HALHyperModel.init_app(app)
     app.state.cache = RedisCache()
+    try:
+        app.state.generate_model = ctranslate2.Translator(GENERATE_MODEL_DIR, device="cpu")
+        app.state.generate_tokenizer = T5Tokenizer.from_pretrained(
+            GENERATE_MODEL_DIR,
+            use_fast=False,
+            legacy=False,
+        )
+    except Exception as exception:
+        raise exception
+
+    try:
+        app.state.embedder_model = ort.InferenceSession(ONNX_MODEL_DIR)
+        app.state.embedder_tokenizer = T5Tokenizer.from_pretrained(ONNX_MODEL_DIR)
+    except Exception as exception:
+        raise exception
+
     yield
     await close_db()
 
