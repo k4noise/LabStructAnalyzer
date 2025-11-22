@@ -98,6 +98,13 @@ class PreGradedAnswerResponse(AnswerResponse):
             pre_grade=answer_model.pre_grade
         )
 
+    @staticmethod
+    def from_response(answer: AnswerResponse, pre_grade_result: dict):
+        return PreGradedAnswerResponse(
+            **answer.model_dump(),
+            pre_grade=pre_grade_result
+        )
+
 
 @dataclass
 class GradeResult:

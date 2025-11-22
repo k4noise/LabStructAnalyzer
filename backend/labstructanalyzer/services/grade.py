@@ -79,5 +79,5 @@ class GradeService:
     async def _pre_grade_with_save(self, report: FullWorkResponse):
         """Вычислить и сохранить предварительные результаты"""
         report_service = get_report_service()
-        results = PreGraderService(report.answers).grade()
+        results = PreGraderService(report.answers).grade_many()
         await report_service.save(report.user, report.id, results)

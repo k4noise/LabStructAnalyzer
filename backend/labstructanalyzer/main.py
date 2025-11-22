@@ -10,7 +10,6 @@ from fastapi_hypermodel import HALHyperModel
 from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
 from transformers import T5Tokenizer
-import onnxruntime as ort
 
 from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR, GENERATE_MODEL_DIR, ONNX_MODEL_DIR
 from .exceptions.invalid_action import InvalidActionException
@@ -49,12 +48,6 @@ async def lifespan(app: FastAPI):
             use_fast=False,
             legacy=False,
         )
-    except Exception as exception:
-        raise exception
-
-    try:
-        app.state.embedder_model = ort.InferenceSession(ONNX_MODEL_DIR)
-        app.state.embedder_tokenizer = T5Tokenizer.from_pretrained(ONNX_MODEL_DIR)
     except Exception as exception:
         raise exception
 

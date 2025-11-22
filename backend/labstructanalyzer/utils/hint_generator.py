@@ -2,6 +2,8 @@ from typing import Dict, Any
 from transformers import T5Tokenizer
 import ctranslate2
 
+from labstructanalyzer.schemas.hint import HintGenerationRequest
+
 
 class HintGenerator:
     """Генератор подсказок/вопросов на основе контекста, ответа студента и описания ошибки."""
@@ -10,13 +12,11 @@ class HintGenerator:
             self,
             tokenizer: T5Tokenizer,
             model: ctranslate2.Translator,
-            max_context_len: int = 150,
-            max_answer_len: int = 100,
     ) -> None:
         self.tokenizer = tokenizer
         self.model = model
-        self.max_context_len = max_context_len
-        self.max_answer_len = max_answer_len
+        self.max_context_len = 150
+        self.max_answer_len = 100
 
     def _post_process(self, text: str) -> str:
         """Чистка ответа модели от лишних префиксов и пробелов"""
@@ -31,13 +31,15 @@ class HintGenerator:
 
     def generate(
             self,
-            context: str,
-            student_answer: str,
-            error_explanation: str,
+            context: HintGenerationRequest,
             **generation_params: Any
     ) -> str | None:
-        """Генерирует вопрос/подсказку по ответу пользователя"""
-        main_input = self._build_prompt(context, student_answer, error_explanation)
+        """Генерирует подсказку по ответу пользователя"""
+        if context is None:
+            return None
+
+        main_input = self._build_prompt(' '.join(context.theory), context.answer,
+                                        context.error_explanation)
 
         default_params: Dict[str, Any] = {
             "beam_size": 3,
@@ -74,4 +76,6 @@ class HintGenerator:
             f"[ОТВЕТ СТУДЕНТА] {answer_trimmed}\n"
             f"[ОШИБКА] {error}\n"
             f"[ВОПРОС]"
-        )
+        ) if context else (f"[ОТВЕТ СТУДЕНТА] {answer_trimmed}\n"
+                           f"[ОШИБКА] {error}\n"
+                           f"[ВОПРОС]")

@@ -210,7 +210,7 @@ class FullWorkResponse(HALHyperModel):
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
 
     @staticmethod
-    def from_domain(report: Report, user: User, nrps: NrpsService) -> "FullWorkResponse":
+    def from_domain(report: Report, user: User, nrps: NrpsService | None) -> "FullWorkResponse":
         elements_by_id_map = {element.id: element for element in report.template.elements}
 
         dto_factory = PreGradedAnswerResponse.from_domain if user.is_instructor() and not user.sub == report.author_id else AnswerResponse.from_domain
@@ -226,4 +226,5 @@ class FullWorkResponse(HALHyperModel):
             ],
             user=user,
             author_id=report.author_id,
-            **({"grader_name": nrps.get_user_by_id(report.grader_id)} if report.grader_id is not None else {}))
+            **({"grader_name": nrps.get_user_by_id(
+                report.grader_id)} if NrpsService and report.grader_id is not None else {}))

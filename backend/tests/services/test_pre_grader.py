@@ -75,7 +75,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_thesis_grader.grade.return_value = GradeResult(0.8, "Good")
 
         service = self.PreGraderService([self.mock_full_answer])
-        result = service.grade()
+        result = service.grade_many()
 
         self.mock_fixed_grader.grade.assert_called_once_with(
             "test answer", "reference answer"
@@ -93,7 +93,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_thesis_grader.is_processable.return_value = False
 
         service = self.PreGraderService([self.mock_full_answer])
-        result = service.grade()
+        result = service.grade_many()
 
         self.mock_param_grader.grade.assert_not_called()
         self.mock_fixed_grader.grade.assert_not_called()
@@ -105,7 +105,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_data.data = {"text": ""}
 
         service = self.PreGraderService([self.mock_full_answer])
-        result = service.grade()
+        result = service.grade_many()
 
         self.mock_param_grader.grade.assert_not_called()
         self.assertEqual(result, [])
@@ -115,7 +115,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_full_answer.reference = None
 
         service = self.PreGraderService([self.mock_full_answer])
-        result = service.grade()
+        result = service.grade_many()
 
         self.mock_fixed_grader.grade.assert_not_called()
         self.assertEqual(result, [])
@@ -149,7 +149,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_fixed_grader.grade.return_value = grade_result2
 
         service = self.PreGraderService([full_answer1, full_answer2])
-        result = service.grade()
+        result = service.grade_many()
 
         self.assertEqual(len(result), 2)
 
@@ -164,7 +164,7 @@ class TestPreGraderService(unittest.TestCase):
         self.mock_data.data = None
 
         service = self.PreGraderService([self.mock_full_answer])
-        result = service.grade()
+        result = service.grade_many()
 
         self.mock_param_grader.grade.assert_not_called()
         self.assertEqual(result, [])

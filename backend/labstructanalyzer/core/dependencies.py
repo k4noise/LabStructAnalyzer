@@ -16,6 +16,7 @@ from labstructanalyzer.repository.template_element import TemplateElementReposit
 from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.grade import GradeService
+from labstructanalyzer.utils.hint_generator import HintGenerator
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -27,6 +28,7 @@ from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.services.template_element import TemplateElementService
 from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
 from labstructanalyzer.utils.files.s3 import S3Storage
+from labstructanalyzer.utils.ttl_cache import RedisCache
 
 
 def get_user(authorize: AuthJWT = Depends()) -> User:
@@ -37,16 +39,20 @@ def get_user(authorize: AuthJWT = Depends()) -> User:
     return user
 
 
+def get_cache(request: Request) -> RedisCache:
+    return request.state.app.cache
+
+
 def get_file_storage():
     return HybridStorage(backup=S3Storage())
 
 
-def get_background_task_service(request: Request) -> BackgroundTaskService:
-    return BackgroundTaskService(request.app.state.cache.get_connection(), request.app.state.cache.get_connection())
+def get_background_task_service(cache: RedisCache = Depends(get_cache)) -> BackgroundTaskService:
+    return BackgroundTaskService(cache.get_connection())
 
 
-def get_cache_data_storage(request: Request) -> FastAPICacheDataStorage:
-    return FastAPICacheDataStorage(request.app.state.cache)
+def get_cache_data_storage(cache: RedisCache = Depends(get_cache)) -> FastAPICacheDataStorage:
+    return FastAPICacheDataStorage(cache)
 
 
 def get_message_launch(
@@ -95,6 +101,10 @@ def get_grade_service(report_service: ReportService = Depends(get_report_service
                       ags_service: AgsService = Depends(get_ags_service),
                       nrps_service: NrpsService = Depends(get_nrps_service)) -> GradeService:
     return GradeService(report_service, background_task_service, ags_service, nrps_service)
+
+
+def get_hint_generator(request: Request):
+    return HintGenerator(request.app.state.generate_tokenizer, request.app.state.generate_model)
 
 
 def get_user_with_any_role(*roles: UserRole):

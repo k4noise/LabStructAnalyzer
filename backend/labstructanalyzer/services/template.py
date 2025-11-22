@@ -13,7 +13,7 @@ from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateC
     TemplateElementUpdateRequest, TemplateUpdateRequest, TemplateCreationResponse, TemplateStructure
 from labstructanalyzer.schemas.template_element import CreateTemplateElementRequest, \
     TemplateElementUpdateAction
-from labstructanalyzer.services.template_matcher import TemplateMatcher
+from labstructanalyzer.services.hint_context import HintContextService
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
 from labstructanalyzer.services.template_element import TemplateElementService
@@ -83,7 +83,7 @@ class TemplateService:
         self.logger.info(f"Шаблон обновлен: id {template_id}")
 
     async def publish(self, user: User, template_id: uuid.UUID, ags_service: AgsService,
-                      matcher_service: TemplateMatcher):
+                      matcher_service: HintContextService):
         """Опубликовать шаблон"""
         template = await self._get(user, template_id)
         TemplateAccessVerifier(template).is_valid_course(user).can_publish()

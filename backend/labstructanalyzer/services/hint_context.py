@@ -1,16 +1,80 @@
 import uuid
+from datetime import timedelta
 from typing import Sequence, Tuple, Dict, List
 
 import numpy as np
 
+from labstructanalyzer.exceptions.access_denied import NotOwnerAccessDeniedException
 from labstructanalyzer.models.template_element import TemplateElement
+from labstructanalyzer.models.user_model import User
+from labstructanalyzer.schemas.hint import NewHintRequest, HintGenerationRequest
+from labstructanalyzer.schemas.template import FullWorkResponse
 from labstructanalyzer.schemas.template_element import TemplateElementProperties
+from labstructanalyzer.services.pre_grader import PreGraderService
 from labstructanalyzer.utils.embedder import TextEmbedder
+from labstructanalyzer.utils.ttl_cache import RedisCache
 
 
-class TemplateMatcher:
+class HintContextService:
     def __init__(self, embedder: TextEmbedder):
         self.embedder = embedder
+
+    @staticmethod
+    def cache(report: FullWorkResponse, cache: RedisCache):
+        """Кэширует данные элементов шаблона и динамический контекст отчета"""
+        if not report.template.elements:
+            return
+
+        elements_data = {
+            f"template_element_{element.id}": element.data
+            for element in report.template.elements
+        }
+        cache.set_many_if_not_present(elements_data, timedelta(hours=3))
+
+        report_data = {
+            "status": report.status.value,
+            "author_id": report.author_id
+        }
+
+        cache.set(f"live_report_{report.id}", report_data, ttl=timedelta(hours=1))
+
+    @staticmethod
+    def get_from_cache(hint_request: NewHintRequest, user: User, report_id: uuid.UUID,
+                       cache: RedisCache) -> HintGenerationRequest | None:
+        """Собирает контекст из кэша для отправки на генерацию подсказки"""
+
+        report_data = cache.get(f"live_report_{report_id}")
+        if report_data and report_data['author_id'] != user.sub:
+            raise NotOwnerAccessDeniedException()
+
+        answer_element = cache.get(f"template_element_{hint_request.current.element_id}")
+        if not answer_element:
+            return None
+
+        pre_graded = PreGraderService(hint_request.answers).grade(hint_request.current).pre_grade
+        question_element = cache.get(f"template_element_{hint_request.question_id}")
+
+        theory_data = []
+
+        similar_theory_ids = []
+        if answer_element and getattr(answer_element, 'properties', None):
+            similar_theory_ids = answer_element.properties.get("similar_theory", [])
+
+        for theory_id in similar_theory_ids:
+            theory_element = cache.get(f"template_element_{theory_id}")
+            if theory_element:
+                theory_data.append(theory_element.properties.get("data"))
+
+        if len(theory_data) == 0:
+            return None
+
+        return HintGenerationRequest(
+            answer=hint_request.current.data.get("text"),
+            question=question_element.data if question_element else "",
+            theory=theory_data,
+            error_explanation=pre_graded.get("comment"),
+            pre_score=pre_graded.get("score")
+        )
 
     def analyze(self, template_elements: Sequence[TemplateElement]) -> Sequence[TemplateElementProperties]:
         """Для каждого вопроса находит 3 наиболее похожих элемента теории"""
@@ -34,7 +98,7 @@ class TemplateMatcher:
 
             results.append(TemplateElementProperties(
                 id=question.id,
-                properties={"similar": top_similar_ids}
+                properties={"similar_theory": top_similar_ids}
             ))
 
         return results
@@ -55,7 +119,7 @@ class TemplateMatcher:
         if not elements:
             return {}
 
-        texts = [el.data for el in elements]
+        texts = [element.properties.get("data") for element in elements]
         embeddings = self.embedder.compute_embeddings(texts)
         return {el.id: vec for el, vec in zip(elements, embeddings)}
 

@@ -48,7 +48,7 @@ class ReportService:
             f"Отчет для пользователя с id {user.sub} создан: id {new_report.id} на основе шаблона с id{template.id}")
         return ReportCreationResponse(id=new_report.id)
 
-    async def get(self, user: User, report_id: uuid.UUID, nrps: NrpsService) -> FullWorkResponse:
+    async def get(self, user: User, report_id: uuid.UUID, nrps: NrpsService | None) -> FullWorkResponse:
         """Получить отчет вместе с шаблоном"""
         report = await self._get(report_id, user)
         return FullWorkResponse.from_domain(report, user, nrps)
