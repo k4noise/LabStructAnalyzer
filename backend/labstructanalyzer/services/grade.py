@@ -1,12 +1,15 @@
 import uuid
 from typing import Sequence
 
-from labstructanalyzer.core.dependencies import get_report_service
+from labstructanalyzer.core.database import get_session
 from labstructanalyzer.core.logger import GlobalLogger
 from labstructanalyzer.domain.report import UpdateGradeInfo
 from labstructanalyzer.models.user_model import User
+from labstructanalyzer.repository.answer import AnswerRepository
+from labstructanalyzer.repository.report import ReportRepository
 from labstructanalyzer.schemas.answer import UpdateAnswerScoresRequest, AnswerResponse
 from labstructanalyzer.schemas.template import FullWorkResponse
+from labstructanalyzer.services.answer import AnswerService
 from labstructanalyzer.services.background_task import BackgroundTaskService
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.nrps import NrpsService
@@ -78,6 +81,7 @@ class GradeService:
 
     async def _pre_grade_with_save(self, report: FullWorkResponse):
         """Вычислить и сохранить предварительные результаты"""
-        report_service = get_report_service()
+        session = get_session()
+        report_service = ReportService(ReportRepository(session), AnswerService(AnswerRepository(session)))
         results = PreGraderService(report.answers).grade_many()
         await report_service.save(report.user, report.id, results)
