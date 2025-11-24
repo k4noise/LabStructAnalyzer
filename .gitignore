@@ -32,3 +32,5 @@ out/
 /backend/labstructanalyzer/configs/lti_config.json
 /backend/labstructanalyzer/configs/keys/
 /backend/labstructanalyzer/logs
+
+*.onnx
