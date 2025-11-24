@@ -3,18 +3,12 @@
 Важно! Не используйте описанные команды запуска системы на продакшене! <br>
 Используйте **только** для локального исследования возможностей системы!
 
-## Перед запуском:
-
-Система работает только по HTTPS. Для этого сгенерируйте сертификат и ключ (или используйте существующие `cert.pem` и `key.pem`):
-```
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj "/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname"
-```
-
 ### Бэкенд
 
 0. Перейти в папку `backend`
 1. Переименовать `.env.example` в `.env`, изменить необходимые значения
-2. В папке `labstructanalyzer/configs` переименовать `lti_config.json.example` в `lti_config.json` и изменить `http://moodle_external_lms_url` на URL развернутой Moodle
+2. В папке `labstructanalyzer/configs` переименовать `lti_config.json.example` в `lti_config.json` и изменить `http://moodle_external_lms_url` на URL развернутой Moodle. <br>
+После [создания](CREATE_EXTERNAL_TOOL.md) в LMS внешнего инструмента LTI v1.3 укажите `client_id` и `deployment_ids`
 3. В папке `labstructanalyzer/configs` сгенерируйте ключи самостоятельно:
 
 ```
@@ -30,7 +24,6 @@ openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
 
 4. Установить `poetry`, если не установлен: `pip install poetry`
 5. Установить зависимости проекта: `poetry install`
-4. Для запуска миграций переименовать `alembic.ini.example` в `alembic.ini` и указать для свойства `sqlalchemy.url` путь к БД (должен совпадать с указанным в `.env`) и запустить `poetry run alembic upgrade head`
 6. Запустить проект: `poetry run dev`
 
 ### Фронтенд

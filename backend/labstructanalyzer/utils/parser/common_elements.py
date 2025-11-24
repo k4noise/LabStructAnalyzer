@@ -126,13 +126,13 @@ class QuestionElement(IParserElement[list[IParserElement]]):
             **self.collect_common_fields(),
         }
 
+
 @dataclass
 class AnswerElement(IParserElement[str]):
     """Элемент ответа"""
 
     data: str
     weight: int = field(default=1)
-    simple: bool = field(default=True)
 
     def __post_init__(self) -> None:
         super().__init__(ParserElementType.ANSWER, self.data)
@@ -142,7 +142,7 @@ class AnswerElement(IParserElement[str]):
             "type": self.element_type.value,
             "data": self.data,
             "weight": self.weight,
-            "simple": self.simple,
+            "refAnswer": None,
             **self.collect_common_fields(),
         }
         return properties

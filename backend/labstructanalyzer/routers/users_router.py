@@ -1,14 +1,17 @@
 from fastapi import APIRouter, Depends
-from fastapi_another_jwt_auth import AuthJWT
 from starlette.requests import Request
 
-from labstructanalyzer.configs.config import tool_conf
-from labstructanalyzer.models.user_info import UserInfo
-from labstructanalyzer.routers.lti_router import cache
+from labstructanalyzer.configs.config import TOOL_CONF
+from labstructanalyzer.core.dependencies import get_user, get_cache_data_storage
+
+from labstructanalyzer.models.user_info import UserInfoDto
+from labstructanalyzer.models.user_model import User as UserModel
+from labstructanalyzer.services.lti.nrps import NrpsService
+from labstructanalyzer.services.lti.user import UserService
 from labstructanalyzer.services.pylti1p3.cache import FastAPICacheDataStorage
+
 from labstructanalyzer.services.pylti1p3.message_launch import FastAPIMessageLaunch
 from labstructanalyzer.services.pylti1p3.request import FastAPIRequest
-from labstructanalyzer.services.lti.user import User
 
 router = APIRouter()
 
@@ -17,7 +20,7 @@ router = APIRouter()
     "/me",
     tags=["User"],
     responses={
-        200: {"model": UserInfo},
+        200: {"model": UserInfoDto},
         401: {
             "description": "Не авторизован или refresh токен истек",
             "content": {
@@ -42,27 +45,20 @@ router = APIRouter()
     Он использует контекст LTI для получения пользовательских данных из системы управления обучением (LMS).
     """
 )
-async def get_user_data(request: Request, authorize: AuthJWT = Depends()):
+async def get_user_data(request: Request, user: UserModel = Depends(get_user),
+                        launch_data_storage: FastAPICacheDataStorage = Depends(get_cache_data_storage)):
     """
-    Получает и возвращает данные пользователя из контекста LTI запуска.
+    Получает и возвращает данные пользователя из контекста LTI запуска
 
     Args:
-        request: Объект запроса FastAPI для доступа к данным запроса.
-        authorize: Dependency для проверки JWT токена.
+        request: Объект запроса FastAPI для доступа к данным запроса
+        user: Параметры пользователя
     """
 
-    authorize.jwt_required()
-    raw_jwt = authorize.get_raw_jwt()
-
-    launch_data_storage = FastAPICacheDataStorage(cache)
-    message_launch = FastAPIMessageLaunch.from_cache(raw_jwt.get("launch_id"), FastAPIRequest(request), tool_conf,
+    message_launch = FastAPIMessageLaunch.from_cache(user.launch_id, FastAPIRequest(request), TOOL_CONF,
                                                      launch_data_storage=launch_data_storage)
 
-    user_data = User(message_launch)
-    return UserInfo(
-        fullName=user_data.get_full_name(),
-        name=user_data.get_name(),
-        surname=user_data.get_surname(),
-        role=user_data.get_roles(),
-        avatarUrl=user_data.get_avatar_url()
+    user_data = UserService(message_launch, NrpsService(message_launch))
+    return UserInfoDto(
+        full_name=user_data.full_name
     )

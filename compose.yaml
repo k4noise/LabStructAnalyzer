@@ -1,0 +1,67 @@
+volumes:
+  images:
+  redis_data:
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+    networks:
+      - labstructanalyzer
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./keys:/app/labstructanalyzer/configs/keys:ro
+      - ./lti_config.json:/app/labstructanalyzer/configs/lti_config.json:ro
+      - images:/app/images
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - labstructanalyzer
+
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "3162:80"
+    volumes:
+      - images:/usr/share/nginx/static/images
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - labstructanalyzer
+
+  redis:
+    image: redis:8.0.3-alpine
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    mem_limit: 96M
+    cpus: 0.2
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - labstructanalyzer
+
+  worker:
+    build:
+      context: ./backend
+    command: poetry run rq worker --url redis://redis:6379 default
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - labstructanalyzer
+
+networks:
+    labstructanalyzer:
+      driver: bridge

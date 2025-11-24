@@ -1,7 +1,7 @@
 from pylti1p3.message_launch import MessageLaunch
 
 
-class Course:
+class CourseService:
     """
     Сервис обработки данных курса пользователя из данных запуска или через сервис NRPS LTI 1.3
     """
@@ -12,15 +12,10 @@ class Course:
             .get_launch_data() \
             .get("https://purl.imsglobal.org/spec/lti/claim/context")
 
-    def get_name(self) -> str:
-        """
-        Получить имя курса
-        """
+    @property
+    def name(self) -> str:
         return self.course_data.get("title")
 
-    def get_id(self) -> str:
-        """
-        Получить id курса
-        """
-        if "id" in self.course_data:
-            return self.course_data.get("id")
+    @property
+    def id(self) -> str:
+        return self.course_data.get("id")

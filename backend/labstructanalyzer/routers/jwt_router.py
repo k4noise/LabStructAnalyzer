@@ -3,7 +3,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from starlette.responses import JSONResponse
 
 from labstructanalyzer.configs.config import JWT_ACCESS_TOKEN_LIFETIME
-from labstructanalyzer.services.lti.jwt import JWT
+from labstructanalyzer.services.lti.jwt import JwtClaimService
 
 router = APIRouter()
 
@@ -15,11 +15,6 @@ router = APIRouter()
     responses={
         200: {
             "description": "Токен доступа успешно обновлен",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Обновлен токен доступа"}
-                }
-            },
         },
         401: {
             "description": "Не авторизован или refresh токен истек",
@@ -28,8 +23,8 @@ router = APIRouter()
                     "example": {"detail": "Не авторизован"}
                 }
             },
-        },
-    },
+        }
+    }
 )
 async def refresh_access_token(authorize: AuthJWT = Depends()):
     """
@@ -45,12 +40,10 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
 
     current_user = authorize.get_jwt_subject()
     raw_jwt = authorize.get_raw_jwt()
-    user_claims = JWT().create_user_claims_at_jwt_object(raw_jwt)
+    user_claims = JwtClaimService().create_user_claims_at_jwt_object(raw_jwt)
 
     new_access_token = authorize.create_access_token(subject=current_user, user_claims=user_claims)
-    response = JSONResponse({"detail": "Обновлен токен доступа"})
-    authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME, response=response)
-    return response
+    authorize.set_access_cookies(new_access_token, max_age=JWT_ACCESS_TOKEN_LIFETIME)
 
 
 @router.delete(
@@ -59,14 +52,9 @@ async def refresh_access_token(authorize: AuthJWT = Depends()):
     description="Удаляет JWT токены из куки, осуществляя выход пользователя из аккаунта",
     responses={
         200: {
-            "description": "Успешный выход из аккаунта",
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Произведен выход из аккаунта"}
-                }
-            },
+            "description": "Успешный выход из аккаунта"
         }
-    },
+    }
 )
 async def logout(authorize: AuthJWT = Depends()):
     """
@@ -79,7 +67,4 @@ async def logout(authorize: AuthJWT = Depends()):
     Returns:
         dict: Сообщение о результате операции.
     """
-    try:
-        authorize.unset_jwt_cookies()
-    finally:
-        return JSONResponse({"detail": "Произведен выход из аккаунта"})
+    authorize.unset_jwt_cookies()

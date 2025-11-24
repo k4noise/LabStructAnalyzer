@@ -32,7 +32,17 @@
       "displayMode": "always"
     }
   ],
-  "composite": [
+  "composite": [{
+      "type": "labSection",
+      "displayMode": "prefer",
+      "data": [
+        {
+          "type": "header",
+          "contentType": "text",
+          "headerLevel": 3
+        }
+      ]
+    },
     {
       "type": "labPart",
       "displayMode": "prefer",
@@ -40,7 +50,7 @@
         {
           "type": "header",
           "contentType": "text",
-          "headerLevel": 3
+          "headerLevel": 4
         }
       ]
     },

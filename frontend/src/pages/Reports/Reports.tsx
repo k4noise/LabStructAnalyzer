@@ -3,15 +3,38 @@ import { AllReportsInfo } from "../../model/reports";
 import BackButtonComponent from "../../components/BackButtonComponent";
 import { formatDate } from "../../utils/timestampFormatter";
 import { Link } from "react-router";
+import { Helmet } from "react-helmet";
+import { useState } from "react";
 
 export const Reports = () => {
   const { data: reportsInfo } = useLoaderData<{ data: AllReportsInfo }>();
+  const [hideChecked, setHideChecked] = useState(false);
+
+  const filteredReports = hideChecked
+    ? reportsInfo.reports.filter((report) => report.status !== "Проверен")
+    : reportsInfo.reports;
+
   return (
     <div className="p-6">
+      <Helmet>
+        <title>{`Отчеты ${reportsInfo.template_name}`}</title>
+      </Helmet>
       <BackButtonComponent positionClasses={"relative"} />
-      <h1 className="text-3xl font-medium text-center mb-10">{`Отчеты "${reportsInfo.template_name}"`}</h1>
+      <h1 className="text-3xl font-bold text-center mb-10">{`Отчеты "${reportsInfo.template_name}"`}</h1>
 
-      {reportsInfo.reports.length ? (
+      <div className="mb-4">
+        <label>
+          <input
+            type="checkbox"
+            checked={hideChecked}
+            onChange={() => setHideChecked(!hideChecked)}
+            className="mr-2"
+          />
+          Скрыть проверенные
+        </label>
+      </div>
+
+      {filteredReports.length ? (
         <table className="w-full border-collapse text-left break-words">
           <thead>
             <tr>
@@ -23,12 +46,17 @@ export const Reports = () => {
             </tr>
           </thead>
           <tbody>
-            {reportsInfo.reports.map((report) => (
+            {filteredReports.map((report) => (
               <tr key={report.report_id}>
                 <td className="p-3">{formatDate(report.date)}</td>
                 <td className="p-3">{report.author_name}</td>
                 <td className="p-3">
-                  <Link to={`/report/${report.report_id}`} className="underline">Открыть</Link>
+                  <Link
+                    to={`/report/${report.report_id}`}
+                    className="underline"
+                  >
+                    Открыть
+                  </Link>
                 </td>
                 <td className="p-3">
                   <span
@@ -43,7 +71,6 @@ export const Reports = () => {
                     {report.status}
                   </span>
                 </td>
-
                 <td className="p-3">
                   {report.score
                     ? `${report.score}/${reportsInfo.max_score}`

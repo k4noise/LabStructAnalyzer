@@ -1,4 +1,7 @@
-import { AnswerElement, TemplateElementModel } from "../../model/templateElement";
+import {
+  AnswerElement,
+  TemplateElementModel,
+} from "../../model/templateElement";
 import Textarea from "../Textarea/TextareaComponent";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldValues, useForm } from "react-hook-form";
@@ -32,7 +35,7 @@ const EditAnswer = ({
 
   return (
     <form onSubmit={handleSubmit(onFormSend)}>
-      <h3 className="text-xl font-medium text-center mb-4">Настройка ответа</h3>
+      <h3 className="text-xl font-bold text-center mb-4">Настройка ответа</h3>
       <label className="block mb-3">
         id:
         <Textarea
@@ -65,12 +68,13 @@ const EditAnswer = ({
         </p>
       )}
       <label className="block mb-3">
-        Краткий ответ:
-        <input
-          type="checkbox"
-          className="ml-3"
-          defaultChecked={element?.properties.simple}
-          {...register("simple")}
+        Эталонный ответ:
+        <Textarea
+          className="ml-3 w-60 align-top bg-transparent border-b-2  border-zinc-950 dark:border-zinc-200 overflow-hidden"
+          placeholder="Ответ"
+          value={element?.properties?.refAnswer ?? ""}
+          minRowsCount={1}
+          validationOptions={register("refAnswer")}
         />
       </label>
       <Button text="Сохранить" type="submit" classes="block ml-auto" />

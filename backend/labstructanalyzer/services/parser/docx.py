@@ -1,10 +1,12 @@
 import io
 import os, zipfile
-from urllib.parse import urljoin
 
 from lxml import etree
 from typing import Generator, List, Optional
 from zipfile import ZipFile
+
+from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
+from labstructanalyzer.utils.files.s3 import S3Storage
 from labstructanalyzer.utils.parser.common_elements import (
     ImageElement,
     TextElement,
@@ -21,8 +23,6 @@ from labstructanalyzer.utils.parser.numbering_manager import (
 )
 
 from labstructanalyzer.utils.parser.nesting_manager import NestingManager
-from labstructanalyzer.utils.file_utils import FileUtils
-from labstructanalyzer.utils.parser.structure.structure_manager import StructureManager
 
 
 class DocxXmlManager:
@@ -101,8 +101,6 @@ class DocxParser:
     Конвертирует содержимое документа в массив структурных компонент согласно структуре
 
       Attributes:
-        images_dir: Путь до папки для сохранения изображений
-        structure_manager: Инстанс класса StructureManager с методами для применения структуры к элементам документа
         xml_manager: Инстанс класса DocxXmlManager с изображениями и lxml деревьями основного содержимого, стилей, нумерации, связей документа
         image_parser: Инстанс класса ImageParser с методом для парсинга изображений
         table_parser: Инстанс класса TableParser с методом для парсинга таблиц
@@ -112,31 +110,23 @@ class DocxParser:
         style_id_to_numberings_data: Словарь взаимоотношений идентификатора стиля к данным нумерации - идентификатору и уровню нумерации
     """
 
-    def __init__(self, document: bytes, structure: dict, image_save_subfolder: str) -> None:
+    def __init__(self, document: bytes, image_save_prefix: str) -> None:
         """Инициализирует объект класса DocxParser
 
         Arguments:
           document: Байты docx документа
-          structure: Словарь с данными структуры
-          image_save_subfolder: Подпапка для сохранения картинок
+          image_save_prefix: Подпапка для сохранения картинок
         """
-        self.structure_manager = StructureManager(structure)
-        self.images_dir = image_save_subfolder
         self.xml_manager = DocxXmlManager(document)
         self.table_parser = TableParser(self.xml_manager, self.parse)
-        self.image_parser = ImageParser(self.xml_manager, self.images_dir)
+        self.image_parser = ImageParser(self.xml_manager, image_save_prefix)
         self.text_parser = TextParser(self.xml_manager)
         self.numbering_manager = NumberingManager()
         self.nesting_manager = NestingManager()
         self.style_id_to_numberings_data = self._parse_numbering_in_styles()
 
-    def get_structure_components(self) -> List[dict]:
-        """Получает список всех структурных компонент документа
-
-        Returns:
-          Список структурных компонент документа
-        """
-        return list(self.structure_manager.apply_structure(self.parse(self.xml_manager.main_content_root)))
+    def start(self) -> Generator[IParserElement, None, None]:
+        return self.parse(self.xml_manager.main_content_root)
 
     def parse(
             self, root_element: etree.Element
@@ -237,6 +227,8 @@ class DocxParser:
         Returns:
             Данные нумерации при существовании нумерации
         """
+        if not numbering_props:
+            return None
         numbering_element = self.xml_manager.numberings_root.xpath(
             f'.//w:num[@w:numId="{numbering_props.id}"]',
             namespaces=self.xml_manager.NAMESPACES,
@@ -258,10 +250,10 @@ class DocxParser:
                 True,
             )
             numbering_data = NumberingItem(
-                format=overrided_numbering_data.format or numbering_data.format,
+                format=overrided_numbering_data.format if overrided_numbering_data else numbering_data.format,
                 startValue=overrided_numbering_data.startValue
-                           or numbering_data.startValue,
-                text=overrided_numbering_data.text or numbering_data.text,
+                if overrided_numbering_data else numbering_data.startValue,
+                text=overrided_numbering_data.text if overrided_numbering_data else numbering_data.text,
             )
         return numbering_data
 
@@ -274,15 +266,14 @@ class DocxParser:
         Returns:
           Свойства нумерации
         """
-
         numbering_id = element.xpath(
             "./w:numId/@w:val", namespaces=self.xml_manager.NAMESPACES
-        )[0]
+        )
         numbering_level = element.xpath(
             "./w:ilvl/@w:val", namespaces=self.xml_manager.NAMESPACES
         )
         numbering_level = int(numbering_level[0]) if numbering_level else 0
-        return NumberingProps(id=numbering_id, ilvl=numbering_level)
+        return NumberingProps(id=numbering_id[0] if numbering_id else None, ilvl=numbering_level)
 
     def _parse_numbering_data(
             self,
@@ -403,7 +394,7 @@ class ImageParser:
         ):
             image_extension = os.path.splitext(image_path)[1]
             return ImageElement(
-                data=urljoin(os.getenv("BACKEND_EXTERNAL_URL"), FileUtils.save(self.images_dir, image_data, image_extension))
+                data=HybridStorage(backup=S3Storage()).save(self.images_dir, image_data, image_extension)
             )
 
         return None
@@ -558,7 +549,6 @@ class TableParser:
                 current_cell_index += self._get_cell_width(cell_element)
                 if current_cell_index != col_index:
                     continue
-
                 vertical_merge_element = cell_element.find(
                     ".//w:tcPr/w:vMerge", namespaces=self.xml_manager.NAMESPACES
                 )
@@ -568,7 +558,9 @@ class TableParser:
                 vertical_merged = vertical_merge_element.get(
                     f'{{{self.xml_manager.NAMESPACES["w"]}}}val'
                 )
-                if not vertical_merged or vertical_merged == "continue":
+                if vertical_merged == 'restart':
+                    return cell_height
+                elif not vertical_merged or vertical_merged == "continue":
                     cell_height += 1
 
         return cell_height

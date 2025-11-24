@@ -1,9 +1,13 @@
+from contextlib import suppress
+from typing import Optional
+
+from pydantic import ValidationError
 from pylti1p3.message_launch import MessageLaunch
 
-from labstructanalyzer.routers.lti_router import cache
-from labstructanalyzer.services.lti.course import Course
-
-USERS_TTL = 24 * 60 * 60  # сутки
+from labstructanalyzer.core.logger import GlobalLogger
+from labstructanalyzer.exceptions.lis_service_no_access import NrpsNotSupportedException
+from labstructanalyzer.schemas.user import NrpsUser
+from labstructanalyzer.services.lti.course import CourseService
 
 
 class NrpsService:
@@ -12,28 +16,24 @@ class NrpsService:
     """
 
     def __init__(self, message_launch: MessageLaunch):
+        if not message_launch.has_nrps():
+            raise NrpsNotSupportedException()
         self.message_launch = message_launch
-        self.course_id = Course(self.message_launch).get_id()
+        self.logger = GlobalLogger().get_logger(__name__)
+        self._members_map: Optional[dict[str, NrpsUser]] = None
 
-    def get_user_name(self, user_id):
-        """
-        Получить имя пользователя по идентификатору.
-        Если данные курса отсутствуют в кеше, то они сохраняются в кеш.
-        """
-        course_users = cache.get(self.course_id)
-        if course_users is not None:
-            return course_users.get(str(user_id))
+    def get_user_by_id(self, user_id: str) -> Optional[NrpsUser]:
+        """Получить данные из NRPS по идентификатору пользователя"""
+        self._ensure_members_loaded()
+        return self._members_map.get(user_id)
 
-        self._cache_users()
-        return self.get_user_name(user_id)
+    def _ensure_members_loaded(self) -> None:
+        """Загружает данные, если они еще не были загружены"""
+        if self._members_map is None:
+            members = self.message_launch.get_nrps().get_members()
+            self.logger.warning(f"Получен доступ к данным NRPS в курсе {CourseService(self.message_launch).name}")
 
-    def _cache_users(self):
-        """
-        Получить данные из LMS о всех пользователях и сохранить в кеше для быстрого доступа
-        """
-        users = self.message_launch \
-            .get_nrps() \
-            .get_members()
-
-        users_dict = {user['user_id']: user['name'] for user in users}
-        cache.set(self.course_id, users_dict, USERS_TTL)
+            self._members_map = {}
+            for user_data in members:
+                with suppress(ValidationError):
+                    self._members_map[user_data.get("user_id")] = NrpsUser.model_validate(user_data)

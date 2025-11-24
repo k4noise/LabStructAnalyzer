@@ -186,6 +186,15 @@ export interface AnswerElement extends TemplateElementModel {
        * @type {string}
        */
       data: string;
+      /**
+       * Предполагаемый "размер" ответа
+       */
+      simple?: boolean;
+      /**
+       * Находится в режиме редактирования
+       * @type {boolean}
+       */
+      editNow: boolean;
     };
 }
 

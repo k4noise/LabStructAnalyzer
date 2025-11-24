@@ -1,0 +1,11 @@
+{
+  "architectures": ["T5ForConditionalGeneration"],
+  "model_type": "t5",
+  "tokenizer_class": "T5Tokenizer",
+  "tokenizer_file": "spiece.model",
+  "eos_token": "</s>",
+  "unk_token": "<unk>",
+  "pad_token": "<pad>",
+  "extra_ids": 0,
+  "additional_special_tokens": null
+}
