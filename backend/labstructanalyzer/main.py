@@ -11,7 +11,7 @@ from pylti1p3.exception import LtiException
 from sqlalchemy.exc import SQLAlchemyError
 from transformers import T5Tokenizer
 
-from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR, GENERATE_MODEL_DIR, ONNX_MODEL_DIR
+from .configs.config import IMAGE_PREFIX, FILES_STORAGE_DIR, GENERATE_MODEL_DIR
 from .exceptions.invalid_action import InvalidActionException
 from .exceptions.parser import ParserError
 
