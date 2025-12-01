@@ -40,7 +40,7 @@ def get_user(authorize: AuthJWT = Depends()) -> User:
 
 
 def get_cache(request: Request) -> RedisCache:
-    return request.state.app.cache
+    return request.app.state.cache
 
 
 def get_file_storage():

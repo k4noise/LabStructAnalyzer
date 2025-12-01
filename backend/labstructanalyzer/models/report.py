@@ -16,7 +16,7 @@ class Report(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     template_id: uuid.UUID = Field(foreign_key="templates.id")
     author_id: str
-    status: ReportStatus = Field(sa_column=Column(ReportStatusType(ReportStatus), nullable=False))
+    status: ReportStatus = Field(sa_column=Column(ReportStatusType, nullable=False))
     grader_id: Optional[str]
     score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 

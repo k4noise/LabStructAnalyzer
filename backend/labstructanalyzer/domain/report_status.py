@@ -14,9 +14,9 @@ class ReportStatusType(TypeDecorator):
     impl = String
     cache_ok = True
 
-    def __init__(self, enum_class):
+    def __init__(self):
         super().__init__()
-        self.enum_class = enum_class
+        self.enum_class = ReportStatus
 
     def process_bind_param(self, value, dialect):
         if value is None:
