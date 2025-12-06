@@ -39,7 +39,7 @@ class TemplateElementRepository:
         ]
 
         await self.session.execute(insert(TemplateElement).values(elements_with_template_id))
-        return [item.element_id for item in components]
+        return [item.id for item in components]
 
     async def bulk_update_properties(self, template_id: uuid.UUID,
                                      updates: Sequence[TemplateElementPropsUpdate]) -> int:

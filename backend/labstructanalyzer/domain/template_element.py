@@ -16,8 +16,8 @@ class PlainTemplateElement:
     Представление элемента после нормализации вложенной структуры,
     сохраняющее связь с родительским элементом
     """
-    element_type: str
+    type: str
     order: int
     parent_element_id: Optional[uuid.UUID] = None
-    element_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
     properties: Dict[str, Any] = field(default_factory=dict)

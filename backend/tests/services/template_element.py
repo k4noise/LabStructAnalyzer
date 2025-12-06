@@ -17,9 +17,9 @@ class TestTemplateElementService(unittest.IsolatedAsyncioTestCase):
 
     async def test_create_with_nested_structure(self):
         """Проверка корректного создания вложенных элементов"""
-        child_dto = CreateTemplateElementRequest(element_type="text_child", properties={"text": "child"},
+        child_dto = CreateTemplateElementRequest(type="text_child", properties={"text": "child"},
                                                  id=uuid.uuid4(), data="123")
-        parent_dto = CreateTemplateElementRequest(element_type="container", properties={}, data=[child_dto],
+        parent_dto = CreateTemplateElementRequest(type="container", properties={}, data=[child_dto],
                                                   id=uuid.uuid4())
 
         await self.service.create(self.template_id, [parent_dto])
@@ -35,14 +35,14 @@ class TestTemplateElementService(unittest.IsolatedAsyncioTestCase):
 
         parent_element = actual_flat_list[0]
         self.assertIsInstance(parent_element, PlainTemplateElement)
-        self.assertEqual(parent_element.element_type, "container")
+        self.assertEqual(parent_element.type, "container")
         self.assertEqual(parent_element.order, 1)
         self.assertIsNone(parent_element.parent_element_id)
 
         child_element = actual_flat_list[1]
         self.assertEqual(child_element.type, "text_child")
         self.assertEqual(child_element.order, 1)  # Порядок внутри своего родителя
-        self.assertEqual(child_element.parent_element_id, parent_element.element_id)
+        self.assertEqual(child_element.parent_element_id, parent_element.id)
 
     async def test_create_with_empty_list(self):
         """Создание пустого списка элементов игнорируется"""

@@ -22,9 +22,9 @@ class TemplateRepository:
         Создает черновик шаблона.
         Note! Элементы шаблона создаются отдельно и привязываются к шаблону по его id
         """
-
         self.session.add(template)
         await self.session.flush()
+        return template
 
     async def get(self, course_id: str, template_id: uuid.UUID) -> Optional[Template]:
         """Получает шаблон по идентификатору"""

@@ -65,6 +65,11 @@ class HALHyperModel(HyperModel):
     def remove_extra(self):
         """Логика вместо удаления аттрибутов - удаление ненужного из сериализованных данных"""
         data = dict(self.__dict__)
+
+        for field_name, field in self.model_fields.items():
+            if field.exclude and field_name in data:
+                del data[field_name]
+                
         keys_to_remove = []
         for key, value in data.items():
             if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):

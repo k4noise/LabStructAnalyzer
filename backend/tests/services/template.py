@@ -230,7 +230,7 @@ class TestTemplateService(unittest.IsolatedAsyncioTestCase):
             ]
         }]
         result = self.service._map_parser_items(items)
-        self.assertEqual(result[0].element_type, "group")
+        self.assertEqual(result[0].type, "group")
         self.assertEqual(result[0].data[0].element_type, "text")
 
 

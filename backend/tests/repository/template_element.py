@@ -88,9 +88,9 @@ class TestTemplateElementRepository(unittest.IsolatedAsyncioTestCase):
 
     async def test_bulk_create_successful(self):
         """Корректное создание элементов, возвращение идентификаторов"""
-        components = [PlainTemplateElement(element_type='test', order=0),
-                      PlainTemplateElement(element_type="image", order=1)]
-        expected_ids = [component.element_id for component in components]
+        components = [PlainTemplateElement(type='test', order=0),
+                      PlainTemplateElement(type="image", order=1)]
+        expected_ids = [component.id for component in components]
 
         result = await self.repository.bulk_create(self.template_id, components)
 

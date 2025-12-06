@@ -36,9 +36,13 @@ class TemplateElementResponse(TemplateElementProperties):
         )
 
 
-class CreateTemplateElementRequest(TemplateElementProperties):
-    element_type: str
-    data: str | Sequence[TemplateElementProperties]
+class CreateTemplateElementRequest(BaseModel):
+    properties: dict
+    type: str
+    data: str | Sequence["CreateTemplateElementRequest"]
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class TemplateElementUpdateRequest(BaseModel):

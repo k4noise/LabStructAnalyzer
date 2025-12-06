@@ -1,10 +1,12 @@
 import uuid
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Dict, Any
 
 from labstructanalyzer.domain.template_element import PlainTemplateElement, TemplateElementPropsUpdate
 from labstructanalyzer.repository.template_element import TemplateElementRepository
-from labstructanalyzer.schemas.template_element import TemplateElementResponse, CreateTemplateElementRequest, \
-    TemplateElementProperties
+from labstructanalyzer.schemas.template_element import (
+    CreateTemplateElementRequest,
+    TemplateElementProperties,
+)
 
 
 class TemplateElementService:
@@ -63,8 +65,11 @@ class TemplateElementService:
         elements_with_media = await self.repository.get_elements_with_media(template_id)
         return [element.data for element in elements_with_media]
 
-    def _prepare_data_recursive(self, components: Sequence[TemplateElementResponse],
-                                parent_id: Optional[uuid.UUID] = None) -> Sequence[PlainTemplateElement]:
+    def _prepare_data_recursive(
+            self,
+            components: Sequence[CreateTemplateElementRequest],
+            parent_id: Optional[uuid.UUID] = None
+    ) -> Sequence[PlainTemplateElement]:
         """
         Рекурсивно преобразует иерархию компонентов в плоский список элементов шаблона
 
@@ -75,17 +80,36 @@ class TemplateElementService:
         Returns:
             Плоский список элементов шаблона
         """
-        prepared_list = []
+        prepared_list: list[PlainTemplateElement] = []
+
         for i, component in enumerate(components, 1):
+            children: Optional[Sequence[CreateTemplateElementRequest]] = None
+            props: Optional[Dict[str, Any]] = None
+
+            if isinstance(component.data, list):
+                children = component.data
+                props = None
+            elif isinstance(component.data, dict):
+                props = component.data
+            elif isinstance(component.data, str) or component.data is None:
+                props = {"data": component.data}
+            else:
+                raise TypeError(
+                    f"Unsupported data type for component {component.type}: "
+                    f"{type(component.data)}"
+                )
+
             current = PlainTemplateElement(
-                element_type=component.type,
-                properties=component.properties,
+                type=component.type,
+                properties=props,
                 order=i,
                 parent_element_id=parent_id
             )
             prepared_list.append(current)
-            if isinstance(component.data, list):
+
+            if children:
                 prepared_list.extend(
-                    self._prepare_data_recursive(component.data, parent_id=current.element_id)
+                    self._prepare_data_recursive(children, parent_id=current.id)
                 )
+
         return prepared_list
