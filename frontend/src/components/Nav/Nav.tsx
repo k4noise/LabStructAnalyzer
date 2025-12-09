@@ -19,13 +19,7 @@ const Nav = () => {
           alt="avatar"
         />
       )}
-      {userData?.fullName && (
-        <span>
-          {userData.role.includes("student")
-            ? `${userData.name} ${userData.surname}`
-            : userData.fullName}
-        </span>
-      )}
+      {userData.fullName && <span>{userData.fullName}</span>}
     </nav>
   );
 };
