@@ -63,7 +63,7 @@ class TemplateElementService:
         Получает ключи к файлам, на которые ссылаются элементы шаблона
         """
         elements_with_media = await self.repository.get_elements_with_media(template_id)
-        return [element.data for element in elements_with_media]
+        return [element.properties.get("data") for element in elements_with_media]
 
     def _prepare_data_recursive(
             self,
