@@ -1,23 +1,11 @@
 import { TextElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
+import { BaseElementProps } from "./TemplateElements";
 
-/**
- * Свойства для компонента TextComponent.
- *
- * @interface TextBlockProps
- * @property {TextElement} element - Элемент текста.
- */
-interface TextBlockProps {
-  element: TextElement;
-}
+interface TextComponentProps extends BaseElementProps<TextElement> {}
 
-/**
- * Компонент для отображения текстового блока или вопроса.
- *
- * @param {TextBlockProps} props - Свойства компонента.
- */
-const TextComponent: React.FC<TextBlockProps> = ({ element }) => (
-  <p className={`mb-3 ${getMarginLeftStyle(element.properties.nestingLevel)}`}>
+const TextComponent: React.FC<TextComponentProps> = ({ element, level }) => (
+  <p className={`mb-3 ${getMarginLeftStyle(level)}`}>
     {element.properties?.numberingBulletText && (
       <span>{element.properties.numberingBulletText + " "}</span>
     )}
@@ -25,4 +13,4 @@ const TextComponent: React.FC<TextBlockProps> = ({ element }) => (
   </p>
 );
 
-export default TextComponent; 
+export default TextComponent;

@@ -3,14 +3,12 @@ import { AnswerElement } from "../../model/templateElement";
 import AnswerContext from "../../context/AnswerContext";
 import Button from "../Button/Button";
 import Textarea from "../Textarea/TextareaComponent";
-/**
- * Свойства для компонента ImageComponent.
- *
- * @interface ImageComponentProps
- * @property {ImageElement} element - Элемент изображения.
- */
+
 interface AnswerComponentProps {
   element: AnswerElement;
+  level: number;
+  children: any[];
+  renderChild: (child: any) => React.ReactNode;
   withQuestion?: boolean;
 }
 

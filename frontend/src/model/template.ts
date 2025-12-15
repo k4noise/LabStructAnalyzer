@@ -1,15 +1,41 @@
+import { TemplateElement } from "./templateElement";
+
 interface HALLink {
   href: string;
 }
 
-// Минимальный отчет (дополни по реальным полям)
+interface TemplateUpdateRequest {
+  name?: string;
+  max_score?: number;
+  elements?: []; //todo дополнить
+}
+
 interface MinimalReportResponse {
   id: string;
   status: string;
   score?: number;
 }
 
-// Сводка по шаблону
+interface TemplateStructure {
+  id: string;
+  name: string;
+  max_score: number;
+  is_draft?: boolean;
+}
+
+interface TemplateDetailResponse extends TemplateStructure {
+  embedded: {
+    elements: TemplateElement[];
+  };
+  links: {
+    self: HALLink;
+    update?: HALLink; // только для teacher
+    publish?: HALLink; // только для teacher, если черновик
+    delete?: HALLink; // только для teacher
+    all: HALLink;
+  };
+}
+
 interface TemplateCourseSummary {
   id: string;
   name: string;
@@ -23,7 +49,6 @@ interface TemplateCourseSummary {
   };
 }
 
-// Вся коллекция
 interface TemplateCourseCollection {
   links: {
     self: HALLink;
@@ -35,4 +60,4 @@ interface TemplateCourseCollection {
   courseName: string;
 }
 
-export { TemplateCourseCollection };
+export type { TemplateDetailResponse, TemplateCourseCollection };

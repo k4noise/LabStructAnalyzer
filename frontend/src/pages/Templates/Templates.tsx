@@ -25,9 +25,8 @@ const getStatusClass = (status: string | null): string => {
   }
 };
 
-// Вынесли отдельно для читаемости
 interface TemplateItemProps {
-  template: any; // Замени на конкретный тип из model/template
+  template: any;
   canEdit: boolean;
   showReportsLink: boolean;
 }
@@ -97,7 +96,7 @@ const Templates = () => {
     try {
       setIsUploading(true);
       const response = await api.post("/api/v1/templates", formData);
-      navigate(`/template/${response.data.template_id}`);
+      navigate(`/template/${response.data.id}`);
     } catch (error) {
       setUploadError(extractMessage(error.response));
     } finally {
