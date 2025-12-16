@@ -1,20 +1,17 @@
 import React from "react";
 import { TableElement } from "../../model/templateElement";
-import { getMarginLeftStyle } from "../../utils/templateStyle";
-import { BaseElementProps } from "./TemplateElements";
+import { ParentElementProps } from "./TemplateElements";
 
-const TableComponent: React.FC<BaseElementProps<TableElement>> = ({
-  element,
-  level,
+const TableComponent: React.FC<ParentElementProps<TableElement>> = ({
   children,
   renderChild,
 }) => {
   return (
-    <table className={`border-collapse ${getMarginLeftStyle(level)}`}>
-      <tbody>
-        {children.map(renderChild)}
-      </tbody>
-    </table>
+    <div className="w-full overflow-x-auto my-6">
+      <table className="border-collapse mx-auto">
+        <tbody>{children.map(renderChild)}</tbody>
+      </table>
+    </div>
   );
 };
 

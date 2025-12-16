@@ -2,16 +2,16 @@ import { ImageElement } from "../../model/templateElement";
 
 interface ImageComponentProps {
   element: ImageElement;
-  level: number;
-  children: any[];
-  renderChild: (child: any) => React.ReactNode;
 }
 
 const ImageComponent: React.FC<ImageComponentProps> = ({ element }) => (
-  <img
-    src={`/${element.properties.data}`}
-    className="mx-auto dark:brightness-75"
-  />
+  <div className="w-full my-6">
+    <img
+      src={`/${element.properties.data}`}
+      className="mx-auto block max-w-full h-auto dark:brightness-75"
+      alt="Template content"
+    />
+  </div>
 );
 
 export default ImageComponent;

@@ -3,21 +3,17 @@ import { getMarginLeftStyle } from "../../utils/templateStyle";
 
 interface HeaderComponentProps {
   element: HeaderElement;
-  level: number;
-  children: any[];
-  renderChild: (child: any) => React.ReactNode;
 }
 
-const HeaderComponent: React.FC<HeaderComponentProps> = ({
-  element,
-  level,
-}) => {
+const HeaderComponent: React.FC<HeaderComponentProps> = ({ element }) => {
   const Tag =
     `h${element.properties.headerLevel}` as keyof JSX.IntrinsicElements;
   const numberingText = element.properties.numberingBulletText;
   return (
     <Tag
-      className={`font-bold ${getMarginLeftStyle(level)} ${
+      className={`font-bold ${getMarginLeftStyle(
+        element.properties.nestingLevel
+      )} ${
         4 - element.properties.headerLevel > 0
           ? `text-${4 - element.properties.headerLevel}xl my-${
               4 * (4 - element.properties.headerLevel)

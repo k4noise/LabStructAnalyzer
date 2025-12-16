@@ -1,36 +1,40 @@
 import React from "react";
 import { QuestionElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
-import { BaseElementProps } from "./TemplateElements";
+import { ParentElementProps } from "./TemplateElements";
 
-const QuestionComponent: React.FC<BaseElementProps<QuestionElement>> = ({
+const QuestionComponent: React.FC<ParentElementProps<QuestionElement>> = ({
   element,
-  level,
   children,
   renderChild,
 }) => {
-
   const answerChild = children.find((child) => child.type === "answer");
+  const otherChildren = children.filter((child) => child.type !== "answer");
 
   return (
     <div
-      className={`italic my-8 ${getMarginLeftStyle(level)} ${
+      className={`my-8 ${getMarginLeftStyle(element.properties.nestingLevel)} ${
         answerChild?.properties.editNow
           ? "dark:text-blue-300 text-blue-600"
           : ""
       }`}
     >
-      <p>
+      <div className="mb-2">
         {element.properties.numberingBulletText && (
-          <span>{element.properties.numberingBulletText + " "}</span>
-        )}
-        {element.properties.data}
-        {answerChild && (
-          <span className="ml-4 inline">
-            {renderChild(answerChild)}
+          <span className="font-bold mr-2">
+            {element.properties.numberingBulletText}
           </span>
         )}
-      </p>
+        <span className="italic">{element.properties.data}</span>
+      </div>
+
+      {otherChildren.length > 0 && (
+        <div className="mb-4">{otherChildren.map(renderChild)}</div>
+      )}
+
+      {answerChild && (
+        <div className="not-italic">{renderChild(answerChild)}</div>
+      )}
     </div>
   );
 };
