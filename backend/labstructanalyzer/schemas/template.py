@@ -40,11 +40,11 @@ class TemplateStructure(BaseModel):
         )
 
 
-class TemplateUpdateRequest(TemplateStructure):
+class TemplateUpdateRequest(BaseModel):
     """Данные для обновления шаблона"""
     name: Optional[str] = None
     max_score: Optional[int] = None
-    elements: Optional[Sequence[TemplateElementUpdateRequest]]
+    elements: Optional[Sequence[TemplateElementUpdateRequest]] = None
 
 
 class TemplateCreationResponse(HALHyperModel):

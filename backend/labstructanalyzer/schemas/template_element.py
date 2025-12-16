@@ -1,7 +1,7 @@
 import enum
 import uuid
 from collections.abc import Sequence
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 from pydantic import BaseModel, Field
 
@@ -39,10 +39,26 @@ class TemplateElementResponse(TemplateElementProperties):
 class CreateTemplateElementRequest(BaseModel):
     properties: dict
     type: str
-    data: str | Sequence["CreateTemplateElementRequest"]
+    data: Optional[Union[str, Sequence["CreateTemplateElementRequest"]]]
 
-    class Config:
-        arbitrary_types_allowed = True
+    @staticmethod
+    def from_domain(element: Dict[str, Any]) -> "CreateTemplateElementRequest":
+        element_copy = element.copy()
+        element_type = element_copy.pop('type', '')
+        raw_data = element_copy.pop('data', None)
+
+        properties = element_copy
+
+        if isinstance(raw_data, list):
+            processed_data = [CreateTemplateElementRequest.from_domain(item) for item in raw_data]
+        else:
+            processed_data = raw_data
+
+        return CreateTemplateElementRequest(
+            type=element_type,
+            properties=properties,
+            data=processed_data
+        )
 
 
 class TemplateElementUpdateRequest(BaseModel):

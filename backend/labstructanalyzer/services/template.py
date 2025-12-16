@@ -77,8 +77,8 @@ class TemplateService:
 
         template.name = modifiers.name if modifiers.name else template.name
         template.max_score = modifiers.max_score if modifiers.max_score else template.max_score
-
-        await self._modify_elements(template_id, modifiers.elements)
+        if modifiers.elements:
+            await self._modify_elements(template_id, modifiers.elements)
         await self.repository.update(template)
         self.logger.info(f"Шаблон обновлен: id {template_id}")
 
@@ -135,10 +135,4 @@ class TemplateService:
         !!!ВРЕМЕННЫЙ, ПОДЛЕЖИТ УДАЛЕНИЮ!!!
         Маппит сырые данные из парсера в минимально необходимое представление
         """
-        mapped_items = []
-        for item in items:
-            mapped_item = CreateTemplateElementRequest.model_construct(**item)
-            if isinstance(mapped_item.data, list):
-                mapped_item.data = self._map_parser_items(mapped_item.data)
-            mapped_items.append(mapped_item)
-        return mapped_items
+        return [CreateTemplateElementRequest.from_domain(item) for item in items]

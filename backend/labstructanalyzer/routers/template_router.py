@@ -14,6 +14,7 @@ from labstructanalyzer.schemas.report import ReportCreationResponse, AllReportsB
 
 from labstructanalyzer.schemas.template import TemplateDetailResponse, TemplateCourseCollection, TemplateUpdateRequest, \
     TemplateCreationResponse
+from labstructanalyzer.services.hint_context import HintContextService
 
 from labstructanalyzer.services.lti.ags import AgsService
 from labstructanalyzer.services.lti.course import CourseService
@@ -22,6 +23,7 @@ from labstructanalyzer.services.parser.common import ParserService
 
 from labstructanalyzer.services.template import TemplateService
 from labstructanalyzer.services.report import ReportService
+from labstructanalyzer.utils.embedder import TextEmbedder
 from labstructanalyzer.utils.files.hybrid_storage import HybridStorage
 
 router = APIRouter()
@@ -265,7 +267,7 @@ async def publish_template(
         ags_service: AgsService = Depends(get_ags_service)
 ):
     """Опубликовать шаблон и создать для него линию оценок"""
-    await template_service.publish(user, template_id, ags_service)
+    await template_service.publish(user, template_id, ags_service, HintContextService(TextEmbedder()))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

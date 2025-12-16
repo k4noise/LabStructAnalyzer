@@ -70,44 +70,27 @@ class TemplateElementService:
             components: Sequence[CreateTemplateElementRequest],
             parent_id: Optional[uuid.UUID] = None
     ) -> Sequence[PlainTemplateElement]:
-        """
-        Рекурсивно преобразует иерархию компонентов в плоский список элементов шаблона
-
-        Args:
-            components: список компонентов для преобразования
-            parent_id: идентификатор родительского элемента для вложенных структур
-
-        Returns:
-            Плоский список элементов шаблона
-        """
+        """Рекурсивно преобразует компоненты, объединяя properties и data"""
         prepared_list: list[PlainTemplateElement] = []
 
         for i, component in enumerate(components, 1):
             children: Optional[Sequence[CreateTemplateElementRequest]] = None
-            props: Optional[Dict[str, Any]] = None
+            merged_props = (component.properties or {}).copy()
 
             if isinstance(component.data, list):
                 children = component.data
-                props = None
-            elif isinstance(component.data, dict):
-                props = component.data
-            elif isinstance(component.data, str) or component.data is None:
-                props = {"data": component.data}
-            else:
-                raise TypeError(
-                    f"Unsupported data type for component {component.type}: "
-                    f"{type(component.data)}"
-                )
+            elif component.data is not None:
+                merged_props['data'] = component.data
 
             current = PlainTemplateElement(
                 type=component.type,
-                properties=props,
+                properties=merged_props,
                 order=i,
                 parent_element_id=parent_id
             )
             prepared_list.append(current)
 
-            if children:
+            if children is not None:
                 prepared_list.extend(
                     self._prepare_data_recursive(children, parent_id=current.id)
                 )
