@@ -1,17 +1,17 @@
-import { TextElement } from "../../model/templateElement";
-import { getMarginLeftStyle } from "../../utils/templateStyle";
+import React from "react";
 
-interface TextComponentProps {
-  element: TextElement;
-}
-
-const TextComponent: React.FC<TextComponentProps> = ({ element }) => (
-  <p className={`mb-3 ${getMarginLeftStyle(element.properties.nestingLevel)}`}>
-    {element.properties?.numberingBulletText && (
-      <span>{element.properties.numberingBulletText + " "}</span>
-    )}
-    {element.properties.data}
-  </p>
-);
+const TextComponent: React.FC<{ element: any }> = ({ element }) => {
+  const { data, numberingBulletText } = element.properties;
+  return (
+    <span className="inline">
+      {numberingBulletText && (
+        <span className="not-italic font-bold mr-1.5">
+          {numberingBulletText}
+        </span>
+      )}
+      {data}
+    </span>
+  );
+};
 
 export default TextComponent;

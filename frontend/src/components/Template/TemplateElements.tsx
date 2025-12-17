@@ -101,7 +101,6 @@ const TemplateElements: React.FC<TemplateElementsProps> = memo(
       <AnswerContext.Provider value={answerContextProps}>
         {elementTree.map((rootElement) => renderNode(rootElement, 0))}
 
-        {/* Невидимый span для Tailwind */}
         <span className="hidden ml-4 ml-8 ml-12 ml-16 ml-20 my-4 my-8 my-12 my-16"></span>
       </AnswerContext.Provider>
     );

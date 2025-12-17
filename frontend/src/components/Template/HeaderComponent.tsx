@@ -1,29 +1,25 @@
 import { HeaderElement } from "../../model/templateElement";
 import { getMarginLeftStyle } from "../../utils/templateStyle";
 
-interface HeaderComponentProps {
-  element: HeaderElement;
-}
+const HeaderComponent: React.FC<{ element: HeaderElement }> = ({ element }) => {
+  const { headerLevel, nestingLevel, data, numberingBulletText } =
+    element.properties;
+  const Tag = `h${headerLevel}` as keyof JSX.IntrinsicElements;
 
-const HeaderComponent: React.FC<HeaderComponentProps> = ({ element }) => {
-  const Tag =
-    `h${element.properties.headerLevel}` as keyof JSX.IntrinsicElements;
-  const numberingText = element.properties.numberingBulletText;
+  const sizeMap: Record<number, string> = {
+    1: "text-3xl my-8 font-bold",
+    2: "text-2xl my-6 font-bold",
+    3: "text-xl my-4 font-bold",
+    4: "text-lg my-2 font-bold",
+  };
+
   return (
     <Tag
-      className={`font-bold ${getMarginLeftStyle(
-        element.properties.nestingLevel
-      )} ${
-        4 - element.properties.headerLevel > 0
-          ? `text-${4 - element.properties.headerLevel}xl my-${
-              4 * (4 - element.properties.headerLevel)
-            }`
-          : "my-4"
-      }`}
+      className={`${
+        sizeMap[headerLevel] || "text-base font-bold"
+      } ${getMarginLeftStyle(nestingLevel)} text-zinc-900 dark:text-zinc-50`}
     >
-      {numberingText
-        ? `${numberingText} ${element.properties.data}`
-        : element.properties.data}
+      {numberingBulletText ? `${numberingBulletText} ${data}` : data}
     </Tag>
   );
 };
