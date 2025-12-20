@@ -1,4 +1,5 @@
 import { AnswerModel } from "./answer";
+import { TemplateStructure } from "./template";
 
 export interface AllReportsInfo {
   template_name: string;
@@ -16,9 +17,9 @@ export interface MinimalReportInfoDto {
 }
 
 export interface ReportInfoDto extends MinimalReportInfoDto {
-  can_edit: boolean;
-  can_grade: boolean;
-  author_name: string;
-  grader_name?: string;
+  template: TemplateStructure;
+  id: string;
   answers: AnswerModel[];
+  grader_name?: string;
+  links: object;
 }

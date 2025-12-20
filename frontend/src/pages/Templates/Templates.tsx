@@ -27,39 +27,71 @@ const getStatusClass = (status: string | null): string => {
 
 interface TemplateItemProps {
   template: any;
-  canEdit: boolean;
-  showReportsLink: boolean;
+  userRole: "teacher" | "assistant" | "student";
+  onCreateReport?: (href: string) => void;
 }
 
 const TemplateItem = ({
   template,
-  canEdit,
-  showReportsLink,
-}: TemplateItemProps) => (
-  <div className="flex items-center gap-4">
-    <Link
-      to={canEdit ? `/template/${template.id}` : `/report/${template.id}`}
-      className="underline"
-    >
-      {template.name}
-    </Link>
+  userRole,
+  onCreateReport,
+}: TemplateItemProps) => {
+  const reports = template.embedded?.reports || [];
 
-    {showReportsLink ? (
-      <Link
-        to={`/template/${template.id}/reports`}
-        className="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2"
-      >
-        Заполненные отчеты
-      </Link>
-    ) : (
-      <span
-        className={getStatusClass(template.reports?.[0]?.status ?? "Новый")}
-      >
-        {template.reports?.[0]?.status ?? "Новый"}
-      </span>
-    )}
-  </div>
-);
+  const isTeacher = userRole === "teacher";
+  const isAssistant = userRole === "assistant";
+  const isStudent = userRole === "student";
+  const showReportsButton =
+    (isTeacher || isAssistant) && !!template.links?.get_reports;
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        {isTeacher ? (
+          <Link to={`/template/${template.id}`} className="underline">
+            {template.name}
+          </Link>
+        ) : (
+          <p>{template.name}</p>
+        )}
+
+        {showReportsButton && (
+          <Link
+            to={`/template/${template.id}/reports`}
+            className="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2"
+          >
+            Все отчёты
+          </Link>
+        )}
+      </div>
+
+      {(isStudent || isAssistant) && (
+        <div className="ml-4 flex flex-col gap-2">
+          {reports.length > 0 ? (
+            reports.map((report) => (
+              <div key={report.report_id} className="flex items-center gap-4">
+                <Link to={`/report/${report.report_id}`} className="underline">
+                  {report.name || `Отчёт ${report.created_at}`}
+                </Link>
+                <span className={getStatusClass(report.status)}>
+                  {report.status}
+                </span>
+              </div>
+            ))
+          ) : (
+            <Button
+              text="Создать отчёт"
+              onClick={() =>
+                onCreateReport?.(template.links?.create_report?.href)
+              }
+              classes="text-base border px-2 py-1 dark:border-zinc-200 border-zinc-950 border-solid rounded-xl border-2 w-fit"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Templates = () => {
   const { data } = useLoaderData<{ data: TemplateCourseCollection }>();
@@ -71,9 +103,17 @@ const Templates = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const isTeacher = !!data.links.add_template;
+  const isAssistant = !isTeacher && !!data.links.get_reports;
+
+  const userRole: "teacher" | "assistant" | "student" = isTeacher
+    ? "teacher"
+    : isAssistant
+    ? "assistant"
+    : "student";
+
   const title = `${
-    isTeacher ? "Шаблоны и отчеты" : "Отчеты"
-  } лабораторных работ курса ${data.courseName}`;
+    isTeacher ? "Шаблоны и отчёты" : "Отчёты"
+  } лабораторных работ курса ${data.course_name}`;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,6 +150,16 @@ const Templates = () => {
     setSelectedFile(null);
   };
 
+  const createReport = async (href: string) => {
+    if (!href) return;
+    try {
+      const response = await api.post(href);
+      navigate(`/report/${response.data.id}`);
+    } catch (e) {
+      console.error("Не удалось создать отчёт:", e);
+    }
+  };
+
   const templates = data.embedded.templates || [];
 
   return (
@@ -129,13 +179,13 @@ const Templates = () => {
       )}
 
       {templates.length > 0 ? (
-        <div className="flex flex-col gap-4 my-4 ml-4">
+        <div className="flex flex-col gap-6 my-4 ml-4">
           {templates.map((template) => (
             <TemplateItem
               key={template.id}
               template={template}
-              canEdit={isTeacher}
-              showReportsLink={isTeacher && !!template.links?.get_reports}
+              userRole={userRole}
+              onCreateReport={createReport}
             />
           ))}
         </div>

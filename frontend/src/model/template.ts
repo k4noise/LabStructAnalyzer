@@ -7,7 +7,7 @@ interface HALLink {
 interface TemplateUpdateRequest {
   name?: string;
   max_score?: number;
-  elements?: []; //todo дополнить
+  elements?: [];
 }
 
 interface MinimalReportResponse {
@@ -60,4 +60,8 @@ interface TemplateCourseCollection {
   courseName: string;
 }
 
-export type { TemplateDetailResponse, TemplateCourseCollection };
+export type {
+  TemplateDetailResponse,
+  TemplateCourseCollection,
+  TemplateStructure,
+};

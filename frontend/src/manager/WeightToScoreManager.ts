@@ -30,7 +30,7 @@ class WeightToScoreManager {
 
   private calcTotalWeight(elements: TemplateElementModel[], totalWeight = 0) {
     elements.forEach((element) => {
-      if (element.element_type === "answer") {
+      if (element.type === "answer") {
         totalWeight += (element as AnswerElement).properties.weight;
       }
       if (Array.isArray(element.properties.data)) {

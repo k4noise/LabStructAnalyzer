@@ -21,6 +21,7 @@ interface AnswerContextProps {
   updateAnswer?: (answer: AnswerModel) => void;
   editable?: boolean;
   graderView?: boolean;
+  hintLink?: string;
 }
 
 /**

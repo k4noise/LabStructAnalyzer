@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useLoaderData, useNavigate } from "react-router";
 import { FieldValues, useForm } from "react-hook-form";
 import {
@@ -16,9 +16,6 @@ import { Helmet } from "react-helmet";
 import WeightToScoreManager from "../../manager/WeightToScoreManager";
 import { TemplateDetailResponse } from "../../model/template";
 
-/**
- * Условия фильтрации для различных режимов отображения.
- */
 const displayModeFilterConditions = {
   prefer: (element: TemplateElementModel) =>
     element.properties.displayMode === "prefer" ||
@@ -27,115 +24,144 @@ const displayModeFilterConditions = {
     element.properties.displayMode === "always",
 };
 
-/**
- * Основной компонент шаблона, отображающий различные элементы.
- */
+interface TemplateUpdateRequest {
+  name?: string;
+  max_score?: number;
+  elements?: Array<{
+    action: "update";
+    id: string;
+    properties: Partial<AnswerElement["properties"]>;
+  }>;
+}
+
 const Template: React.FC = () => {
   const navigate = useNavigate();
-
   const [displayModeFilter, setDisplayModeFilter] = useState<string>("all");
 
-  /**
-   * Предварительно загруженные данные шаблона
-   */
-  const template = useLoaderData<TemplateDetailResponse>().data;
-  const weightToScoreManager = new WeightToScoreManager([], template.max_score);
+  const loaderData = useLoaderData() as { data: TemplateDetailResponse };
+  const template = loaderData.data;
 
-  /**
-   * Отфильтрованные элементы шаблона
-   */
-  const filteredElements = template.embedded.elements.filter((element) => {
-    const condition = displayModeFilterConditions[displayModeFilter];
-    return condition ? condition(element) : true;
-  });
+  const weightToScoreManager = useMemo(
+    () =>
+      new WeightToScoreManager(template.embedded.elements, template.max_score),
+    [template.max_score]
+  );
+
+  const filteredElements = useMemo(
+    () =>
+      template.embedded.elements.filter((element) => {
+        const condition =
+          displayModeFilterConditions[
+            displayModeFilter as keyof typeof displayModeFilterConditions
+          ];
+        return condition ? condition(element) : true;
+      }),
+    [template.embedded.elements, displayModeFilter]
+  );
 
   const [error, setError] = useState<string | null>(null);
-
-  const handleError = (error: any) => {
-    setError(extractMessage(error.response) || error.message);
-    setIsOpen(true);
-  };
-
-  /**
-   * Состояние выбранного элемента ответа для редактирования свойств
-   * @type {AnswerElement | null}
-   */
+  const [isOpen, setIsOpen] = useState(false);
   const [selectedElement, setSelectedElement] = useState<AnswerElement | null>(
     null
   );
-
   const [editButtonClientRect, setEditButtonClientRect] =
     useState<DOMRect | null>(null);
 
+  const answersCache = useMemo(() => {
+    const cache: { [id: string]: AnswerElement } = {};
+    template.embedded.elements.forEach((el) => {
+      if (el.type === "answer") {
+        cache[el.id] = el;
+      }
+    });
+    return cache;
+  }, [template.embedded.elements]);
+
   const [updatedElements, setUpdatedElements] = useState<{
-    [id: string]: Partial<TemplateElementModel>;
+    [id: string]: Partial<AnswerElement["properties"]>;
   }>({});
 
   /**
-   * Обновляет элементы шаблона с использованием функционального обновления состояния.
+   * Получает актуальный элемент с учетом локальных обновлений
    */
-  const updateElements = useCallback(
-    (id: string, updatedProperties: Partial<AnswerElement["properties"]>) => {
-      setIsOpen(false);
-      weightToScoreManager.changeWeightsSum(
-        selectedElement.properties.weight - updatedProperties.weight
-      );
-      setUpdatedElements((prevItems) => ({
-        ...prevItems,
-        [id]: {
-          ...prevItems[id],
-          element_id: id,
-          properties: { ...prevItems[id]?.properties, ...updatedProperties },
+  const getCurrentElement = useCallback(
+    (elementId: string): AnswerElement | null => {
+      const original = answersCache[elementId];
+      if (!original) return null;
+
+      const updates = updatedElements[elementId];
+      if (!updates) return original;
+
+      return {
+        ...original,
+        properties: {
+          ...original.properties,
+          ...updates,
         },
-      }));
-      selectedElement.properties.weight = updatedProperties.weight;
-      selectedElement.properties.editNow = false;
-      setSelectedElement(null);
+      };
     },
-    [selectedElement, weightToScoreManager]
+    [answersCache, updatedElements]
   );
-
-  const { register, handleSubmit } = useForm();
-
-  /**
-   * Состояние модального окна редактирования свойств ответа (открыто/закрыто)
-   * @type {boolean}
-   */
-  const [isOpen, setIsOpen] = useState(false);
-
-  /**
-   * Закрывает модальное окно
-   * @function
-   */
-  const handleClose = () => {
-    setIsOpen(false);
-    setError(null);
-  };
 
   const handleSelectAnswer = useCallback(
     (event: React.MouseEvent, element: AnswerElement) => {
-      if (selectedElement) {
-        selectedElement.properties.editNow = false;
-      }
-      const updatedElement = updatedElements[element.element_id];
-      const elementForEdit: AnswerElement =
-        (updatedElement as AnswerElement) ?? element;
-      elementForEdit.properties.editNow = true;
+      const currentElement = getCurrentElement(element.id) || element;
+
+      const elementForEdit: AnswerElement = {
+        ...currentElement,
+        properties: {
+          ...currentElement.properties,
+          editNow: true,
+        },
+      };
 
       setSelectedElement(elementForEdit);
       setEditButtonClientRect(
         (event.target as HTMLElement).getBoundingClientRect()
       );
     },
-    [selectedElement, updatedElements]
+    [getCurrentElement]
   );
+
+  const updateElements = useCallback(
+    (id: string, updatedProperties: Partial<AnswerElement["properties"]>) => {
+      const oldElement = getCurrentElement(id);
+      const oldWeight = oldElement?.properties.weight || 0;
+      const newWeight = updatedProperties.weight || 0;
+
+      weightToScoreManager.changeWeightsSum(newWeight - oldWeight);
+
+      setUpdatedElements((prev) => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          ...updatedProperties,
+          editNow: false,
+        },
+      }));
+
+      setSelectedElement(null);
+    },
+    [getCurrentElement, weightToScoreManager]
+  );
+
+  const { register, handleSubmit } = useForm();
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setError(null);
+  };
+
+  const handleError = (error: any) => {
+    setError(extractMessage(error.response) || error.message);
+    setIsOpen(true);
+  };
 
   const [buttonState, setButtonState] = useState<{
     [buttonName: string]: boolean;
   }>({});
 
   const handleReset = () => {
-    if (selectedElement) selectedElement.properties.editNow = false;
     weightToScoreManager.reset();
     setSelectedElement(null);
     setUpdatedElements({});
@@ -149,9 +175,21 @@ const Template: React.FC = () => {
     const buttonName = (nativeEvent?.submitter as HTMLButtonElement)?.name;
     const isPublishTemplate = buttonName === "publish";
 
-    const templateWithUpdatedData = {
+    const templateWithUpdatedData: TemplateUpdateRequest = {
       max_score: Number(data.maxScore) || 0,
     };
+
+    const changedElements = Object.entries(updatedElements)
+      .filter(([_, props]) => Object.keys(props).length > 0)
+      .map(([id, properties]) => ({
+        action: "update",
+        id,
+        properties,
+      }));
+
+    if (changedElements.length > 0) {
+      templateWithUpdatedData.elements = changedElements;
+    }
 
     try {
       setButtonState(isPublishTemplate ? { publish: true } : { update: true });
@@ -164,9 +202,11 @@ const Template: React.FC = () => {
         throw new Error("Нет прав для выполнения действия");
       }
 
-      isPublishTemplate
-        ? await api.post(linkHref, templateWithUpdatedData)
-        : await api.patch(linkHref, templateWithUpdatedData);
+      if (isPublishTemplate) {
+        await api.post(linkHref, templateWithUpdatedData);
+      } else {
+        await api.patch(linkHref, templateWithUpdatedData);
+      }
 
       setButtonState(
         isPublishTemplate ? { publish: false } : { update: false }
@@ -174,6 +214,8 @@ const Template: React.FC = () => {
 
       if (isPublishTemplate) {
         navigate("/templates");
+      } else {
+        setUpdatedElements({});
       }
     } catch (error) {
       setButtonState({});
@@ -202,6 +244,14 @@ const Template: React.FC = () => {
   const canPublish = !!template.links.publish;
   const canDelete = !!template.links.delete;
 
+  const answerContextProps = {
+    handleSelectAnswerForEdit: handleSelectAnswer,
+    editAnswerPropsMode: canEdit,
+    weightToScoreManager,
+    getCurrentElement,
+    updatedElements,
+  };
+
   return (
     <>
       <Helmet>
@@ -213,14 +263,12 @@ const Template: React.FC = () => {
         <BackButtonComponent positionClasses="" />
         {canEdit && template.isDraft ? (
           <input
-            className="text-3xl font-bold text-center mt-12 mb-10 w-full
-        bg-transparent border-b border-zinc-200 dark:border-zinc-950
-        focus:outline-none focus:border-zinc-950 dark:focus:border-zinc-200"
+            className="text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent border-b border-zinc-200 dark:border-zinc-950 focus:outline-none focus:border-zinc-950 dark:focus:border-zinc-200"
             defaultValue={template.name}
             {...register("name")}
           />
         ) : (
-          <h1 className="inline-block text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
+          <h1 className="text-3xl font-bold text-center mt-12 mb-10 w-full bg-transparent">
             {template.name}
           </h1>
         )}
@@ -230,7 +278,7 @@ const Template: React.FC = () => {
             <input
               type="number"
               min="0"
-              defaultValue={template.maxScore}
+              defaultValue={template.max_score}
               className="w-20 ml-3 bg-transparent border-b focus:outline-none border-zinc-950 dark:border-zinc-200"
               {...register("maxScore")}
             />
@@ -264,11 +312,7 @@ const Template: React.FC = () => {
         )}
         <TemplateElements
           elements={filteredElements}
-          answerContextProps={{
-            handleSelectAnswerForEdit: handleSelectAnswer,
-            editAnswerPropsMode: canEdit,
-            weightToScoreManager: weightToScoreManager,
-          }}
+          answerContextProps={answerContextProps}
         />
         <div className="flex justify-end gap-5 mt-10">
           {canEdit ? (
@@ -320,15 +364,12 @@ const Template: React.FC = () => {
       </Modal>
       <DraggablePopover
         isOpen={!!selectedElement}
-        onClose={() => {
-          if (selectedElement) {
-            selectedElement.properties.editNow = false;
-          }
-          setSelectedElement(null);
-        }}
+        onClose={() => setSelectedElement(null)}
         anchorElementRect={editButtonClientRect}
       >
-        <EditAnswer element={selectedElement} onSave={updateElements} />
+        {selectedElement && (
+          <EditAnswer element={selectedElement} onSave={updateElements} />
+        )}
       </DraggablePopover>
     </>
   );

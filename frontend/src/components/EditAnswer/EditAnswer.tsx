@@ -30,7 +30,7 @@ const EditAnswer = ({
   });
 
   const onFormSend = (data: FieldValues) => {
-    onSaveChanges(element.element_id, data);
+    onSaveChanges(element.id, data);
   };
 
   return (

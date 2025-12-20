@@ -45,26 +45,10 @@ const router = createBrowserRouter([
           await api.get(`/api/v1/templates/${params.id}/reports`),
       },
       {
-        path: "/report/new/:templateId",
-        loader: async ({ params }) => {
-          const reportId = await api.post<{ id: string }>(
-            `/api/v1/templates/${params.templateId}/reports`
-          );
-          return redirect(`/report/${reportId.data.id}`);
-        },
-      },
-      {
         path: "/report/:id",
         element: <Report />,
-        loader: async ({ params }) => {
-          const report = await api.get<ReportInfoDto>(
-            `/api/v1/reports/${params.id}`
-          );
-          const template = await api.get<TemplateModel>(
-            `/api/v1/templates/${report.data.template_id}`
-          );
-          return { template: template.data, report: report.data };
-        },
+        loader: async ({ params }) =>
+          await api.get<ReportInfoDto>(`/api/v1/reports/${params.id}`),
       },
       {
         path: "*",
