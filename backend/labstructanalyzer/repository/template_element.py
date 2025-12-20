@@ -68,11 +68,10 @@ class TemplateElementRepository:
             return 0
 
         statement = (
-            update(TemplateElement)
-            .where(
-                col(TemplateElement.id) == bindparam("element_id"),
-            )
+            update(TemplateElement.__table__)
+            .where(TemplateElement.__table__.c.id == bindparam("e_id"))
             .values(properties=bindparam("properties"))
+            .execution_options(synchronize_session=None)
         )
         result = await self.session.execute(statement, update_payload)
         return result.rowcount or 0
@@ -142,7 +141,7 @@ class TemplateElementRepository:
             .with_for_update()
         )
         rows = (await self.session.exec(statement)).all()
-        return {row.element_id: row.properties for row in rows}
+        return {element_id: properties for element_id, properties in rows}
 
     def _prepare_update_payload(
             self,
@@ -166,7 +165,7 @@ class TemplateElementRepository:
                 if new_props == old_props:
                     continue
                 merged_rows.append({
-                    "element_id": element_id,
+                    "e_id": element_id,
                     "properties": new_props
                 })
         return merged_rows

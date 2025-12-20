@@ -58,10 +58,10 @@ class AnswerResponse(BaseModel):
             visited.add(current_id)
             current = elements_map[current_id]
 
-            if not current or not current.parent_id:
+            if not current or not current.parent_element_id:
                 break
 
-            current_id = current.parent_id
+            current_id = current.parent_element_id
 
         return current_id
 

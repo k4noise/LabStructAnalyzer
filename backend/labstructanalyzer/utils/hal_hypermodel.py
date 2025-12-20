@@ -1,4 +1,4 @@
-from typing import Self, Dict, Union, Sequence, Any, Mapping, Optional, cast, Literal
+from typing import Self, Dict, Union, Sequence, Mapping, cast
 
 from fastapi_hypermodel import HALHyperModel as HyperModel, FrozenDict
 from fastapi_hypermodel.hal.hal_hypermodel import HALLinkType
@@ -17,16 +17,13 @@ class HALHyperModel(HyperModel):
     def add_hypermodels_to_embedded(self: Self) -> Self:
         """Добавляем без удаления аттрибутов"""
         embedded = {}
-        for name, field in self:
-            value: Sequence[Union[Any, Self]] = (
-                field if isinstance(field, Sequence) else [field]
-            )
 
-            if not all(isinstance(element, HALHyperModel) for element in value):
+        for name, field in self:
+            if not isinstance(field, list):
                 continue
 
             key = self.model_fields[name].alias or name
-            embedded[key] = value
+            embedded[key] = field
 
         self.embedded = embedded
         return self
@@ -69,7 +66,7 @@ class HALHyperModel(HyperModel):
         for field_name, field in self.model_fields.items():
             if field.exclude and field_name in data:
                 del data[field_name]
-                
+
         keys_to_remove = []
         for key, value in data.items():
             if isinstance(value, Sequence) and not isinstance(value, (str, bytes)):

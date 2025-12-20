@@ -370,8 +370,8 @@ async def cancel_send_to_grade(
     logger.info(f"Отчет снят с проверки: id {report_id}")
 
 
-@router.get(
-    "reports/{report_id}/hint",
+@router.post(
+    "/{report_id}/hint",
     tags=["Report"],
     summary="Получить подсказку при заполнении отчета",
     responses={

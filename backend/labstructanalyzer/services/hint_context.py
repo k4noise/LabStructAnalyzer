@@ -26,7 +26,7 @@ class HintContextService:
             return
 
         elements_data = {
-            f"template_element_{element.id}": element.data
+            f"template_element_{element.id}": element.properties
             for element in report.template.elements
         }
         cache.set_many_if_not_present(elements_data, timedelta(hours=3))
@@ -51,7 +51,8 @@ class HintContextService:
         if not answer_element:
             return None
 
-        pre_graded = PreGraderService(hint_request.answers).grade(hint_request.current).pre_grade
+        hint_request.current.reference = answer_element.get("refAnswer")
+        pre_graded = PreGraderService(hint_request.params).grade(hint_request.current)
         question_element = cache.get(f"template_element_{hint_request.question_id}")
 
         theory_data = []
@@ -65,15 +66,12 @@ class HintContextService:
             if theory_element:
                 theory_data.append(theory_element.properties.get("data"))
 
-        if len(theory_data) == 0:
-            return None
-
         return HintGenerationRequest(
             answer=hint_request.current.data.get("text"),
-            question=question_element.data if question_element else "",
+            question=question_element.get("data", "") if question_element else "",
             theory=theory_data,
-            error_explanation=pre_graded.get("comment"),
-            pre_score=pre_graded.get("score")
+            error_explanation=pre_graded.pre_grade.get("comment"),
+            pre_score=pre_graded.pre_grade.get("score")
         )
 
     def analyze(self, template_elements: Sequence[TemplateElement]) -> Sequence[TemplateElementProperties]:
@@ -132,4 +130,4 @@ class HintContextService:
             scores.append((candidate_id, similarity))
 
         sorted_scores = sorted(scores, key=lambda item: item[1], reverse=True)
-        return [item[0] for item in sorted_scores[:top_k]]
+        return [str(item[0]) for item in sorted_scores[:top_k]]

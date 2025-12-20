@@ -133,7 +133,7 @@ class TemplateCourseSummary(HALHyperModel):
             is_draft=template.is_draft,
             user=user,
             reports=[
-                MinimalReportResponse.from_domain(report) for report in template.reports if
+                MinimalReportResponse.from_domain(report, user) for report in template.reports if
                 report.author_id == user.sub
             ]
         )
@@ -204,6 +204,11 @@ class FullWorkResponse(HALHyperModel):
             values["user"] and
             values["user"].is_instructor() and
             not values["user"].sub == values["author_id"],
+        ),
+        "get_hint": HALFor(
+            "get_hint",
+            {"report_id": "<id>"},
+            condition=lambda values: values["user"] and values["user"].is_student()
         )
     })
 

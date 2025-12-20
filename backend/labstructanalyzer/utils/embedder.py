@@ -32,7 +32,7 @@ class TextEmbedder:
             return np.zeros((0, self.vector_size), dtype=np.float32)
 
         is_valid = [
-            len(self.tokenizer.tokenize(sentence)) >= MIN_TOKEN_COUNT
+            isinstance(sentence, str) and len(self.tokenizer.tokenize(sentence)) >= MIN_TOKEN_COUNT
             for sentence in sentences
         ]
 
@@ -54,6 +54,7 @@ class TextEmbedder:
             {
                 "input_ids": inputs["input_ids"].astype(np.int64),
                 "attention_mask": inputs["attention_mask"].astype(np.int64),
+                "token_type_ids": inputs["token_type_ids"].astype(np.int64),
             },
         )
         valid_embeddings = self._apply_mean_pooling(outputs[0], inputs["attention_mask"])

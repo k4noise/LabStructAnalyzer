@@ -76,6 +76,6 @@ class HintGenerator:
             f"[ОТВЕТ СТУДЕНТА] {answer_trimmed}\n"
             f"[ОШИБКА] {error}\n"
             f"[ВОПРОС]"
-        ) if context else (f"[ОТВЕТ СТУДЕНТА] {answer_trimmed}\n"
+        ) if context else (f"[НЕПРАВИЛЬНЫЙ ОТВЕТ] {answer_trimmed}\n"
                            f"[ОШИБКА] {error}\n"
                            f"[ВОПРОС]")

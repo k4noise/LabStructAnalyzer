@@ -37,7 +37,8 @@ class AgsService:
             self.logger.debug(f"Линия для черновика {template.id} не будет создаваться")
             return None
 
-        return self.background_task_service.enqueue(self.find_or_create_lineitem, template)
+        self.find_or_create_lineitem(template)
+        # return self.background_task_service.enqueue(self.find_or_create_lineitem, template)
 
     def find_or_create_lineitem(self, template: TemplateStructure) -> Optional[LineItem]:
         """

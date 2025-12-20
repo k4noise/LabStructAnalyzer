@@ -31,7 +31,7 @@ class ReportRepository:
         """Получить отчет со всеми данными"""
         statement: Select = (
             select(Report)
-            .where(Report.id == report_id, Report.author_id != user_id)
+            .where(Report.id == report_id, Report.author_id == user_id)
             .options(joinedload(Report.template))
             .options(joinedload(Report.answers))
         )

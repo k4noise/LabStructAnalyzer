@@ -56,7 +56,7 @@ class FixedAnswerGrader:
             missing = "; ".join(list(missing_digits))
             return GradeResult(
                 score=0,
-                comment=f"Отсутствуют требуемые числа: [{missing}]"
+                comment=f"Нет числа: [{missing}]"
             )
 
         given_words = self._extract_words(given)
@@ -74,7 +74,7 @@ class FixedAnswerGrader:
         if self._is_fuzzy_subsequence(subsequence=given_words, main_sequence=ref_words):
             return GradeResult(1, "Неполный, но последовательный ответ")
 
-        return GradeResult(0, "Слова или их порядок не совпадают с эталоном")
+        return GradeResult(0, f"Слова или их порядок не совпадают с эталоном")
 
     @staticmethod
     @lru_cache(maxsize=128)

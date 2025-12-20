@@ -115,7 +115,7 @@ class TemplateService:
         return TemplateCourseCollection.from_domain(templates, user, course.name)
 
     async def _get(self, user: User, template_id: uuid.UUID) -> Template:
-        template = await self.repository.get(user.sub, template_id)
+        template = await self.repository.get(user.course_id, template_id)
         if not template:
             raise TemplateNotFoundException(template_id)
         return template

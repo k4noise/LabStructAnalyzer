@@ -16,7 +16,7 @@ class PreGraderService:
     def __init__(self, answers: Sequence[AnswerResponse]) -> None:
         self._answers: Sequence[AnswerResponse] = answers
         self._strategies = [
-            ParametrizedAnswerGrader({a.custom_id: a for a in answers}),
+            ParametrizedAnswerGrader({a.custom_id: a for a in (answers or []) if a.custom_id}),
             FixedAnswerGrader(),
             ThesisAnswerGrader(TextEmbedder()),
         ]
@@ -24,8 +24,7 @@ class PreGraderService:
     def grade(self, answer: AnswerResponse) -> PreGradedAnswerResponse | None:
         if not self._is_processable(answer):
             return None
-
-        user_text = answer.data.get("data").get("text", "")
+        user_text = answer.data.get("data", {}).get("text", "") or answer.data.get("text")
         best_result: Optional[GradeResult] = None
 
         for grader in self._strategies:
@@ -66,5 +65,5 @@ class PreGraderService:
         if not answer.data:
             return False
 
-        data = answer.data.get("data") or {}
+        data = answer.data.get("data") or answer.data or {}
         return bool(data.get("text") and answer.reference)

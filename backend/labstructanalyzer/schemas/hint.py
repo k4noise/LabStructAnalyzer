@@ -9,7 +9,7 @@ from labstructanalyzer.schemas.answer import AnswerResponse
 class NewHintRequest(BaseModel):
     question_id: uuid.UUID
     current: AnswerResponse
-    params: Optional[Sequence[AnswerResponse]]
+    params: Optional[Sequence[AnswerResponse]] = None
 
 
 class HintGenerationRequest(BaseModel):

@@ -18,6 +18,9 @@ class ThesisAnswerGrader:
     def __init__(self, embedder: TextEmbedder):
         self.embedder = embedder
 
+    def is_processable(self, given: str, reference: str) -> bool:
+        return True
+
     def grade(self, given: str, reference: str) -> GradeResult:
         """
         Оценивает ответ студента относительно эталона.
@@ -30,9 +33,7 @@ class ThesisAnswerGrader:
         reference_theses = self._split_sentences(reference)
 
         if not reference_theses:
-            raise ValueError(
-                "Эталонный текст пустой или состоит только из пробелов/переносов"
-            )
+            return GradeResult(score=0.0, comment="Эталон не содержит букв")
 
         if not user_sentences:
             return GradeResult(score=0.0, comment="Ответ пустой")
@@ -112,12 +113,12 @@ class ThesisAnswerGrader:
         comment_parts = []
 
         if missed_theses:
-            comment_parts.append("Пропущенные тезисы:")
+            comment_parts.append("Не указаны:")
             for item in missed_theses[:MAX_COMMENT_ITEMS]:
                 comment_parts.append(f"  • {item['thesis']}")
 
         if weakly_covered:
-            comment_parts.append("\nСлабо раскрытые тезисы:")
+            comment_parts.append("\nУказаны частично:")
             for item in weakly_covered[:MAX_COMMENT_ITEMS]:
                 comment_parts.append(
                     f"  • {item['thesis']} (сходство: {item['score']:.2f})"

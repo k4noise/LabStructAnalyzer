@@ -21,25 +21,26 @@ class ReportCreationResponse(HALHyperModel):
     id: uuid.UUID
 
     links: HALLinks = FrozenDict({
-        "self": HALFor("create_report"),
+        "self": HALFor("create_report", {"template_id": "<id>"}),
         "get": HALFor("get_report", {"report_id": "<id>"})
     })
 
 
 class MinimalReportResponse(HALHyperModel):
     """Упрощённое представление отчёта по шаблону"""
-    updated_at: datetime
+    created_at: datetime
     report_id: uuid.UUID
+    template_id: uuid.UUID
     status: ReportStatus
 
     # Поле используется только для условной генерации ссылок HAL
     user: User = Field(exclude=True)
 
     links: HALLinks = FrozenDict({
-        "self": HALFor("get_report", {"report_id": "<id>"}),
+        "self": HALFor("get_report", {"report_id": "<report_id>"}),
         "create_report": HALFor(
             "create_report",
-            {"template_id": "<id>"},
+            {"template_id": "<template_id>"},
             condition=lambda values: values["user"] and values["user"].is_student(),
         ),
     })
@@ -47,11 +48,13 @@ class MinimalReportResponse(HALHyperModel):
     model_config = ConfigDict(serialize_by_alias=True, populate_by_name=True, alias_generator=to_camel)
 
     @staticmethod
-    def from_domain(report: Report) -> "MinimalReportResponse":
+    def from_domain(report: Report, user: User) -> "MinimalReportResponse":
         return MinimalReportResponse(
-            updated_at=report.updated_at,
+            created_at=report.created_at,
             report_id=report.id,
+            template_id=report.template_id,
             status=report.status,
+            user=user
         )
 
 

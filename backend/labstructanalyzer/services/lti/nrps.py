@@ -22,6 +22,12 @@ class NrpsService:
         self.logger = GlobalLogger().get_logger(__name__)
         self._members_map: Optional[dict[str, NrpsUser]] = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     def get_user_by_id(self, user_id: str) -> Optional[NrpsUser]:
         """Получить данные из NRPS по идентификатору пользователя"""
         self._ensure_members_loaded()

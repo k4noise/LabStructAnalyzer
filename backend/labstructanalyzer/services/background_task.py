@@ -40,7 +40,7 @@ class BackgroundTaskService:
             return job
 
         except Exception as e:
-            self.logger.error(f"Ошибка при добавлении задачи в очередь: {e}", exc_info=True)
+            self.logger.error(f"Ошибка при добавлении задачи в очередь: ", exc=e)
             return None
 
     def get_job_status(self, job_id: str) -> Dict[str, Union[str, Any]]:
