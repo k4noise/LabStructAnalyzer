@@ -29,13 +29,7 @@ class FixedAnswerGrader:
         if max(len(reference), len(given)) > self.MAX_PROCESSABLE_LENGTH:
             return False
 
-        len_diff_ok = abs(len(reference) - len(given)) < self.WORDS_LENGTH_THRESHOLD
-
-        given_words_count = len(self._extract_words(given))
-        ref_words_count = len(self._extract_words(reference))
-        word_count_diff_ok = abs(ref_words_count - given_words_count) <= self.WORD_COUNT_THRESHOLD
-
-        return len_diff_ok and word_count_diff_ok
+        return True
 
     def grade(self, given: str, reference: str) -> GradeResult:
         """

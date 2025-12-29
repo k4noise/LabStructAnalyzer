@@ -23,13 +23,9 @@ function useDebounce<T>(value: T, delay: number): T {
 
 interface AnswerComponentProps {
   element: AnswerElement;
-  withQuestion?: boolean;
 }
 
-const AnswerComponent: React.FC<AnswerComponentProps> = ({
-  element,
-  withQuestion,
-}) => {
+const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
   const [isRight, setIsRight] = useState<boolean | null>(null);
   const {
     handleSelectAnswerForEdit,
@@ -69,10 +65,9 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({
       }
 
       setHintText(null);
-
       try {
         const requestBody = {
-          question_id: element.id,
+          question_id: element.parent_id,
           current: {
             element_id: element.id,
             data: { text: text },

@@ -5,7 +5,7 @@ from fastapi_another_jwt_auth import AuthJWT
 from sqlmodel.ext.asyncio.session import AsyncSession
 from starlette.requests import Request
 
-from labstructanalyzer.configs.config import TOOL_CONF
+from labstructanalyzer.configs.config import TOOL_CONF, GENERATE_MODEL_DIR
 from labstructanalyzer.core.database import get_session
 from labstructanalyzer.exceptions.access_denied import RoleAccessDeniedException
 from labstructanalyzer.models.user_model import User, UserRole
@@ -104,7 +104,7 @@ def get_grade_service(report_service: ReportService = Depends(get_report_service
 
 
 def get_hint_generator(request: Request):
-    return HintGenerator(request.app.state.generate_tokenizer, request.app.state.generate_model)
+    return HintGenerator(GENERATE_MODEL_DIR)
 
 
 def get_user_with_any_role(*roles: UserRole):

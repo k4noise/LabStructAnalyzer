@@ -1,81 +1,95 @@
-from typing import Dict, Any
-from transformers import T5Tokenizer
-import ctranslate2
-
-from labstructanalyzer.schemas.hint import HintGenerationRequest
+import re
+from typing import Any, Optional, List
+from llama_cpp import Llama
 
 
 class HintGenerator:
     """Генератор подсказок/вопросов на основе контекста, ответа студента и описания ошибки."""
 
-    def __init__(
-            self,
-            tokenizer: T5Tokenizer,
-            model: ctranslate2.Translator,
-    ) -> None:
-        self.tokenizer = tokenizer
-        self.model = model
-        self.max_context_len = 150
-        self.max_answer_len = 100
+    def __init__(self, model_path: str) -> None:
+        self.model = Llama(
+            model_path=model_path,
+            n_gpu_layers=-1,
+            n_ctx=2048,
+            verbose=False
+        )
+        self.max_context_len = 600
 
     def _post_process(self, text: str) -> str:
-        """Чистка ответа модели от лишних префиксов и пробелов"""
-        text = (text or "").strip()
+        if not text:
+            return ""
 
-        prefixes = ["[ВОПРОС]", "[ПОДСКАЗКА]"]
-        for prefix in prefixes:
-            if text.startswith(prefix):
-                text = text[len(prefix):].strip()
+        text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
 
-        return " ".join(text.split())
+        first_line = ""
+        for line in text.splitlines():
+            line = line.strip()
+            if line:
+                first_line = line
+                break
+        if not first_line:
+            return ""
 
-    def generate(
-            self,
-            context: HintGenerationRequest,
-            **generation_params: Any
-    ) -> str | None:
-        """Генерирует подсказку по ответу пользователя"""
+        first_line = re.sub(
+            r'^(Вопрос|Подсказка|Тьютор|Assistant|Ответ)\s*:?\s*',
+            '',
+            first_line,
+            flags=re.IGNORECASE
+        ).strip()
+
+        if "?" in first_line:
+            first_line = first_line.split("?", 1)[0].strip()
+
+        return (first_line + "?") if first_line else ""
+
+    def _build_prompt(self, theory: str, student_answer: str, error: str) -> str:
+        theory = theory[: self.max_context_len]
+
+        return f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+Сравни текст и ответ.
+Найди несовпадение и задай один вопрос (до 7 слов), чтобы студент сам понял, в чем ошибка.
+Не подсказывай ответ. Только один вопрос.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+ДАННЫЕ: {theory}
+СТУДЕНТ НАПИСАЛ: {student_answer}
+ПРОБЛЕМА: {error}
+
+Вопрос к студенту: """
+
+    def generate(self, context: Any) -> Optional[str]:
         if context is None:
             return None
 
-        main_input = self._build_prompt(' '.join(context.theory), context.answer,
-                                        context.error_explanation)
+        theory_list: List[str] = getattr(context, "theory", []) or []
+        theory_text = "\n\n".join(t for t in theory_list if t)
 
-        default_params: Dict[str, Any] = {
-            "beam_size": 3,
-            "max_decoding_length": 60,
-            "repetition_penalty": 1.1,
-            "no_repeat_ngram_size": 2,
-            "length_penalty": 0.8,
+        student_answer = getattr(context, "answer", "") or ""
+        error = getattr(context, "error_explanation", "") or ""
+
+        prompt_text = self._build_prompt(
+            theory_text,
+            student_answer,
+            error
+        )
+        print(context)
+        print(prompt_text)
+
+        params = {
+            "max_tokens": 40,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "repeat_penalty": 1.1,
+            "stop": ["<|eot_id|>", "###"],
+            "echo": False
         }
-        params = {**default_params, **generation_params}
 
-        input_text = f"ask | {main_input}"
+        try:
+            output = self.model(prompt_text, **params)
+            raw_text = output["choices"][0]["text"]
 
-        input_ids = self.tokenizer.encode(input_text)
-        token_strings = self.tokenizer.convert_ids_to_tokens(input_ids)
-
-        results = self.model.translate_batch([token_strings], **params)
-
-        if not results or not results[0].hypotheses:
+            hint = self._post_process(raw_text)
+            return hint if len(hint) > 3 else None
+        except Exception as e:
+            print(f"Ошибка: {e}")
             return None
-
-        output_tokens = results[0].hypotheses[0]
-        generated_text = self.tokenizer.convert_tokens_to_string(output_tokens)
-
-        return self._post_process(generated_text)
-
-    def _build_prompt(self, context: str, student_answer: str, error: str) -> str:
-        """Формирует промпт для модели."""
-        context_trimmed = (context or "")[:self.max_context_len]
-        answer_trimmed = (student_answer or "")[:self.max_answer_len]
-        error = error or ""
-
-        return (
-            f"[ЗАДАЧА] {context_trimmed}\n"
-            f"[ОТВЕТ СТУДЕНТА] {answer_trimmed}\n"
-            f"[ОШИБКА] {error}\n"
-            f"[ВОПРОС]"
-        ) if context else (f"[НЕПРАВИЛЬНЫЙ ОТВЕТ] {answer_trimmed}\n"
-                           f"[ОШИБКА] {error}\n"
-                           f"[ВОПРОС]")

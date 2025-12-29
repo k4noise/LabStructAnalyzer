@@ -412,6 +412,9 @@ async def get_hint(
         HintContextService.cache(report, cache)
         context = HintContextService.get_from_cache(hint_request, user, report_id, cache)
 
+    if context is None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     hint = hint_generator.generate(context)
 
     if hint is None:

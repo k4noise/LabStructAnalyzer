@@ -41,15 +41,6 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     HALHyperModel.init_app(app)
     app.state.cache = RedisCache()
-    try:
-        app.state.generate_model = ctranslate2.Translator(GENERATE_MODEL_DIR, device="cpu")
-        app.state.generate_tokenizer = T5Tokenizer.from_pretrained(
-            GENERATE_MODEL_DIR,
-            use_fast=False,
-            legacy=False,
-        )
-    except Exception as exception:
-        raise exception
 
     yield
     await close_db()
