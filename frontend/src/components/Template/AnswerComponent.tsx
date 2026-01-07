@@ -1,8 +1,7 @@
 import React, { useContext, useState, useEffect, useCallback } from "react";
 import { AnswerElement } from "../../model/templateElement";
-import AnswerContext, { AnswerContextProps } from "../../context/AnswerContext";
+import AnswerContext from "../../context/AnswerContext";
 import Button from "../Button/Button";
-import Textarea from "../Textarea/TextareaComponent";
 import { api } from "../../utils/sendRequest";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -39,10 +38,12 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
   } = useContext(AnswerContext);
 
   const [hintText, setHintText] = useState<string | null>(null);
+
+  const [isHintStale, setIsHintStale] = useState<boolean>(false);
   const currentAnswerData = answers?.[element.id];
   const currentAnswerText = currentAnswerData?.data?.text ?? "";
 
-  const debouncedText = useDebounce(currentAnswerText, 500);
+  const debouncedText = useDebounce(currentAnswerText, 15000);
 
   const score = currentAnswerData?.score ?? null;
 
@@ -63,8 +64,6 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         setHintText(null);
         return;
       }
-
-      setHintText(null);
       try {
         const requestBody = {
           question_id: element.parent_id,
@@ -76,8 +75,8 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         };
 
         const response = await api.post(hintLink, requestBody);
-
         const receivedHint = response.data;
+
         setHintText(
           receivedHint
             ? String(receivedHint)
@@ -86,28 +85,33 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
       } catch (error) {
         console.error("Ошибка при получении подсказки:", error);
         setHintText("Не удалось загрузить подсказку.");
+      } finally {
+        setIsHintStale(false);
       }
     },
-    [hintLink, element.id, answers]
+    [hintLink, element.id, element.parent_id]
   );
 
   useEffect(() => {
-    if (
-      editable &&
-      !graderView &&
-      debouncedText &&
-      debouncedText !== currentAnswerText
-    ) {
+    if (editable && !graderView && debouncedText) {
       fetchHint(debouncedText);
-    } else if (!editable || graderView || !debouncedText) {
-      setHintText(null);
     }
-  }, [debouncedText, editable, graderView, fetchHint, currentAnswerText]);
+  }, [debouncedText, editable, graderView, fetchHint]);
+  const onChangeAnswer = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
 
-  const onChangeAnswer = (e: any) => {
+    if (hintText && !isHintStale) {
+      setIsHintStale(true);
+    }
+
+    if (newText === "") {
+      setHintText(null);
+      setIsHintStale(false);
+    }
+
     updateAnswer({
       id: element.id,
-      data: { text: e.target.value },
+      data: { text: newText },
     });
   };
 
@@ -207,7 +211,11 @@ const AnswerComponent: React.FC<AnswerComponentProps> = ({ element }) => {
         />
 
         {editable && !graderView && hintText && (
-          <div className="mt-2 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-sm rounded dark:bg-yellow-900/30 dark:border-yellow-400">
+          <div
+            className={`mt-2 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-sm rounded dark:bg-yellow-900/30 dark:border-yellow-400 transition-opacity duration-300 ${
+              isHintStale ? "opacity-50" : "opacity-100"
+            }`}
+          >
             <strong>Подсказка:</strong> {hintText}
           </div>
         )}
